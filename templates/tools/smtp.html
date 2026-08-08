@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}SMTP Test — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ tool.name }}</h1>
+<p class="page-desc">{{ tool.desc }}</p>
+<section class="panel">
+  <form id="smtp-form">
+    <label for="host">Domain or IP</label>
+    <div class="row">
+      <input id="host" name="host" type="text" placeholder="example.com or mx.example.com" required autocomplete="off">
+      <button class="btn" type="submit">Test port 25</button>
+    </div>
+    <p class="hint">For domains, MX records are tried first. Shows banner, EHLO and STARTTLS support. Does not send mail.</p>
+  </form>
+  <div id="results" class="results"></div>
+</section>
+{% endblock %}

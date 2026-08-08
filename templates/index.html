@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}lookup4.me — DNS &amp; email lookup tools{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>lookup4.me</h1>
+  <p>Simple lookups for MX, SPF, DKIM, DMARC, SSL, reverse DNS and SMTP — pick a tool and go.</p>
+</section>
+
+<section class="tool-grid">
+  {% for tool in tools %}
+  <a class="tool-card" href="{{ url_for('tool_page', slug=tool.slug) }}">
+    <h2>{{ tool.name }}</h2>
+    <p>{{ tool.desc }}</p>
+  </a>
+  {% endfor %}
+</section>
+{% endblock %}

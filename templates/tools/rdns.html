@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Reverse DNS — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ tool.name }}</h1>
+<p class="page-desc">{{ tool.desc }}</p>
+<section class="panel">
+  <form id="rdns-form">
+    <label for="ip">IP address</label>
+    <div class="row">
+      <input id="ip" name="ip" type="text" placeholder="8.8.8.8" required autocomplete="off">
+      <button class="btn" type="submit">Lookup</button>
+    </div>
+  </form>
+  <div id="results" class="results"></div>
+</section>
+{% endblock %}

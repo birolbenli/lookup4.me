@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}SSL Checker — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ tool.name }}</h1>
+<p class="page-desc">{{ tool.desc }}</p>
+<section class="panel">
+  <form id="ssl-form">
+    <label for="domains">Domain list</label>
+    <textarea id="domains" name="domains" placeholder="example.com&#10;example.org:8443&#10;mail.example.com" required></textarea>
+    <p class="hint">One domain per line. Optional port with host:port. Maximum 10 domains at once.</p>
+    <div class="row" style="margin-top:0.8rem">
+      <button class="btn" type="submit">Start SSL Check</button>
+      <button class="btn btn-secondary" type="button" onclick="document.getElementById('domains').value=''; document.getElementById('results').innerHTML='';">Clear</button>
+    </div>
+  </form>
+  <div id="results" class="results"></div>
+</section>
+{% endblock %}

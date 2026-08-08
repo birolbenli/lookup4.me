@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}About — lookup4.me{% endblock %}
+{% block content %}
+<section class="about">
+  <h1 class="page-title">About</h1>
+  <p>
+    <strong>lookup4.me</strong> is a small collection of practical DNS, email authentication
+    and SSL tools. The goal is a clean interface: open a tool, enter a domain or IP, get a clear result.
+  </p>
+  <p>
+    Current tools include MX, SPF, DKIM (common selector detection), DMARC, bulk SSL checks,
+    reverse DNS and SMTP port 25 connectivity tests. More tools may be added over time.
+  </p>
+  <p>
+    Built by
+    <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">Birol Benli</a>.
+    If you find it useful, you can
+    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">buy me a coffee</a>.
+  </p>
+</section>
+{% endblock %}
