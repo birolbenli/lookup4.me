@@ -918,6 +918,13 @@ body.modal-open {
   margin-top: 0.75rem;
 }
 
+/* Do not uppercase hostnames, paths, or VD names in tables */
+.exchange-report th,
+.exchange-report td {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .exchange-report .truncate {
   max-width: 100%;
   overflow: hidden;
@@ -976,10 +983,14 @@ body.modal-open {
 
 .exchange-report .ex-host-role {
   font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--muted);
   font-weight: 600;
+}
+
+.exchange-report .ex-matrix thead th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .exchange-report .ex-host-name {

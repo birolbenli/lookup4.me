@@ -636,6 +636,16 @@ function sevLabel(sev) {
   return t(key);
 }
 
+/** Translate UI copy only — never URLs, hostnames, or paths. */
+function tDesc(s) {
+  const text = String(s ?? "");
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}([/:].*)?$/i.test(text)) return text;
+  if (text.startsWith("/") || text.includes("://")) return text;
+  return t(text);
+}
+
 function renderAuthCompact(title, block) {
   if (!block) return "";
   const found = !!block.found;
@@ -646,7 +656,7 @@ function renderAuthCompact(title, block) {
       <span class="status ${found ? "err" : "ok"}">${escapeHtml(found ? t("Detected") : t("Not detected"))}</span>
       ${found && n ? `<span class="muted tiny">${n} ${escapeHtml(t("endpoint(s)"))}</span>` : ""}
     </div>
-    <p class="tiny muted">${escapeHtml(t(block.summary || ""))}</p>
+    <p class="tiny muted">${escapeHtml(tDesc(block.summary || ""))}</p>
   </div>`;
 }
 
@@ -658,10 +668,10 @@ function renderExchangeFinding(f, { compact = false } = {}) {
   return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
     <div class="finding-head">
       <span class="status ${severityClass(f.severity)}">${escapeHtml(sevLabel(f.severity))}</span>
-      <strong>${escapeHtml(t(f.title || ""))}</strong>
+      <strong>${escapeHtml(tDesc(f.title || ""))}</strong>
     </div>
-    ${f.detail ? `<p>${escapeHtml(t(f.detail))}</p>` : ""}
-    ${f.guidance ? `<p class="tiny"><strong>${escapeHtml(t("Fix"))}:</strong> ${escapeHtml(t(f.guidance))}</p>` : ""}
+    ${f.detail ? `<p>${escapeHtml(tDesc(f.detail))}</p>` : ""}
+    ${f.guidance ? `<p class="tiny"><strong>${escapeHtml(t("Fix"))}:</strong> ${escapeHtml(tDesc(f.guidance))}</p>` : ""}
     ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
   </div>`;
 }
@@ -794,10 +804,10 @@ function renderExchange(data, root) {
         })
         .join("");
       return `<tr>
-        <th scope="row" class="ex-vd-col">
+        <td class="ex-vd-col">
           <strong>${escapeHtml(meta.name || id)}</strong>
           <div class="mono tiny muted" title="${escapeHtml(path)}">${escapeHtml(path)}</div>
-        </th>
+        </td>
         ${cells}
       </tr>`;
     })
@@ -850,7 +860,7 @@ function renderExchange(data, root) {
 
   const guideList = [...new Set([...(hybrid.guidance || []), ...(teams.guidance || [])])]
     .slice(0, 5)
-    .map((g) => `<li>${escapeHtml(t(g))}</li>`)
+    .map((g) => `<li>${escapeHtml(tDesc(g))}</li>`)
     .join("");
 
   root.appendChild(
@@ -949,9 +959,9 @@ function renderExchange(data, root) {
 
       <div class="block">
         <h3>${escapeHtml(t("Hybrid & Teams"))}</h3>
-        <p>${escapeHtml(t(hybrid.summary || teams.summary || ""))}</p>
+        <p>${escapeHtml(tDesc(hybrid.summary || teams.summary || ""))}</p>
         ${guideList ? `<ul class="guide-list">${guideList}</ul>` : ""}
-        <p class="muted tiny">${escapeHtml(t(teams.ews_status || ""))}${
+        <p class="muted tiny">${escapeHtml(tDesc(teams.ews_status || ""))}${
           teams.ntlm_on_ews ? ` · ${escapeHtml(t("NTLM on EWS"))}` : ""
         }${teams.oauth_on_ews ? ` · ${escapeHtml(t("OAuth on EWS"))}` : ""}</p>
       </div>
