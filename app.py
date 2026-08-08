@@ -6,8 +6,10 @@ import logging
 import os
 from urllib.parse import unquote
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, g, jsonify, render_template, request
 
+from i18n import COOKIE as LANG_COOKIE
+from i18n import _, detect_lang, get_lang, js_bundle, localize_tools
 from tools.blacklist import check_blacklist
 from tools.dkim import lookup_dkim
 from tools.dmarc import lookup_dmarc
@@ -208,15 +210,31 @@ def get_tool(slug: str) -> dict | None:
 
 @app.before_request
 def _ensure_runtime():
+    g.lang = detect_lang()
+    g.set_lang_cookie = request.args.get("lang") in {"en", "tr"}
     init_stats()
     init_mail_store()
     init_feedback()
 
 
+@app.after_request
+def _persist_lang(response):
+    if getattr(g, "set_lang_cookie", False):
+        response.set_cookie(
+            LANG_COOKIE,
+            get_lang(),
+            max_age=60 * 60 * 24 * 365,
+            samesite="Lax",
+        )
+    return response
+
+
 @app.context_processor
 def inject_globals():
+    tools = localize_tools(TOOLS)
     return {
-        "tools": TOOLS,
+        "_": _,
+        "tools": tools,
         "buymeacoffee_url": app.config["BUYMEACOFFEE_URL"],
         "linkedin_url": app.config["LINKEDIN_URL"],
         "site_name": "tools.birolbenli.com",
@@ -224,6 +242,8 @@ def inject_globals():
         "dns_types": SUPPORTED_TYPES,
         "mailtest_domain": app.config["MAILTEST_DOMAIN"],
         "visitor_ip": client_ip_from_request(request),
+        "lang": get_lang(),
+        "js_i18n": js_bundle(),
     }
 
 
@@ -381,9 +401,10 @@ def tool_page(slug: str, query: str | None = None):
         return jsonify(run_tool(slug, query, {"type": dns_type}))
 
     template = tool.get("template") or "tool.html"
+    localized = next((t for t in localize_tools(TOOLS) if t["slug"] == slug), tool)
     return render_template(
         template,
-        tool=tool,
+        tool=localized,
         auto_query=query,
         dns_type=dns_type,
         test_id=query if slug == "mailtest" else "",

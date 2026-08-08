@@ -1,38 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Email Header Analyzer — tools.birolbenli.com{% endblock %}
+{% block title %}{{ tool.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
-<p class="page-desc">{{ tool.desc }} Paste the full source (“Show original”) for the richest report.</p>
+<p class="page-desc">{{ tool.desc }} {{ _('Paste the full source (“Show original”) for the richest report.') }}</p>
 
 <div class="notice notice-warn">
-  <strong>Security &amp; privacy:</strong>
-  Do not paste passwords, tokens, customer data, or confidential message content.
-  You are responsible for anything you submit.
-  <a href="{{ url_for('privacy') }}">How to redact sensitive details before pasting →</a>
+  <strong>{{ _('Security & privacy:') }}</strong>
+  {{ _('Do not paste passwords, tokens, customer data, or confidential message content. You are responsible for anything you submit.') }}
+  <a href="{{ url_for('privacy') }}">{{ _('How to redact sensitive details before pasting →') }}</a>
 </div>
 
 <section class="panel" data-tool="headers" data-field="raw" data-optional="0">
   <form id="tool-form" class="tool-form" autocomplete="off">
-    <div class="row tool-row" style="margin-bottom:0.7rem">
-      <select id="tool-switch" class="tool-switch" aria-label="Switch tool">
+    <div class="row tool-row headers-actions">
+      <select id="tool-switch" class="tool-switch" aria-label="{{ _('Switch tool') }}">
         {% for t in tools %}
         <option value="{{ t.slug }}" {% if t.slug == tool.slug %}selected{% endif %}>{{ t.name }}</option>
         {% endfor %}
       </select>
-      <button class="btn" type="submit">Analyze headers</button>
-      <button class="btn btn-secondary" type="button" id="headers-paste">Paste</button>
-      <button class="btn btn-secondary" type="button" id="headers-clear">Clear</button>
+      <button class="btn" type="submit">{{ _('Analyze headers') }}</button>
+      <button class="btn btn-secondary" type="button" id="headers-paste">{{ _('Paste') }}</button>
+      <button class="btn btn-secondary" type="button" id="headers-clear">{{ _('Clear') }}</button>
     </div>
-    <label for="query">Raw email source / headers</label>
+    <label for="query">{{ _('Raw email source / headers') }}</label>
     <textarea id="query" name="raw" class="headers-input" placeholder="{{ tool.placeholder }}" required></textarea>
     <p class="hint" id="headers-hint"></p>
   </form>
 
   <div class="examples">
-    <span class="muted">Tip:</span>
-    <span class="muted">Prefer headers-only. Redact names, subjects, and personal addresses first —
-      <a href="{{ url_for('privacy') }}">redaction guide</a>.
-      Best on HTTPS:
+    <span class="muted">{{ _('Tip:') }}</span>
+    <span class="muted">{{ _('Prefer headers-only. Redact names, subjects, and personal addresses first —') }}
+      <a href="{{ url_for('privacy') }}">{{ _('redaction guide') }}</a>.
+      {{ _('Best on HTTPS:') }}
       <a href="https://tools.birolbenli.com/tools/headers">tools.birolbenli.com</a>
     </span>
   </div>

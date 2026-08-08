@@ -1,40 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Mail Tester — tools.birolbenli.com{% endblock %}
+{% block title %}{{ tool.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
-<p class="page-desc">{{ tool.desc }} Like mail-tester.com — send one message to your unique address and get a score with fixes.</p>
+<p class="page-desc">{{ tool.desc }} {{ _('Like mail-tester.com — send one message to your unique address and get a score with fixes.') }}</p>
 
 <div class="notice notice-warn">
-  <strong>Privacy:</strong>
-  Do not send confidential or production emails here. Temporary inboxes can receive full message content.
-  You are responsible for what you send.
-  <a href="{{ url_for('privacy') }}">Privacy &amp; redaction guide →</a>
+  <strong>{{ _('Privacy:') }}</strong>
+  {{ _('Do not send confidential or production emails here. Temporary inboxes can receive full message content. You are responsible for what you send.') }}
+  <a href="{{ url_for('privacy') }}">{{ _('Privacy & redaction guide →') }}</a>
 </div>
 
 <section class="panel" data-tool="mailtest" data-test-id="{{ test_id or '' }}" data-mail-domain="{{ mailtest_domain }}">
-  <div class="row tool-row" style="margin-bottom:0.8rem">
-    <select id="tool-switch" class="tool-switch" aria-label="Switch tool">
+  <div class="row tool-row">
+    <select id="tool-switch" class="tool-switch" aria-label="{{ _('Switch tool') }}">
       {% for t in tools %}
       <option value="{{ t.slug }}" {% if t.slug == tool.slug %}selected{% endif %}>{{ t.name }}</option>
       {% endfor %}
     </select>
-    <button class="btn" type="button" id="mailtest-create">Create test address</button>
+    <button class="btn" type="button" id="mailtest-create">{{ _('Create test address') }}</button>
   </div>
 
   <div id="mailtest-waiting" class="mailtest-box hidden">
-    <p class="muted">Send an email to this address, then keep this page open:</p>
+    <p class="muted">{{ _('Send an email to this address, then keep this page open:') }}</p>
     <div class="mailtest-address-row">
       <code id="mailtest-address" class="mailtest-address"></code>
-      <button class="btn btn-secondary" type="button" id="mailtest-copy">Copy</button>
+      <button class="btn btn-secondary" type="button" id="mailtest-copy">{{ _('Copy') }}</button>
     </div>
-    <p class="hint" id="mailtest-status">Waiting for your message…</p>
+    <p class="hint" id="mailtest-status">{{ _('Waiting for your message…') }}</p>
     <div class="progress-dot" aria-hidden="true"></div>
   </div>
 
   <div class="examples">
-    <span class="muted">Inbox domain:</span>
+    <span class="muted">{{ _('Inbox domain:') }}</span>
     <code>{{ mailtest_domain }}</code>
-    <span class="muted">· MX for this domain must point to this server’s IP for delivery to work.</span>
+    <span class="muted">· {{ _('MX for this domain must point to this server’s IP for delivery to work.') }}</span>
   </div>
 
   <div id="results" class="results"></div>

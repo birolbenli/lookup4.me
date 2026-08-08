@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ tool.name }} — tools.birolbenli.com{% endblock %}
+{% block title %}{{ tool.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }}</p>
@@ -13,7 +13,7 @@
   <form id="tool-form" class="tool-form" autocomplete="off">
     <label for="query">{{ tool.name }}</label>
     <div class="row tool-row">
-      <select id="tool-switch" class="tool-switch" aria-label="Switch tool" title="Switch tool">
+      <select id="tool-switch" class="tool-switch" aria-label="{{ _('Switch tool') }}" title="{{ _('Switch tool') }}">
         {% for t in tools %}
         <option value="{{ t.slug }}" {% if t.slug == tool.slug %}selected{% endif %}>{{ t.name }}</option>
         {% endfor %}
@@ -26,22 +26,22 @@
       {% endif %}
 
       {% if tool.extra == 'type' %}
-      <select id="dns-type" name="type" class="type-switch" aria-label="DNS type">
+      <select id="dns-type" name="type" class="type-switch" aria-label="{{ _('DNS type') }}">
         {% for t in dns_types %}
         <option value="{{ t }}" {% if t == dns_type %}selected{% endif %}>{{ t }}</option>
         {% endfor %}
       </select>
       {% endif %}
 
-      <button class="btn" type="submit">Lookup</button>
+      <button class="btn" type="submit">{{ _('Lookup') }}</button>
     </div>
   </form>
 
   <div class="examples">
-    <span class="muted">Direct URL:</span>
+    <span class="muted">{{ _('Direct URL:') }}</span>
     <code class="example-url">/tools/{{ tool.slug }}/{% if tool.example %}{{ tool.example }}{% else %}&lt;query&gt;{% endif %}</code>
     {% if tool.example %}
-    <a class="example-link" href="{{ url_for('tool_page', slug=tool.slug, query=tool.example) }}">Try {{ tool.example }}</a>
+    <a class="example-link" href="{{ url_for('tool_page', slug=tool.slug, query=tool.example) }}">{{ _('Try {example}', example=tool.example) }}</a>
     {% endif %}
     {% if tool.slug == 'ip' %}
     <span class="muted">· curl:</span>

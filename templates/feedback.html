@@ -1,52 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Report an issue / Feature request — tools.birolbenli.com{% endblock %}
+{% block title %}{{ _('Report an issue / Feature request') }} — {{ site_name }}{% endblock %}
 {% block content %}
-<h1 class="page-title">Issue &amp; feature request</h1>
+<h1 class="page-title">{{ _('Issue & feature request') }}</h1>
 <p class="page-desc">
-  Found a bug or have an idea? Send it here — reports go to
-  <strong>birolbenli@gmail.com</strong>.
+  {{ _('Found a bug or have an idea? Send it here — reports go to {email}.', email='birolbenli@gmail.com') }}
 </p>
 
 <div class="notice notice-warn">
-  <strong>Privacy:</strong>
-  Do not include passwords, tokens, or confidential message content.
-  <a href="{{ url_for('privacy') }}">Redaction guide →</a>
+  <strong>{{ _('Privacy:') }}</strong>
+  {{ _('Do not include passwords, tokens, or confidential message content.') }}
+  <a href="{{ url_for('privacy') }}">{{ _('Redaction guide →') }}</a>
 </div>
 
 <section class="panel feedback-panel">
   <form id="feedback-form" class="feedback-form" autocomplete="on">
     <div class="feedback-grid">
       <div>
-        <label for="kind">Type</label>
+        <label for="kind">{{ _('Type') }}</label>
         <select id="kind" name="kind" required>
-          <option value="bug">Bug report</option>
-          <option value="issue">Issue</option>
-          <option value="feature" selected>Feature request</option>
+          <option value="bug">{{ _('Bug report') }}</option>
+          <option value="issue">{{ _('Issue') }}</option>
+          <option value="feature" selected>{{ _('Feature request') }}</option>
         </select>
       </div>
       <div>
-        <label for="contact_email">Your email (optional)</label>
+        <label for="contact_email">{{ _('Your email (optional)') }}</label>
         <input id="contact_email" name="contact_email" type="email" placeholder="you@example.com">
       </div>
     </div>
 
-    <label for="title">Title</label>
-    <input id="title" name="title" type="text" maxlength="200" placeholder="Short summary" required>
+    <label for="title">{{ _('Title') }}</label>
+    <input id="title" name="title" type="text" maxlength="200" placeholder="{{ _('Short summary') }}" required>
 
-    <label for="message">Details</label>
-    <textarea id="message" name="message" class="feedback-message" maxlength="8000" placeholder="What happened, what you expected, or the feature you want…" required></textarea>
+    <label for="message">{{ _('Details') }}</label>
+    <textarea id="message" name="message" class="feedback-message" maxlength="8000" placeholder="{{ _('What happened, what you expected, or the feature you want…') }}" required></textarea>
 
-    <label for="page_url">Related page URL (optional)</label>
+    <label for="page_url">{{ _('Related page URL (optional)') }}</label>
     <input id="page_url" name="page_url" type="url" placeholder="https://tools.birolbenli.com/tools/...">
 
-    <!-- Honeypot -->
     <div class="hp-field" aria-hidden="true">
       <label for="website">Website</label>
       <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
     </div>
 
-    <div class="row" style="margin-top:0.9rem">
-      <button class="btn" type="submit" id="feedback-submit">Send report</button>
+    <div class="row form-actions">
+      <button class="btn" type="submit" id="feedback-submit">{{ _('Send report') }}</button>
     </div>
     <p class="hint" id="feedback-status"></p>
   </form>

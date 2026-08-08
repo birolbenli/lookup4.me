@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}tools.birolbenli.com — DNS, email &amp; IP lookup tools{% endblock %}
+{% block title %}{{ site_name }} — {{ _('DNS, email & network tools') }}{% endblock %}
 {% block content %}
 <section class="hero">
-  <h1>tools.birolbenli.com</h1>
-  <p>Pick a tool and go. Shareable URLs run the lookup instantly — e.g. <code class="inline">/tools/smtp/mx1.example.com</code>.</p>
+  <h1>{{ _('DNS, email & network tools') }}</h1>
+  <p>{{ _('Pick a tool and run a lookup. Shareable URLs start instantly — for example:') }} <code class="inline">/tools/smtp/mx1.example.com</code></p>
 </section>
 
 <section class="tool-grid">

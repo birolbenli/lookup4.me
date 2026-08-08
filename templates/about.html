@@ -1,43 +1,42 @@
 {% extends "base.html" %}
-{% block title %}About — tools.birolbenli.com{% endblock %}
+{% block title %}{{ _('About') }} — {{ site_name }}{% endblock %}
 {% block content %}
 <section class="about">
-  <h1 class="page-title">About</h1>
+  <h1 class="page-title">{{ _('About') }}</h1>
   <p>
-    <strong>tools.birolbenli.com</strong> is a small collection of practical DNS, email authentication,
-    IP and SSL tools. Open a tool, enter a value, or paste a direct URL and get a clear result.
+    {{ _('{site} is a small collection of practical DNS, email authentication, IP and SSL tools. Open a tool, enter a value, or paste a direct URL and get a clear result.', site=site_name) }}
   </p>
   <p>
-    Built by
+    {{ _('Built by') }}
     <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">Birol Benli</a>
     ·
     <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
     ·
-    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>.
+    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee') }}</a>.
   </p>
 
-  <h2 class="subhead">Direct URLs</h2>
-  <p class="muted">Every tool accepts <code>/tools/&lt;name&gt;/&lt;query&gt;</code> and runs immediately.</p>
+  <h2 class="subhead">{{ _('Direct URLs') }}</h2>
+  <p class="muted">{{ _('Every tool accepts {pattern} and runs immediately.', pattern='/tools/<name>/<query>') }}</p>
   <pre class="about-pre">/tools/mx/gmail.com
 /tools/smtp/mx1.bcturk.com
 /tools/ssl/google.com,github.com
 /tools/port/1.1.1.1:443
 /tools/dns/example.com?type=TXT</pre>
 
-  <h2 class="subhead">IP / curl</h2>
+  <h2 class="subhead">{{ _('IP / curl') }}</h2>
   <pre class="about-pre">curl {{ request.host_url.rstrip('/') }}/ip
 curl {{ request.host_url.rstrip('/') }}/ip.json
 curl {{ request.host_url.rstrip('/') }}/ua</pre>
 
-  <h2 class="subhead">Mail Tester DNS</h2>
-  <p class="muted">For Mail Tester delivery, point MX for <code>{{ mailtest_domain }}</code> to this server IP and keep port 25 open.</p>
+  <h2 class="subhead">{{ _('Mail Tester DNS') }}</h2>
+  <p class="muted">{{ _('For Mail Tester delivery, point MX for {domain} to this server IP and keep port 25 open.', domain=mailtest_domain) }}</p>
 
   {% if counts %}
-  <h2 class="subhead subtle">Usage</h2>
-  <p class="muted tiny">Quiet counter of lookups performed on this instance.</p>
+  <h2 class="subhead subtle">{{ _('Usage') }}</h2>
+  <p class="muted tiny">{{ _('Quiet counter of lookups performed on this instance.') }}</p>
   <div class="table-wrap quiet-table">
     <table>
-      <thead><tr><th>Tool</th><th>Queries</th></tr></thead>
+      <thead><tr><th>{{ _('Tool') }}</th><th>{{ _('Queries') }}</th></tr></thead>
       <tbody>
         {% for tool, count in counts.items() %}
         <tr><td class="mono">{{ tool }}</td><td>{{ count }}</td></tr>

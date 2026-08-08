@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Not found — tools.birolbenli.com{% endblock %}
+{% block title %}{{ _('Page not found') }} — {{ site_name }}{% endblock %}
 {% block content %}
 <section class="about">
-  <h1 class="page-title">Page not found</h1>
-  <p class="page-desc">That page does not exist. <a href="{{ url_for('index') }}">Back to tools</a>.</p>
+  <h1 class="page-title">{{ _('Page not found') }}</h1>
+  <p class="page-desc">{{ _('That page does not exist.') }} <a href="{{ url_for('index') }}">{{ _('Back to tools') }}</a>.</p>
 </section>
 {% endblock %}

@@ -1,36 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}tools.birolbenli.com{% endblock %}</title>
-  <meta name="description" content="Free DNS, email authentication, IP and SSL lookup tools.">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <meta name="description" content="{{ _('Free DNS, email authentication, IP and SSL lookup tools.') }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script>
+    window.__I18N__ = {{ js_i18n | tojson }};
+    window.t = function (key, vars) {
+      var s = (window.__I18N__ && window.__I18N__[key]) || key;
+      if (vars) {
+        Object.keys(vars).forEach(function (k) {
+          s = s.replace(new RegExp("\\{" + k + "\\}", "g"), vars[k]);
+        });
+      }
+      return s;
+    };
+  </script>
 </head>
 <body>
   <div class="ip-bar">
     <div class="wrap ip-bar-inner">
-      <span class="ip-bar-label">Your default IP address</span>
-      <a class="ip-bar-value mono" href="{{ url_for('tool_page', slug='ip') }}" title="Open IP Lookup">{{ visitor_ip or "—" }}</a>
-      <a class="ip-bar-link" href="{{ url_for('tool_page', slug='ip') }}">IP Lookup →</a>
+      <span class="ip-bar-label">{{ _('Your IP') }}</span>
+      <a class="ip-bar-value mono" href="{{ url_for('tool_page', slug='ip') }}" title="{{ _('IP Lookup') }}">{{ visitor_ip or "—" }}</a>
+      <a class="ip-bar-link" href="{{ url_for('tool_page', slug='ip') }}">{{ _('IP Lookup') }} →</a>
     </div>
   </div>
 
   <div class="wrap">
     <header class="site-header">
-      <a class="brand" href="{{ url_for('index') }}"><span>tools</span>.birolbenli.com</a>
-      <nav class="nav">
-        <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">Tools</a>
-        <a href="{{ url_for('tool_page', slug='ip') }}" class="{% if request.path.startswith('/tools/ip') or request.path.startswith('/ip') %}active{% endif %}">My IP</a>
-        <a href="{{ url_for('privacy') }}" class="{% if request.path == '/privacy' %}active{% endif %}">Privacy</a>
-        <a href="{{ url_for('feedback_page') }}" class="{% if request.path in ('/feedback', '/report') %}active{% endif %}">Report</a>
-        <a href="{{ url_for('about') }}" class="{% if request.path == '/about' %}active{% endif %}">About</a>
-        <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-        <a class="bmc" href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
-      </nav>
+      <a class="brand" href="{{ url_for('index') }}" aria-label="{{ site_name }}">
+        <span class="brand-mark">tools</span>
+        <span class="brand-domain">.birolbenli.com</span>
+      </a>
+
+      <div class="header-actions">
+        <div class="lang-switch" role="group" aria-label="{{ _('Language') }}">
+          <a class="lang-btn {% if lang == 'en' %}active{% endif %}" href="?lang=en" hreflang="en">EN</a>
+          <a class="lang-btn {% if lang == 'tr' %}active{% endif %}" href="?lang=tr" hreflang="tr">TR</a>
+        </div>
+
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="{{ _('Open menu') }}">
+          <span></span><span></span><span></span>
+        </button>
+
+        <nav class="nav" id="site-nav">
+          <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">{{ _('Tools') }}</a>
+          <a href="{{ url_for('feedback_page') }}" class="{% if request.path in ('/feedback', '/report') %}active{% endif %}">{{ _('Report') }}</a>
+          <a href="{{ url_for('about') }}" class="{% if request.path == '/about' %}active{% endif %}">{{ _('About') }}</a>
+          <a href="{{ url_for('privacy') }}" class="nav-extra {% if request.path == '/privacy' %}active{% endif %}">{{ _('Privacy') }}</a>
+          <a class="bmc" href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee') }}</a>
+        </nav>
+      </div>
     </header>
 
     <main>
@@ -39,17 +64,13 @@
 
     <footer class="site-footer">
       <div class="footer-main">
-        <span>© {{ site_name }}</span>
-        <span class="footer-sep">·</span>
-        <a href="{{ url_for('privacy') }}">Privacy</a>
-        <span class="footer-sep">·</span>
-        <a href="{{ url_for('feedback_page') }}">Report</a>
-        <span class="footer-sep">·</span>
-        <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-        <span class="footer-sep">·</span>
-        <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
+        <span class="footer-brand">{{ site_name }}</span>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="{{ url_for('privacy') }}">{{ _('Privacy') }}</a>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="{{ url_for('feedback_page') }}">{{ _('Report') }}</a>
       </div>
-      <div class="footer-meta" title="Total successful tool queries">queries: {{ total_queries }}</div>
+      <div class="footer-meta" title="{{ _('Total successful tool queries') }}">{{ _('queries') }}: {{ total_queries }}</div>
     </footer>
   </div>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>

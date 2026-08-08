@@ -1,8 +1,13 @@
+const _t = typeof window.t === "function" ? window.t : (key) => key;
+function t(key, vars) {
+  return _t(key, vars);
+}
+
 async function runLookup(endpoint, payload, render) {
   const out = document.getElementById("results");
   const btn = document.querySelector("#tool-form button[type='submit']");
   if (!out) return;
-  out.innerHTML = `<p class="loading">Looking up…</p>`;
+  out.innerHTML = `<p class="loading">${escapeHtml(t("Looking up…"))}</p>`;
   if (btn) btn.disabled = true;
 
   try {
@@ -15,7 +20,7 @@ async function runLookup(endpoint, payload, render) {
     out.innerHTML = "";
     render(data, out);
   } catch (err) {
-    out.innerHTML = `<div class="error-box">Request failed: ${escapeHtml(String(err))}</div>`;
+    out.innerHTML = `<div class="error-box">${escapeHtml(t("Request failed"))}: ${escapeHtml(String(err))}</div>`;
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -99,7 +104,7 @@ function el(html) {
 
 function renderError(data, root) {
   root.appendChild(
-    el(`<div class="error-box">${escapeHtml(data.error || "Lookup failed")}</div>`)
+    el(`<div class="error-box">${escapeHtml(data.error || t("Lookup failed"))}</div>`)
   );
 }
 
@@ -487,7 +492,7 @@ function renderDeliveryFlow(flow) {
   const roleLabel = (role) => {
     if (role === "origin") return "From";
     if (role === "destination") return "To";
-    if (role === "origin-mta") return "Sending server";
+    if (role === "origin-mta") return t("Sending server");
     if (role === "inbox-mta") return "Receiving server";
     return "Relay";
   };
@@ -671,12 +676,12 @@ async function startMailTest(panel, existingId) {
   let address = "";
 
   if (!testId) {
-    statusEl.textContent = "Creating test address…";
+    statusEl.textContent = t("Creating test address…");
     waiting.classList.remove("hidden");
     const res = await fetch("/api/mailtest/create", { method: "POST" });
     const data = await res.json();
     if (!data.ok) {
-      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || "Could not create test")}</div>`;
+      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || t("Could not create test"))}</div>`;
       return;
     }
     testId = data.id;
@@ -686,7 +691,7 @@ async function startMailTest(panel, existingId) {
     const res = await fetch(`/api/mailtest/${testId}`);
     const data = await res.json();
     if (!data.ok) {
-      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || "Test not found")}</div>`;
+      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || t("Test not found"))}</div>`;
       return;
     }
     address = data.address;
@@ -700,7 +705,7 @@ async function startMailTest(panel, existingId) {
 
   addressEl.textContent = address;
   waiting.classList.remove("hidden");
-  statusEl.textContent = "Waiting for your message…";
+  statusEl.textContent = t("Waiting for your message…");
   results.innerHTML = "";
 
   if (mailtestTimer) clearInterval(mailtestTimer);
@@ -712,14 +717,14 @@ async function startMailTest(panel, existingId) {
       if (data.status === "received" && data.analysis) {
         clearInterval(mailtestTimer);
         mailtestTimer = null;
-        statusEl.textContent = "Message received — analysis ready.";
+        statusEl.textContent = t("Message received — analyzing…");
         waiting.classList.add("hidden");
         results.innerHTML = "";
         renderEmailReport(data.analysis, results);
       } else if (data.status === "expired") {
         clearInterval(mailtestTimer);
         mailtestTimer = null;
-        statusEl.textContent = "This test expired. Create a new address.";
+        statusEl.textContent = t("This test expired. Create a new address.");
       }
     } catch (_) {
       /* ignore transient poll errors */
@@ -728,6 +733,24 @@ async function startMailTest(panel, existingId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const navToggle = document.getElementById("nav-toggle");
+  const siteNav = document.getElementById("site-nav");
+  if (navToggle && siteNav) {
+    navToggle.addEventListener("click", () => {
+      const open = !siteNav.classList.contains("open");
+      siteNav.classList.toggle("open", open);
+      navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      document.body.classList.toggle("nav-open", open);
+    });
+    siteNav.querySelectorAll("a").forEach((a) => {
+      a.addEventListener("click", () => {
+        siteNav.classList.remove("open");
+        navToggle.setAttribute("aria-expanded", "false");
+        document.body.classList.remove("nav-open");
+      });
+    });
+  }
+
   const feedbackForm = document.getElementById("feedback-form");
   if (feedbackForm) {
     feedbackForm.addEventListener("submit", async (e) => {
@@ -744,7 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       if (status) {
         status.className = "hint";
-        status.textContent = "Sending…";
+        status.textContent = t("Sending…");
       }
       if (btn) btn.disabled = true;
       try {
@@ -757,17 +780,17 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.ok) {
           if (status) {
             status.className = "hint ok";
-            status.textContent = data.message || "Sent. Thank you!";
+            status.textContent = data.message || t("Thanks — your report was sent.");
           }
           feedbackForm.reset();
         } else if (status) {
           status.className = "hint err";
-          status.textContent = data.error || "Could not send report.";
+          status.textContent = data.error || t("Could not send report.");
         }
       } catch (err) {
         if (status) {
           status.className = "hint err";
-          status.textContent = "Network error — please try again.";
+          status.textContent = t("Network error — please try again.");
         }
       } finally {
         if (btn) btn.disabled = false;
@@ -804,8 +827,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!window.isSecureContext) {
       if (headersHint) {
-        headersHint.textContent =
-          "One-click paste needs HTTPS. Open https://tools.birolbenli.com/tools/headers";
+        headersHint.textContent = t("One-click paste needs HTTPS. Open {url}", {
+          url: "https://tools.birolbenli.com/tools/headers",
+        });
       }
       return;
     }
@@ -814,16 +838,17 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const text = await navigator.clipboard.readText();
       if (!text) {
-        if (headersHint) headersHint.textContent = "Clipboard is empty.";
+        if (headersHint) headersHint.textContent = t("Clipboard is empty.");
         return;
       }
       q.value = text;
       q.focus();
-      if (headersHint) headersHint.textContent = "Pasted from clipboard.";
+      if (headersHint) headersHint.textContent = t("Pasted from clipboard.");
     } catch (err) {
       if (headersHint) {
-        headersHint.textContent =
-          "Clipboard permission denied. Allow clipboard access for this site, then try Paste again.";
+        headersHint.textContent = t(
+          "Clipboard permission denied. Allow clipboard access for this site, then try Paste again."
+        );
       }
     } finally {
       if (pasteBtn) pasteBtn.disabled = false;
@@ -847,17 +872,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const statusEl = document.getElementById("mailtest-status");
       const btn = document.getElementById("mailtest-copy");
       if (!text) {
-        if (statusEl) statusEl.textContent = "No address to copy yet.";
+        if (statusEl) statusEl.textContent = t("No address to copy yet.");
         return;
       }
       try {
         await copyText(text);
-        if (statusEl) statusEl.textContent = "Address copied. Send your test email now…";
+        if (statusEl) statusEl.textContent = t("Address copied. Send your test email now…");
         if (btn) {
           const prev = btn.textContent;
-          btn.textContent = "Copied";
+          btn.textContent = t("Copied");
           setTimeout(() => {
-            btn.textContent = prev || "Copy";
+            btn.textContent = prev || t("Copy");
           }, 1500);
         }
       } catch (_) {
@@ -871,7 +896,7 @@ document.addEventListener("DOMContentLoaded", () => {
           sel.addRange(range);
         }
         if (statusEl) {
-          statusEl.textContent = "Copy blocked — address selected, press Ctrl+C / Cmd+C.";
+          statusEl.textContent = t("Copy blocked — address selected, press Ctrl+C / Cmd+C.");
         }
       }
     });
