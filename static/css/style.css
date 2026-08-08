@@ -484,6 +484,17 @@ code.inline,
   font-size: 0.82rem;
 }
 
+.headers-input.paste-armed {
+  outline: 2px solid var(--brand);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(15, 106, 79, 0.12);
+}
+
+#headers-hint:not(:empty) {
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
 .hidden {
   display: none !important;
 }

@@ -58,10 +58,37 @@ async function copyText(text) {
 }
 
 async function pasteText() {
-  if (navigator.clipboard && window.isSecureContext) {
+  if (navigator.clipboard?.readText && window.isSecureContext) {
     return await navigator.clipboard.readText();
   }
   throw new Error("Clipboard paste needs HTTPS or Ctrl+V");
+}
+
+function armPasteCapture(targetEl, onDone) {
+  const handler = (e) => {
+    const text = e.clipboardData?.getData("text/plain") || e.clipboardData?.getData("text") || "";
+    if (!text) return;
+    e.preventDefault();
+    e.stopPropagation();
+    targetEl.value = text;
+    targetEl.dispatchEvent(new Event("input", { bubbles: true }));
+    cleanup();
+    onDone?.(true, text);
+  };
+
+  const cleanup = () => {
+    document.removeEventListener("paste", handler, true);
+    window.clearTimeout(timer);
+  };
+
+  document.addEventListener("paste", handler, true);
+  const timer = window.setTimeout(() => {
+    cleanup();
+    onDone?.(false, "");
+  }, 20000);
+
+  targetEl.focus();
+  return cleanup;
 }
 
 function el(html) {
@@ -689,9 +716,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (headersHint) headersHint.textContent = "";
   });
 
+  let cancelArmedPaste = null;
   document.getElementById("headers-paste")?.addEventListener("click", async () => {
     const q = document.getElementById("query");
+    const pasteBtn = document.getElementById("headers-paste");
     if (!q) return;
+
+    // Cancel any previous armed capture
+    if (typeof cancelArmedPaste === "function") {
+      cancelArmedPaste();
+      cancelArmedPaste = null;
+    }
+
     try {
       const text = await pasteText();
       if (!text) {
@@ -701,13 +737,34 @@ document.addEventListener("DOMContentLoaded", () => {
       q.value = text;
       q.focus();
       if (headersHint) headersHint.textContent = "Pasted from clipboard.";
+      return;
     } catch (_) {
-      q.focus();
-      if (headersHint) {
-        headersHint.textContent =
-          "Could not read clipboard here (HTTP). Click the box and press Ctrl+V / Cmd+V.";
-      }
+      // HTTP / permission blocked — arm one-shot paste capture
     }
+
+    q.classList.add("paste-armed");
+    if (pasteBtn) {
+      pasteBtn.textContent = "Press Ctrl+V…";
+      pasteBtn.disabled = true;
+    }
+    if (headersHint) {
+      headersHint.textContent =
+        "Ready — press Ctrl+V (Windows) or Cmd+V (Mac) now to paste into the box.";
+    }
+
+    cancelArmedPaste = armPasteCapture(q, (ok) => {
+      cancelArmedPaste = null;
+      q.classList.remove("paste-armed");
+      if (pasteBtn) {
+        pasteBtn.textContent = "Paste";
+        pasteBtn.disabled = false;
+      }
+      if (headersHint) {
+        headersHint.textContent = ok
+          ? "Pasted. Click Analyze headers when ready."
+          : "Paste timed out. Click Paste again, then press Ctrl+V / Cmd+V.";
+      }
+    });
   });
 
   switcher?.addEventListener("change", () => {
