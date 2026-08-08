@@ -918,6 +918,159 @@ body.modal-open {
   margin-top: 0.75rem;
 }
 
+.exchange-report .truncate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exchange-report .ex-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.exchange-report .ex-table th,
+.exchange-report .ex-table td {
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.exchange-report .ex-table-hosts col,
+.exchange-report .ex-table-hosts th:nth-child(1),
+.exchange-report .ex-table-hosts td:nth-child(1) {
+  width: 18%;
+}
+
+.exchange-report .ex-table-hosts th:nth-child(4),
+.exchange-report .ex-table-hosts td:nth-child(4) {
+  width: 14%;
+}
+
+.exchange-report .ex-table-headers th:nth-child(1),
+.exchange-report .ex-table-headers td:nth-child(1) {
+  width: 14%;
+}
+
+.exchange-report .ex-table-headers th:nth-child(2),
+.exchange-report .ex-table-headers td:nth-child(2) {
+  width: 22%;
+}
+
+.exchange-report .ex-matrix .ex-vd-col {
+  width: 9.5rem;
+  position: sticky;
+  left: 0;
+  background: #fbfcfb;
+  z-index: 1;
+}
+
+.exchange-report .ex-matrix thead .ex-vd-col {
+  background: #f5f7f4;
+  z-index: 2;
+}
+
+.exchange-report .ex-host-col {
+  min-width: 8.5rem;
+}
+
+.exchange-report .ex-host-role {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.exchange-report .ex-host-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 11rem;
+}
+
+.exchange-report .ex-cell-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.exchange-report .ex-cell-badges .status {
+  margin: 0;
+  font-size: 0.75rem;
+  padding: 0.12rem 0.4rem;
+}
+
+.exchange-report .ex-more {
+  margin-top: 0.65rem;
+  border-top: 1px dashed var(--line);
+  padding-top: 0.45rem;
+}
+
+.exchange-report .ex-more summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.exchange-report .auth-compact-grid {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.55rem;
+}
+
+@media (min-width: 720px) {
+  .exchange-report .auth-compact-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.exchange-report .auth-compact {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+}
+
+.exchange-report .auth-compact.is-bad {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: rgba(180, 35, 24, 0.04);
+}
+
+.exchange-report .auth-compact.is-ok {
+  border-color: rgba(15, 106, 79, 0.28);
+  background: rgba(15, 106, 79, 0.04);
+}
+
+.exchange-report .auth-compact-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: 0.25rem;
+}
+
+.exchange-report .auth-compact-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+  align-items: center;
+}
+
+.exchange-report .guide-list {
+  margin: 0.45rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.exchange-report .ex-tls strong {
+  display: block;
+  margin-top: 0.15rem;
+}
+
 .finding {
   border: 1px solid var(--line);
   border-radius: 12px;

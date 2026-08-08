@@ -623,42 +623,96 @@ function severityClass(sev) {
   return "";
 }
 
-function renderAuthAuditCard(title, block) {
+function sevLabel(sev) {
+  const key = {
+    critical: "Critical",
+    warning: "Warning",
+    info: "Info",
+    ok: "OK",
+    error: "Error",
+    valid: "Valid",
+    expired: "Expired",
+  }[sev] || sev || "";
+  return t(key);
+}
+
+function renderAuthCompact(title, block) {
   if (!block) return "";
   const found = !!block.found;
-  const badge = found
-    ? `<span class="status err">${escapeHtml(t("Detected"))}</span>`
-    : `<span class="status ok">${escapeHtml(t("Not detected"))}</span>`;
-  const eps = (block.endpoints || [])
-    .slice(0, 8)
-    .map((e) => {
-      if (typeof e === "string") return `<li class="mono">${escapeHtml(e)}</li>`;
-      const extra = e.authorization_uri
-        ? ` <span class="muted">→ ${escapeHtml(e.authorization_uri)}</span>`
-        : e.schemes
-          ? ` <span class="muted">(${escapeHtml((e.schemes || []).join(", "))})</span>`
-          : "";
-      return `<li><span class="mono">${escapeHtml(e.url || "")}</span>${extra}</li>`;
-    })
-    .join("");
-  const refs = (block.refs || [])
-    .map(
-      (r) =>
-        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          r.title || r.url
-        )}</a></li>`
-    )
-    .join("");
-  return `<div class="auth-audit-card ${found ? "is-bad" : "is-ok"}">
-    <div class="finding-head">
-      <span class="status">${escapeHtml(t("Checked"))}</span>
-      ${badge}
-      <strong>${escapeHtml(title)}</strong>
+  const n = (block.endpoints || []).length;
+  return `<div class="auth-compact ${found ? "is-bad" : "is-ok"}">
+    <div class="auth-compact-title">${escapeHtml(title)}</div>
+    <div class="auth-compact-status">
+      <span class="status ${found ? "err" : "ok"}">${escapeHtml(found ? t("Detected") : t("Not detected"))}</span>
+      ${found && n ? `<span class="muted tiny">${n} ${escapeHtml(t("endpoint(s)"))}</span>` : ""}
     </div>
-    <p>${escapeHtml(block.summary || "")}</p>
-    ${block.microsoft ? `<p><strong>${escapeHtml(t("Guidance"))}:</strong> ${escapeHtml(block.microsoft)}</p>` : ""}
+    <p class="tiny muted">${escapeHtml(t(block.summary || ""))}</p>
+  </div>`;
+}
+
+function renderExchangeFinding(f, { compact = false } = {}) {
+  const eps = (f.endpoints || [])
+    .slice(0, compact ? 4 : 8)
+    .map((e) => `<li class="mono">${escapeHtml(e)}</li>`)
+    .join("");
+  return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
+    <div class="finding-head">
+      <span class="status ${severityClass(f.severity)}">${escapeHtml(sevLabel(f.severity))}</span>
+      <strong>${escapeHtml(t(f.title || ""))}</strong>
+    </div>
+    ${f.detail ? `<p>${escapeHtml(t(f.detail))}</p>` : ""}
+    ${f.guidance ? `<p class="tiny"><strong>${escapeHtml(t("Fix"))}:</strong> ${escapeHtml(t(f.guidance))}</p>` : ""}
     ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
-    ${refs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${refs}</ul>` : ""}
+  </div>`;
+}
+
+function dedupeHeaderItems(items) {
+  const map = new Map();
+  for (const r of items || []) {
+    const key = `${(r.header || "").toLowerCase()}|${r.value || ""}`;
+    let row = map.get(key);
+    if (!row) {
+      row = {
+        header: r.header,
+        value: r.value,
+        risk: r.risk,
+        note: r.note,
+        hosts: new Set(),
+      };
+      map.set(key, row);
+    }
+    if (r.host) row.hosts.add(r.host);
+    const rank = { critical: 0, warning: 1, info: 2 };
+    if ((rank[r.risk] ?? 9) < (rank[row.risk] ?? 9)) row.risk = r.risk;
+  }
+  return [...map.values()].sort((a, b) => {
+    const rank = { critical: 0, warning: 1, info: 2 };
+    return (rank[a.risk] ?? 9) - (rank[b.risk] ?? 9) || String(a.header).localeCompare(String(b.header));
+  });
+}
+
+function exchangeVdCell(e) {
+  if (!e) return `<span class="muted">—</span>`;
+  if (!e.reachable && e.exposure === "closed") {
+    return `<span class="ex-cell-status muted">${escapeHtml(t("closed"))}</span>`;
+  }
+  const auth = e.auth || {};
+  const bits = [];
+  bits.push(
+    `<span class="status ${severityClass(e.exposure === "closed" ? "ok" : e.severity)}">${escapeHtml(
+      String(e.status_code ?? "—")
+    )}</span>`
+  );
+  if (auth.ntlm) bits.push(`<span class="status err">NTLM</span>`);
+  else if (auth.oauth) bits.push(`<span class="status ok">OAuth</span>`);
+  else if (auth.basic) bits.push(`<span class="status warn">Basic</span>`);
+  if (e.healthcheck && e.healthcheck.healthy) {
+    bits.push(`<span class="status warn">HC</span>`);
+  }
+  const exp = e.exposure && e.exposure !== "closed" ? t(e.exposure) : "";
+  return `<div class="ex-cell">
+    <div class="ex-cell-badges">${bits.join("")}</div>
+    ${exp ? `<div class="tiny muted">${escapeHtml(exp)}</div>` : ""}
   </div>`;
 }
 
@@ -674,239 +728,232 @@ function renderExchange(data, root) {
   const posture = data.posture || {};
   const hybrid = posture.hybrid || {};
   const teams = posture.teams || {};
-  const headersReport = data.headers_report || {};
-  const headerItems = headersReport.items || [];
+  const headerItems = dedupeHeaderItems((data.headers_report || {}).items || []);
   const shared = data.shared_frontends || [];
 
-  const findingHtml = findings
-    .map((f) => {
-      const eps = (f.endpoints || [])
-        .map((e) => `<li class="mono">${escapeHtml(e)}</li>`)
-        .join("");
-      const refs = (f.refs || [])
-        .map(
-          (r) =>
-            `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-              r.title || r.url
-            )}</a></li>`
-        )
-        .join("");
-      return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
-        <div class="finding-head">
-          <span class="status ${severityClass(f.severity)}">${escapeHtml(f.severity || "")}</span>
-          <strong>${escapeHtml(f.title || "")}</strong>
-        </div>
-        <p>${escapeHtml(f.detail || "")}</p>
-        ${f.guidance ? `<p><strong>${escapeHtml(t("Guidance"))}:</strong> ${escapeHtml(f.guidance)}</p>` : ""}
-        ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
-        ${refs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${refs}</ul>` : ""}
-      </div>`;
+  const issues = findings.filter((f) => f.severity === "critical" || f.severity === "warning");
+  const notes = findings.filter((f) => f.severity === "info");
+  const oks = findings.filter((f) => f.severity === "ok");
+
+  const hostCols = hosts.length
+    ? hosts
+    : [...new Set(endpoints.map((e) => e.host).filter(Boolean))].map((h) => ({
+        host: h,
+        role: "",
+        resolves: true,
+        ips: [],
+      }));
+
+  const vdOrder = [];
+  const vdMeta = new Map();
+  for (const e of endpoints) {
+    const id = e.id || e.name;
+    if (!vdMeta.has(id)) {
+      vdMeta.set(id, e);
+      vdOrder.push(id);
+    }
+  }
+
+  const byHostVd = new Map();
+  for (const e of endpoints) {
+    byHostVd.set(`${e.host}|${e.id || e.name}`, e);
+  }
+
+  const hostHead = hostCols
+    .map((h) => {
+      const short =
+        h.role === "primary"
+          ? t("Primary")
+          : h.role === "autodiscover"
+            ? "Autodiscover"
+            : h.role === "download"
+              ? "Download"
+              : h.role || "";
+      const ip = (h.ips || [])[0] || "";
+      return `<th class="ex-host-col">
+        <div class="ex-host-role">${escapeHtml(short)}</div>
+        <div class="mono ex-host-name" title="${escapeHtml(h.host || "")}">${escapeHtml(h.host || "")}</div>
+        <div class="tiny muted">${h.resolves ? escapeHtml(ip || t("DNS OK")) : escapeHtml(t("no DNS"))}</div>
+      </th>`;
     })
     .join("");
 
-  const hostHtml = hosts
+  const matrixRows = vdOrder
+    .map((id) => {
+      const meta = vdMeta.get(id) || {};
+      let path = meta.url || "";
+      try {
+        path = new URL(meta.url).pathname;
+      } catch (_) {
+        /* keep */
+      }
+      const cells = hostCols
+        .map((h) => {
+          const e = byHostVd.get(`${h.host}|${id}`);
+          return `<td class="ex-host-col">${exchangeVdCell(e)}</td>`;
+        })
+        .join("");
+      return `<tr>
+        <th scope="row" class="ex-vd-col">
+          <strong>${escapeHtml(meta.name || id)}</strong>
+          <div class="mono tiny muted" title="${escapeHtml(path)}">${escapeHtml(path)}</div>
+        </th>
+        ${cells}
+      </tr>`;
+    })
+    .join("");
+
+  const hostHtml = hostCols
     .map((h) => {
       const ips = (h.ips || []).join(", ") || "—";
+      const roleLabel =
+        h.role === "primary"
+          ? t("Primary")
+          : h.role === "autodiscover"
+            ? "Autodiscover"
+            : h.role === "download"
+              ? "Download"
+              : h.role || "—";
       return `<tr>
-        <td>${escapeHtml(h.role || "")}</td>
-        <td class="mono">${escapeHtml(h.host || "")}</td>
-        <td class="mono">${escapeHtml(ips)}</td>
-        <td><span class="status ${h.resolves ? "ok" : "warn"}">${h.resolves ? "DNS OK" : "no DNS"}</span></td>
+        <td>${escapeHtml(roleLabel)}</td>
+        <td class="mono truncate" title="${escapeHtml(h.host || "")}">${escapeHtml(h.host || "")}</td>
+        <td class="mono truncate" title="${escapeHtml(ips)}">${escapeHtml(ips)}</td>
+        <td><span class="status ${h.resolves ? "ok" : "warn"}">${escapeHtml(
+          h.resolves ? t("DNS OK") : t("no DNS")
+        )}</span></td>
       </tr>`;
     })
     .join("");
 
   const sharedHtml = shared.length
     ? `<p class="muted tiny">${escapeHtml(t("Same frontend IP"))}: ${shared
-        .map((s) => `<span class="mono">${escapeHtml(s.ip)}</span> → ${(s.hosts || []).map((h) => escapeHtml(h)).join(", ")}`)
+        .map(
+          (s) =>
+            `<span class="mono">${escapeHtml(s.ip)}</span> → ${(s.hosts || [])
+              .map((h) => escapeHtml(h))
+              .join(", ")}`
+        )
         .join(" · ")}</p>`
     : "";
 
   const headerRows = headerItems
     .map((r) => {
+      const hostList = [...(r.hosts || [])].join(", ");
       return `<tr>
-        <td><span class="status ${severityClass(r.risk)}">${escapeHtml(r.risk || "")}</span>
-          <div class="tiny muted">${escapeHtml(r.note || "")}</div></td>
-        <td class="mono">${escapeHtml(r.header || "")}</td>
-        <td class="mono">${escapeHtml(r.value || "")}</td>
-        <td><strong>${escapeHtml(r.vd || "")}</strong><div class="tiny muted mono">${escapeHtml(r.host || "")}</div></td>
+        <td><span class="status ${severityClass(r.risk)}">${escapeHtml(sevLabel(r.risk))}</span></td>
+        <td class="mono truncate" title="${escapeHtml(r.header || "")}">${escapeHtml(r.header || "")}</td>
+        <td class="mono truncate" title="${escapeHtml(r.value || "")}">${escapeHtml(r.value || "")}</td>
+        <td class="tiny muted truncate" title="${escapeHtml(hostList)}">${escapeHtml(hostList || "—")}</td>
       </tr>`;
     })
     .join("");
 
-  const tableRows = endpoints
-    .map((e) => {
-      let path = e.url || "";
-      try {
-        path = new URL(e.url).pathname;
-      } catch (_) {
-        /* keep raw */
-      }
-      const auth = e.auth || {};
-      const hc = e.healthcheck;
-      let hcCell = "—";
-      if (hc) {
-        const label = hc.healthy
-          ? "open"
-          : hc.reachable
-            ? `HTTP ${hc.status_code || "?"}`
-            : "down";
-        const cls = hc.healthy ? "warn" : "";
-        hcCell = `<a class="status ${cls}" href="${escapeHtml(hc.url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
-        if (hc.recommendation) {
-          hcCell += `<div class="tiny muted">${escapeHtml(t("Recommend closing healthchecks to the public internet."))}</div>`;
-        }
-      }
-      const authBits = [];
-      if (auth.ntlm) authBits.push('<span class="status err">NTLM/Negotiate</span>');
-      if (auth.oauth) {
-        authBits.push(
-          `<span class="status ok">OAuth 2.0${auth.entra_oauth ? " (Entra)" : ""}</span>`
-        );
-      }
-      if (auth.basic) authBits.push('<span class="status warn">Basic</span>');
-      if (!authBits.length) {
-        authBits.push(
-          `<span class="muted">${escapeHtml(
-            (auth.schemes || []).join(", ") ||
-              (auth.www_authenticate_present ? "challenge" : "no WWW-Authenticate")
-          )}</span>`
-        );
-      }
-      const leaks = (e.leaky_headers || [])
-        .slice(0, 3)
-        .map((h) => `${h.header}`)
-        .join(", ");
-      return `<tr>
-        <td><strong>${escapeHtml(e.name || "")}</strong><div class="tiny muted mono">${escapeHtml(e.host || "")}</div></td>
-        <td><a class="mono" href="${escapeHtml(e.url || "#")}" target="_blank" rel="noopener">${escapeHtml(path)}</a></td>
-        <td><span class="status ${severityClass(e.exposure === "closed" ? "ok" : e.severity)}">${escapeHtml(
-          String(e.status_code ?? "—")
-        )}</span>
-        <div class="tiny">${escapeHtml(t(e.exposure || "error"))}</div></td>
-        <td class="auth-cell">${authBits.join(" ")}</td>
-        <td>${hcCell}</td>
-        <td class="tiny mono">${leaks ? escapeHtml(leaks) : "—"}</td>
-      </tr>`;
-    })
-    .join("");
-
-  const hybridGuidance = (hybrid.guidance || [])
-    .map((g) => `<li>${escapeHtml(g)}</li>`)
-    .join("");
-  const teamsGuidance = (teams.guidance || [])
-    .map((g) => `<li>${escapeHtml(g)}</li>`)
-    .join("");
-  const hybridRefs = (hybrid.refs || [])
-    .map(
-      (r) =>
-        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          r.title || r.url
-        )}</a></li>`
-    )
-    .join("");
-  const teamsRefs = (teams.refs || [])
-    .map(
-      (r) =>
-        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-          r.title || r.url
-        )}</a></li>`
-    )
+  const guideList = [...new Set([...(hybrid.guidance || []), ...(teams.guidance || [])])]
+    .slice(0, 5)
+    .map((g) => `<li>${escapeHtml(t(g))}</li>`)
     .join("");
 
   root.appendChild(
     el(`<div class="stack exchange-report">
       <div class="summary">
-        <span class="pill score-pill">Score ${escapeHtml(String(summary.score ?? "—"))} · ${escapeHtml(summary.grade || "")} · ${escapeHtml(summary.label || "")}</span>
-        <span class="pill">${escapeHtml(String(counts.reachable || 0))} ${escapeHtml(t("Reachable"))}</span>
-        <span class="pill">${escapeHtml(String(counts.ntlm || 0))} ${escapeHtml(t("NTLM"))}</span>
-        <span class="pill">${escapeHtml(String(counts.oauth || 0))} ${escapeHtml(t("OAuth 2.0"))}</span>
-        <span class="pill">${escapeHtml(String(counts.basic || 0))} ${escapeHtml(t("Basic"))}</span>
+        <span class="pill score-pill">${escapeHtml(t("Score"))} ${escapeHtml(String(summary.score ?? "—"))} · ${escapeHtml(summary.grade || "")} · ${escapeHtml(t(summary.label || ""))}</span>
+        <span class="pill">${escapeHtml(String(counts.ntlm || 0))} NTLM</span>
+        <span class="pill">${escapeHtml(String(counts.oauth || 0))} OAuth</span>
         <span class="pill">${escapeHtml(String(counts.healthcheck_open || 0))} ${escapeHtml(t("Healthcheck open"))}</span>
         <span class="pill">${escapeHtml(String(counts.header_leaks || 0))} ${escapeHtml(t("Header leaks"))}</span>
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("External health report"))}</h3>
-        <p class="muted">Host: <span class="mono">${escapeHtml(data.host || "")}</span>
-          ${data.org_domain ? ` · org: <span class="mono">${escapeHtml(data.org_domain)}</span>` : ""}</p>
-        <div class="findings">${findingHtml || `<p class="muted">${escapeHtml(t("No record"))}</p>`}</div>
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("HTTP headers"))}</h3>
-        <p class="muted tiny">${escapeHtml(t("Server name, version, or internal IP in headers is risky."))}</p>
-        <div class="table-wrap"><table class="exchange-table">
-          <thead><tr><th>Risk</th><th>Header</th><th>Value</th><th>VD</th></tr></thead>
-          <tbody>${headerRows || `<tr><td colspan="4">${escapeHtml(t("No sensitive headers found"))}</td></tr>`}</tbody>
-        </table></div>
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("Authentication audit"))}</h3>
-        <p class="muted tiny"><strong>${escapeHtml(t("How we checked"))}:</strong> ${escapeHtml(audit.method || "")}
-          · ${escapeHtml(String(audit.endpoints_probed ?? 0))} endpoints</p>
-        <div class="auth-audit-grid">
-          ${renderAuthAuditCard("NTLM / Negotiate", audit.ntlm)}
-          ${renderAuthAuditCard(t("OAuth 2.0") + " / Bearer", audit.oauth2)}
-          ${renderAuthAuditCard(t("Basic"), audit.basic)}
+        <h3>${escapeHtml(t("Findings"))}</h3>
+        <p class="muted tiny"><span class="mono">${escapeHtml(data.host || "")}</span>${
+          data.org_domain ? ` · ${escapeHtml(t("Org domain"))}: <span class="mono">${escapeHtml(data.org_domain)}</span>` : ""
+        }</p>
+        <div class="findings">
+          ${issues.map((f) => renderExchangeFinding(f, { compact: true })).join("") || `<p class="status ok">${escapeHtml(t("No critical issues"))}</p>`}
         </div>
         ${
-          audit.no_www_authenticate
-            ? `<p class="muted tiny">${escapeHtml(audit.no_www_authenticate.note || "")}</p>`
+          notes.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))} (${notes.length})</summary><div class="findings">${notes
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
+            : ""
+        }
+        ${
+          oks.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Passed checks"))} (${oks.length})</summary><div class="findings">${oks
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
             : ""
         }
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("Hybrid & Teams guidance"))}</h3>
-        <div class="posture-grid">
-          <div class="posture-card">
-            <h4>Hybrid Exchange</h4>
-            <p>${escapeHtml(hybrid.summary || "")}</p>
-            ${hybridGuidance ? `<ul class="guide-list">${hybridGuidance}</ul>` : ""}
-            ${hybridRefs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${hybridRefs}</ul>` : ""}
-          </div>
-          <div class="posture-card">
-            <h4>Microsoft Teams</h4>
-            <p>${escapeHtml(teams.summary || "")}</p>
-            <p class="muted tiny">${escapeHtml(teams.ews_status || "")}
-              ${teams.ntlm_on_ews ? " · NTLM on EWS: yes" : ""}
-              ${teams.oauth_on_ews ? " · OAuth on EWS: yes" : ""}
-            </p>
-            ${teamsGuidance ? `<ul class="guide-list">${teamsGuidance}</ul>` : ""}
-            ${teamsRefs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${teamsRefs}</ul>` : ""}
-          </div>
-        </div>
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("TLS certificate"))}</h3>
-        <div class="geo-grid">
-          <div><span class="muted">Status</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(ssl.status || "—")}</strong></div>
-          <div><span class="muted">Days left</span><strong>${escapeHtml(String(ssl.days_left ?? "—"))}</strong></div>
-          <div><span class="muted">Expires</span><strong class="mono">${escapeHtml(String(ssl.expiry_date || "—"))}</strong></div>
-          <div><span class="muted">Issuer</span><strong>${escapeHtml(String(ssl.issuer || "—"))}</strong></div>
-          <div><span class="muted">Subject</span><strong class="mono">${escapeHtml(String(ssl.subject || "—"))}</strong></div>
-          <div><span class="muted">IP</span><strong class="mono">${escapeHtml(String(ssl.ip || "—"))}</strong></div>
-        </div>
-      </div>
-
-      <div class="block">
         <h3>${escapeHtml(t("Related hosts"))}</h3>
         ${sharedHtml}
-        <div class="table-wrap"><table>
-          <thead><tr><th>Role</th><th>Host</th><th>IPs</th><th>DNS</th></tr></thead>
+        <div class="table-wrap"><table class="ex-table ex-table-hosts">
+          <thead><tr>
+            <th>${escapeHtml(t("Role"))}</th>
+            <th>${escapeHtml(t("Host"))}</th>
+            <th>IP</th>
+            <th>DNS</th>
+          </tr></thead>
           <tbody>${hostHtml}</tbody>
         </table></div>
       </div>
 
       <div class="block">
         <h3>${escapeHtml(t("Virtual directories"))}</h3>
-        <div class="table-wrap"><table class="exchange-table">
-          <thead><tr><th>VD</th><th>Path</th><th>HTTP</th><th>Auth</th><th>Healthcheck</th><th>Headers</th></tr></thead>
-          <tbody>${tableRows || `<tr><td colspan="6">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
+        <p class="muted tiny">${escapeHtml(t("One row per VD — columns are related hostnames."))}</p>
+        <div class="table-wrap"><table class="ex-table ex-matrix">
+          <thead><tr>
+            <th class="ex-vd-col">${escapeHtml(t("VD"))}</th>
+            ${hostHead}
+          </tr></thead>
+          <tbody>${matrixRows || `<tr><td colspan="${hostCols.length + 1}">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
         </table></div>
+        <p class="muted tiny">${escapeHtml(t("Legend: NTLM/OAuth/Basic = auth challenge; HC = public healthcheck."))}</p>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Sensitive headers"))}</h3>
+        <p class="muted tiny">${escapeHtml(t("Server name, version, or internal IP in headers is risky."))}</p>
+        <div class="table-wrap"><table class="ex-table ex-table-headers">
+          <thead><tr>
+            <th>${escapeHtml(t("Risk"))}</th>
+            <th>${escapeHtml(t("Header"))}</th>
+            <th>${escapeHtml(t("Value"))}</th>
+            <th>${escapeHtml(t("Seen on"))}</th>
+          </tr></thead>
+          <tbody>${headerRows || `<tr><td colspan="4">${escapeHtml(t("No sensitive headers found"))}</td></tr>`}</tbody>
+        </table></div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Authentication"))}</h3>
+        <div class="auth-compact-grid">
+          ${renderAuthCompact("NTLM / Negotiate", audit.ntlm)}
+          ${renderAuthCompact("OAuth 2.0", audit.oauth2)}
+          ${renderAuthCompact("Basic", audit.basic)}
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("TLS certificate"))}</h3>
+        <div class="geo-grid ex-tls">
+          <div><span class="muted">${escapeHtml(t("Status"))}</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(sevLabel(ssl.status) || ssl.status || "—")}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Days left"))}</span><strong>${escapeHtml(String(ssl.days_left ?? "—"))}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Expires"))}</span><strong class="mono">${escapeHtml(String(ssl.expiry_date || "—"))}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Issuer"))}</span><strong class="truncate" title="${escapeHtml(String(ssl.issuer || "—"))}">${escapeHtml(String(ssl.issuer || "—"))}</strong></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Hybrid & Teams"))}</h3>
+        <p>${escapeHtml(t(hybrid.summary || teams.summary || ""))}</p>
+        ${guideList ? `<ul class="guide-list">${guideList}</ul>` : ""}
+        <p class="muted tiny">${escapeHtml(t(teams.ews_status || ""))}${
+          teams.ntlm_on_ews ? ` · ${escapeHtml(t("NTLM on EWS"))}` : ""
+        }${teams.oauth_on_ews ? ` · ${escapeHtml(t("OAuth on EWS"))}` : ""}</p>
       </div>
     </div>`)
   );
