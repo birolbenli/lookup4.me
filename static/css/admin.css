@@ -87,9 +87,29 @@ body.admin-body {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  min-height: 160px;
+  min-height: 180px;
 }
-.qr-box svg { width: min(200px, 70vw); height: auto; }
+.qr-box svg,
+.qr-box img {
+  width: min(220px, 70vw);
+  height: auto;
+  display: block;
+}
+.setup-steps {
+  margin: 0.6rem 0 0.8rem;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  display: grid;
+  gap: 0.35rem;
+}
+.select-all {
+  user-select: all;
+  word-break: break-all;
+  background: #f5f7f4;
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+}
 
 .admin-top {
   display: flex;

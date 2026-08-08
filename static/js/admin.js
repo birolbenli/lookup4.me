@@ -53,60 +53,89 @@
     el.textContent = msg;
   }
 
-  async function initAuth() {
-    const setupComplete = document.body.dataset.setupComplete === "1";
-    if (!setupComplete) {
-      $("#setup-panel").classList.remove("hidden");
-      $("#login-panel").classList.add("hidden");
-      $("#auth-lead").textContent = "First-time setup: link an authenticator app.";
-      try {
-        // Wait for optional setup token + button; begin on Activate also retries.
-        $("#qr-box").innerHTML =
-          "<p class='muted tiny'>Enter setup token (if configured), then authenticator code and press Activate.</p>";
-      } catch (err) {
-        setAuthError(String(err.message || err));
-      }
+  function showPanel(name) {
+    ["password-panel", "setup-panel", "otp-panel"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle("hidden", id !== name);
+    });
+  }
+
+  function renderSetupQr(setup) {
+    const box = $("#qr-box");
+    const secret = setup?.secret || "";
+    $("#setup-secret").textContent = secret;
+    if (setup?.qr_svg) {
+      box.innerHTML = setup.qr_svg;
+    } else if (setup?.qr_img) {
+      box.innerHTML = `<img src="${esc(setup.qr_img)}" width="220" height="220" alt="QR code">`;
+    } else if (setup?.otpauth_url) {
+      box.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+        setup.otpauth_url
+      )}" width="220" height="220" alt="QR code">`;
     } else {
-      $("#setup-panel").classList.add("hidden");
-      $("#login-panel").classList.remove("hidden");
-      // Probe session
-      try {
-        await api("/overview");
-        showApp();
-        loadAll();
-        return;
-      } catch (_) {
-        showAuth();
-      }
+      box.innerHTML = "<p class='muted'>QR üretilemedi — gizli anahtarı elle girin.</p>";
     }
   }
+
+  async function initAuth() {
+    showPanel("password-panel");
+    $("#auth-lead").textContent = "1) Kullanıcı adı ve şifre ile giriş yapın.";
+    try {
+      await api("/overview");
+      showApp();
+      loadAll();
+    } catch (_) {
+      showAuth();
+      showPanel("password-panel");
+    }
+  }
+
+  $("#btn-password-login")?.addEventListener("click", async () => {
+    setAuthError("");
+    try {
+      const data = await api("/login", {
+        method: "POST",
+        body: JSON.stringify({
+          username: $("#login-user").value,
+          password: $("#login-pass").value,
+        }),
+      });
+      if (data.need_setup) {
+        $("#auth-lead").textContent = "2) Authenticator kurulumunu tamamlayın.";
+        showPanel("setup-panel");
+        renderSetupQr(data.setup || {});
+        // Refresh QR from server (preauth cookie now set)
+        try {
+          const setup = await api("/setup");
+          renderSetupQr(setup);
+        } catch (_) {
+          /* keep embedded setup */
+        }
+        $("#setup-code")?.focus();
+        return;
+      }
+      if (data.need_otp) {
+        $("#auth-lead").textContent = "2) Authenticator kodunu girin.";
+        showPanel("otp-panel");
+        $("#login-otp")?.focus();
+        return;
+      }
+      showApp();
+      loadAll();
+    } catch (err) {
+      setAuthError(String(err.message || err));
+    }
+  });
 
   $("#btn-confirm-setup")?.addEventListener("click", async () => {
     setAuthError("");
     try {
-      const token = $("#setup-token").value;
-      const begin = await api("/setup/begin", {
-        method: "POST",
-        body: JSON.stringify({ setup_token: token }),
-      });
-      $("#setup-secret").textContent = begin.secret || "";
-      $("#qr-box").innerHTML =
-        begin.qr_svg || `<p class="mono tiny">${esc(begin.otpauth_url || "")}</p>`;
-      if (!$("#setup-code").value) {
-        setAuthError("Scan the QR, then enter the 6-digit code and press Activate again.");
-        return;
-      }
       await api("/setup/confirm", {
         method: "POST",
-        body: JSON.stringify({
-          code: $("#setup-code").value,
-          setup_token: token,
-        }),
+        body: JSON.stringify({ code: $("#setup-code").value }),
       });
       document.body.dataset.setupComplete = "1";
-      $("#setup-panel").classList.add("hidden");
-      $("#login-panel").classList.remove("hidden");
-      $("#auth-lead").textContent = "Authenticator linked. Sign in with a new code.";
       showApp();
       loadAll();
     } catch (err) {
@@ -114,12 +143,12 @@
     }
   });
 
-  $("#btn-login")?.addEventListener("click", async () => {
+  $("#btn-otp-login")?.addEventListener("click", async () => {
     setAuthError("");
     try {
-      await api("/login", {
+      await api("/login/otp", {
         method: "POST",
-        body: JSON.stringify({ code: $("#login-code").value }),
+        body: JSON.stringify({ otp: $("#login-otp").value }),
       });
       showApp();
       loadAll();
@@ -128,11 +157,14 @@
     }
   });
 
-  $("#login-code")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") $("#btn-login")?.click();
+  $("#login-pass")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("#btn-password-login")?.click();
   });
   $("#setup-code")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") $("#btn-confirm-setup")?.click();
+  });
+  $("#login-otp")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") $("#btn-otp-login")?.click();
   });
 
   $("#btn-logout")?.addEventListener("click", async () => {
@@ -142,8 +174,11 @@
       /* ignore */
     }
     showAuth();
-    $("#login-panel").classList.remove("hidden");
-    $("#setup-panel").classList.add("hidden");
+    showPanel("password-panel");
+    $("#auth-lead").textContent = "1) Kullanıcı adı ve şifre ile giriş yapın.";
+    $("#login-pass").value = "";
+    $("#login-otp").value = "";
+    $("#setup-code").value = "";
   });
 
   // Tabs

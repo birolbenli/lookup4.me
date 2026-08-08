@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,33 +15,58 @@
   <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js" defer></script>
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
 </head>
-<body class="admin-body" data-setup-complete="{{ '1' if setup_complete else '0' }}">
+<body
+  class="admin-body"
+  data-setup-complete="{{ '1' if setup_complete else '0' }}"
+  data-password-configured="{{ '1' if password_configured else '0' }}"
+>
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
       <h1>Admin</h1>
-      <p class="muted" id="auth-lead">Sign in with your authenticator app.</p>
+      <p class="muted" id="auth-lead">1) Kullanıcı adı ve şifre ile giriş yapın.</p>
 
-      <div id="setup-panel" class="hidden">
-        <p class="muted">Scan this QR with Google Authenticator / Authy, then enter the 6-digit code.</p>
-        <div id="qr-box" class="qr-box"></div>
-        <p class="mono tiny" id="setup-secret"></p>
+      {% if not password_configured %}
+      <p class="error-text">Sunucuda ADMIN_PASSWORD tanımlı değil. .env dosyasına ekleyin.</p>
+      {% endif %}
+
+      <!-- Step 1: username / password -->
+      <div id="password-panel">
         <label class="field">
-          <span>Setup token (if required)</span>
-          <input id="setup-token" type="password" autocomplete="off" placeholder="ADMIN_SETUP_TOKEN">
+          <span>Kullanıcı adı</span>
+          <input id="login-user" type="text" autocomplete="username" value="admin">
         </label>
         <label class="field">
-          <span>Authenticator code</span>
-          <input id="setup-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code">
+          <span>Şifre</span>
+          <input id="login-pass" type="password" autocomplete="current-password">
         </label>
-        <button type="button" class="btn" id="btn-confirm-setup">Activate</button>
+        <button type="button" class="btn" id="btn-password-login">Giriş</button>
       </div>
 
-      <div id="login-panel" class="hidden">
+      <!-- Step 2a: first-time authenticator setup -->
+      <div id="setup-panel" class="hidden">
+        <ol class="setup-steps">
+          <li>Telefonunuzda <strong>Google Authenticator</strong> veya <strong>Authy</strong> açın.</li>
+          <li>Aşağıdaki QR kodu tarayın (veya gizli anahtarı elle girin).</li>
+          <li>Uygulamadaki 6 haneli kodu yazıp onaylayın.</li>
+        </ol>
+        <div id="qr-box" class="qr-box"></div>
+        <p class="tiny muted">Elle giriş için gizli anahtar:</p>
+        <p class="mono tiny select-all" id="setup-secret"></p>
         <label class="field">
-          <span>Authenticator code</span>
-          <input id="login-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code">
+          <span>Authenticator’daki 6 haneli kod</span>
+          <input id="setup-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code" placeholder="123456">
         </label>
-        <button type="button" class="btn" id="btn-login">Sign in</button>
+        <button type="button" class="btn" id="btn-confirm-setup">Authenticator’ı etkinleştir</button>
+      </div>
+
+      <!-- Step 2b: OTP each login -->
+      <div id="otp-panel" class="hidden">
+        <p class="muted">Authenticator uygulamanızdaki 6 haneli kodu girin.</p>
+        <label class="field">
+          <span>Authenticator kodu</span>
+          <input id="login-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code" placeholder="123456">
+        </label>
+        <button type="button" class="btn" id="btn-otp-login">Panele gir</button>
       </div>
 
       <p class="error-text" id="auth-error" hidden></p>
@@ -55,7 +80,7 @@
         <span class="muted tiny">{{ site_name }}</span>
       </div>
       <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
-      <button type="button" class="btn btn-ghost" id="btn-logout">Logout</button>
+      <button type="button" class="btn btn-ghost" id="btn-logout">Çıkış</button>
     </header>
 
     <div class="admin-shell">

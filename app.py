@@ -16,10 +16,11 @@ from tools.admin_auth import (
     confirm_setup,
     flask_secret_key,
     is_setup_complete,
-    issue_session,
-    setup_token_ok,
+    login as admin_password_login,
+    login_otp,
+    password_configured,
+    validate_preauth,
     validate_session,
-    verify_login,
 )
 from tools.admin_store import (
     add_ip,
@@ -70,6 +71,7 @@ from tools.whois_lookup import lookup_whois
 logging.basicConfig(level=logging.INFO)
 
 ADMIN_COOKIE = "admin_session"
+ADMIN_PREAUTH_COOKIE = "admin_preauth"
 
 app = Flask(__name__)
 app.secret_key = flask_secret_key()
@@ -677,64 +679,112 @@ def api_mailtest_create():
     return jsonify(result)
 
 
+def _set_admin_cookie(resp, token: str, *, preauth: bool = False):
+    name = ADMIN_PREAUTH_COOKIE if preauth else ADMIN_COOKIE
+    max_age = 60 * 15 if preauth else 60 * 60 * 12
+    resp.set_cookie(
+        name,
+        token,
+        httponly=True,
+        samesite="Lax",
+        secure=_is_https_request(),
+        max_age=max_age,
+    )
+    return resp
+
+
+def _clear_preauth(resp):
+    resp.delete_cookie(ADMIN_PREAUTH_COOKIE)
+    return resp
+
+
+def _require_preauth():
+    if not validate_preauth(request.cookies.get(ADMIN_PREAUTH_COOKIE)):
+        return jsonify({"ok": False, "error": "Login with username/password first"}), 401
+    return None
+
+
 @app.get("/admin")
 @app.get("/admin/")
 def admin_page():
     return render_template(
         "admin.html",
         setup_complete=is_setup_complete(),
+        password_configured=password_configured(),
         site_name="tools.birolbenli.com",
     )
-
-
-@app.post("/admin/api/setup/begin")
-def admin_setup_begin():
-    data = request.get_json(silent=True) or {}
-    if is_setup_complete():
-        return jsonify({"ok": False, "error": "Already configured", "active": True}), 400
-    if not setup_token_ok(data.get("setup_token")):
-        return jsonify({"ok": False, "error": "Invalid setup token"}), 403
-    return jsonify(begin_setup())
-
-
-@app.post("/admin/api/setup/confirm")
-def admin_setup_confirm():
-    data = request.get_json(silent=True) or {}
-    if is_setup_complete():
-        return jsonify({"ok": False, "error": "Already configured"}), 400
-    if not setup_token_ok(data.get("setup_token")):
-        return jsonify({"ok": False, "error": "Invalid setup token"}), 403
-    result = confirm_setup(data.get("code") or "")
-    if not result.get("ok"):
-        return jsonify(result), 400
-    token = issue_session()
-    resp = jsonify({"ok": True})
-    resp.set_cookie(
-        ADMIN_COOKIE,
-        token,
-        httponly=True,
-        samesite="Lax",
-        secure=request.is_secure,
-        max_age=60 * 60 * 12,
-    )
-    return resp
 
 
 @app.post("/admin/api/login")
 def admin_login():
     data = request.get_json(silent=True) or {}
-    result = verify_login(data.get("code") or "")
+    result = admin_password_login(
+        data.get("username") or "",
+        data.get("password") or "",
+        data.get("otp") or "",
+    )
+    if not result.get("ok"):
+        return jsonify(result), 401
+
+    if result.get("need_setup"):
+        resp = jsonify(
+            {
+                "ok": True,
+                "need_setup": True,
+                "setup": result.get("setup"),
+            }
+        )
+        _set_admin_cookie(resp, result["preauth"], preauth=True)
+        return resp
+
+    if result.get("need_otp"):
+        resp = jsonify({"ok": True, "need_otp": True})
+        _set_admin_cookie(resp, result["preauth"], preauth=True)
+        return resp
+
+    resp = jsonify({"ok": True})
+    _clear_preauth(resp)
+    _set_admin_cookie(resp, result["token"], preauth=False)
+    return resp
+
+
+@app.post("/admin/api/login/otp")
+def admin_login_otp():
+    denied = _require_preauth()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = login_otp(data.get("otp") or "")
     if not result.get("ok"):
         return jsonify(result), 401
     resp = jsonify({"ok": True})
-    resp.set_cookie(
-        ADMIN_COOKIE,
-        result["token"],
-        httponly=True,
-        samesite="Lax",
-        secure=request.is_secure,
-        max_age=60 * 60 * 12,
-    )
+    _clear_preauth(resp)
+    _set_admin_cookie(resp, result["token"], preauth=False)
+    return resp
+
+
+@app.get("/admin/api/setup")
+def admin_setup_info():
+    denied = _require_preauth()
+    if denied:
+        return denied
+    if is_setup_complete():
+        return jsonify({"ok": False, "error": "Already configured"}), 400
+    return jsonify(begin_setup())
+
+
+@app.post("/admin/api/setup/confirm")
+def admin_setup_confirm():
+    denied = _require_preauth()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = confirm_setup(data.get("code") or "")
+    if not result.get("ok"):
+        return jsonify(result), 400
+    resp = jsonify({"ok": True})
+    _clear_preauth(resp)
+    _set_admin_cookie(resp, result["token"], preauth=False)
     return resp
 
 
@@ -742,6 +792,7 @@ def admin_login():
 def admin_logout():
     resp = jsonify({"ok": True})
     resp.delete_cookie(ADMIN_COOKIE)
+    resp.delete_cookie(ADMIN_PREAUTH_COOKIE)
     return resp
 
 

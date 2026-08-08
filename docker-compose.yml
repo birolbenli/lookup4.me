@@ -19,7 +19,8 @@ services:
       - FEEDBACK_HELO=${FEEDBACK_HELO:-tools.birolbenli.com}
       - RATE_LIMIT_MAILTEST=${RATE_LIMIT_MAILTEST:-5}
       - RATE_LIMIT_TOOLS=${RATE_LIMIT_TOOLS:-10}
-      - ADMIN_SETUP_TOKEN=${ADMIN_SETUP_TOKEN:-}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - SECRET_KEY=${SECRET_KEY:-}
       - FORCE_HTTPS=${FORCE_HTTPS:-1}
     volumes:

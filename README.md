@@ -20,7 +20,7 @@ Set an MX record for your `MAILTEST_DOMAIN` (default `tools.birolbenli.com`) to 
 
 ### Admin panel
 
-Open `/admin` and link an authenticator app (TOTP) on first visit. Optional `ADMIN_SETUP_TOKEN` env protects first-time setup. Whitelist IPs skip rate limits; blacklist IPs are blocked.
+Open `/admin`, sign in with `ADMIN_USER` / `ADMIN_PASSWORD`, then link Google Authenticator (QR). Later logins ask for password + OTP. Whitelist IPs skip rate limits; blacklist IPs redirect to Google.
 
 ### Direct URLs
 
