@@ -383,6 +383,69 @@ curl ${escapeHtml(location.origin)}/ua</pre>
   );
 }
 
+function renderDeliveryFlow(flow) {
+  if (!flow || !(flow.nodes || []).length) {
+    return `<div class="flow-empty muted">No Received headers found — delivery path unavailable.</div>`;
+  }
+
+  const nodes = flow.nodes
+    .map((node, idx) => {
+      const role = escapeHtml(node.role || "relay");
+      const kind = escapeHtml(node.kind || "server");
+      const arrow =
+        idx < flow.nodes.length - 1
+          ? `<div class="flow-arrow" aria-hidden="true">
+              <span class="flow-arrow-line"></span>
+              <span class="flow-arrow-head">›</span>
+            </div>`
+          : "";
+      return `<div class="flow-item">
+        <div class="flow-node kind-${kind} role-${role}">
+          <div class="flow-role">${escapeHtml(
+            node.role === "origin"
+              ? "From"
+              : node.role === "destination"
+                ? "To"
+                : node.role === "origin-mta"
+                  ? "Sending server"
+                  : node.role === "inbox-mta"
+                    ? "Receiving server"
+                    : "Relay"
+          )}</div>
+          <div class="flow-title" title="${escapeHtml(node.title || "")}">${escapeHtml(
+            node.title || "—"
+          )}</div>
+          <div class="flow-sub" title="${escapeHtml(node.subtitle || "")}">${escapeHtml(
+            node.subtitle || ""
+          )}</div>
+          ${
+            node.detail
+              ? `<div class="flow-time">${escapeHtml(node.detail)}</div>`
+              : ""
+          }
+        </div>
+        ${arrow}
+      </div>`;
+    })
+    .join("");
+
+  return `<section class="delivery-flow">
+    <div class="flow-head">
+      <div>
+        <h2>Delivery path</h2>
+        <p class="muted">How this message traveled — sender → servers → recipient</p>
+      </div>
+      <span class="pill">${escapeHtml(flow.hop_count || 0)} hop(s)</span>
+    </div>
+    <div class="flow-track">${nodes}</div>
+    ${
+      flow.summary
+        ? `<p class="flow-summary mono">${escapeHtml(flow.summary)}</p>`
+        : ""
+    }
+  </section>`;
+}
+
 function renderEmailReport(data, root) {
   if (!data.ok) return renderError(data, root);
   const score = data.score ?? "—";
@@ -420,6 +483,8 @@ function renderEmailReport(data, root) {
 
   root.appendChild(
     el(`<div class="email-report">
+      ${renderDeliveryFlow(data.delivery_flow)}
+
       <div class="score-hero score-${escapeHtml(String(data.score_label || "").toLowerCase())}">
         <div class="score-number">${escapeHtml(score)}<span>/10</span></div>
         <div>
@@ -449,9 +514,9 @@ function renderEmailReport(data, root) {
 
       ${
         chain
-          ? `<details class="block chain-details"><summary>Received path (${
+          ? `<details class="block chain-details"><summary>Raw Received headers (${
               data.received_chain.length
-            } hops)</summary><ul class="received-list">${chain}</ul></details>`
+            })</summary><ul class="received-list">${chain}</ul></details>`
           : ""
       }
     </div>`)

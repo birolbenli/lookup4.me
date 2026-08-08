@@ -84,6 +84,188 @@ def _extract_ips_from_received(received_headers: list[str]) -> list[str]:
     return ips
 
 
+def _clean_host(value: str) -> str:
+    value = (value or "").strip().strip("<>").strip("\"'")
+    value = value.rstrip(".")
+    if value.lower() in {"unknown", "localhost", "local"}:
+        return value
+    return value
+
+
+def _parse_received_hop(raw: str) -> dict[str, Any]:
+    """Parse one Received header into from/by/ip/protocol/time pieces."""
+    text = " ".join(str(raw).split())
+    from_host = ""
+    helo = ""
+    by_host = ""
+    protocol = ""
+    for_addr = ""
+    when = ""
+    ip = ""
+
+    # Split timestamp after last semicolon
+    if ";" in text:
+        body, when = text.rsplit(";", 1)
+        when = when.strip()
+    else:
+        body = text
+
+    from_m = re.search(
+        r"\bfrom\s+([^\s\(\);]+)(?:\s+\(([^)]*)\))?",
+        body,
+        re.I,
+    )
+    if from_m:
+        from_host = _clean_host(from_m.group(1))
+        paren = from_m.group(2) or ""
+        # HELO/name and/or IP inside parentheses
+        helo_m = re.search(r"helo\s*=\s*([^\s;]+)", paren, re.I)
+        if helo_m:
+            helo = _clean_host(helo_m.group(1))
+        # First hostname token in paren often differs from IP
+        name_m = re.match(r"([A-Za-z0-9._-]+)", paren.strip())
+        if name_m and not is_ip(name_m.group(1)):
+            helo = helo or _clean_host(name_m.group(1))
+        ip_m = re.search(r"\[([0-9a-fA-F\.:]+)\]", paren)
+        if not ip_m:
+            ip_m = re.search(r"\b((?:\d{1,3}\.){3}\d{1,3})\b", paren)
+        if ip_m:
+            candidate = ip_m.group(1).strip("[]")
+            if is_ip(candidate):
+                ip = candidate
+
+    by_m = re.search(r"\bby\s+([^\s\(\);]+)", body, re.I)
+    if by_m:
+        by_host = _clean_host(by_m.group(1))
+
+    with_m = re.search(r"\bwith\s+([A-Za-z0-9._+-]+)", body, re.I)
+    if with_m:
+        protocol = with_m.group(1)
+
+    for_m = re.search(r"\bfor\s+(<[^>]+>|[^\s;]+)", body, re.I)
+    if for_m:
+        for_addr = for_m.group(1).strip()
+
+    if not ip:
+        for match in IPV4_RE.findall(body):
+            if is_ip(match):
+                ip = match
+                break
+
+    label = from_host or helo or by_host or ip or "hop"
+    role = "relay"
+    return {
+        "raw": text[:800],
+        "from": from_host,
+        "helo": helo,
+        "by": by_host,
+        "ip": ip,
+        "protocol": protocol,
+        "for": for_addr,
+        "time": when,
+        "label": label,
+        "role": role,
+    }
+
+
+def _build_delivery_flow(
+    received_headers: list[str],
+    *,
+    from_header: str,
+    to_header: str,
+    peer_ip: str | None = None,
+) -> dict[str, Any]:
+    """
+    Build chronological delivery path (origin → destination).
+    Received headers are newest-first; we reverse for left-to-right flow.
+    """
+    hops = [_parse_received_hop(str(h)) for h in received_headers[:16]]
+    hops.reverse()  # oldest first
+
+    nodes: list[dict[str, Any]] = []
+    from_addr = parseaddr(from_header)[1] or from_header or "sender"
+    to_addr = parseaddr(to_header)[1] or to_header or "recipient"
+
+    # Origin mailbox node
+    nodes.append(
+        {
+            "kind": "mailbox",
+            "role": "origin",
+            "title": "Sender",
+            "subtitle": from_addr,
+            "detail": _domain_of(from_header) or "",
+            "ip": "",
+            "protocol": "",
+            "time": "",
+        }
+    )
+
+    for idx, hop in enumerate(hops):
+        # Prefer the "from" side as the transferring host for this hop
+        host = hop["from"] or hop["helo"] or hop["by"] or hop["ip"] or f"hop-{idx + 1}"
+        title = host
+        subtitle_parts = []
+        if hop["ip"] and hop["ip"] != host:
+            subtitle_parts.append(hop["ip"])
+        if hop["protocol"]:
+            subtitle_parts.append(hop["protocol"])
+        if hop["by"] and hop["by"] != host:
+            subtitle_parts.append(f"→ {hop['by']}")
+
+        role = "origin-mta" if idx == 0 else ("inbox-mta" if idx == len(hops) - 1 else "relay")
+        nodes.append(
+            {
+                "kind": "server",
+                "role": role,
+                "title": title,
+                "subtitle": " · ".join(subtitle_parts) if subtitle_parts else (hop["by"] or "mail server"),
+                "detail": hop["time"],
+                "ip": hop["ip"],
+                "protocol": hop["protocol"],
+                "time": hop["time"],
+                "by": hop["by"],
+                "from": hop["from"],
+                "for": hop["for"],
+            }
+        )
+
+    # If we have peer_ip and first server has no IP, annotate
+    if peer_ip and len(nodes) > 1 and not nodes[1].get("ip"):
+        nodes[1]["ip"] = peer_ip
+        if nodes[1]["subtitle"] == "mail server":
+            nodes[1]["subtitle"] = peer_ip
+
+    nodes.append(
+        {
+            "kind": "mailbox",
+            "role": "destination",
+            "title": "Recipient",
+            "subtitle": to_addr,
+            "detail": _domain_of(to_header) or "",
+            "ip": "",
+            "protocol": "",
+            "time": "",
+        }
+    )
+
+    # Compact summary line
+    path_labels = []
+    for node in nodes:
+        if node["role"] == "origin":
+            path_labels.append(node["subtitle"])
+        elif node["role"] == "destination":
+            path_labels.append(node["subtitle"])
+        else:
+            path_labels.append(node["title"])
+
+    return {
+        "nodes": nodes,
+        "hop_count": len(hops),
+        "summary": " → ".join(path_labels),
+        "hops": hops,
+    }
+
+
 def _body_stats(msg: Message) -> dict[str, Any]:
     text_parts = []
     html_parts = []
@@ -575,10 +757,30 @@ def analyze_email(
             )
         )
 
-    # Received chain summary
+    # Received chain + visual delivery flow (origin → destination)
+    received_list = [str(r) for r in received]
     chain = []
-    for idx, item in enumerate(received[:12]):
-        chain.append({"hop": idx + 1, "value": str(item)})
+    for idx, item in enumerate(received_list[:16]):
+        chain.append({"hop": idx + 1, "value": item})
+
+    delivery_flow = _build_delivery_flow(
+        received_list,
+        from_header=from_header,
+        to_header=to_header,
+        peer_ip=peer_ip or sending_ip,
+    )
+
+    if delivery_flow["hop_count"]:
+        findings.append(
+            _finding(
+                "delivery-path",
+                "Delivery path",
+                "info",
+                f"{delivery_flow['hop_count']} server hop(s) from sender to recipient.",
+                detail=delivery_flow.get("summary", ""),
+                edu="Each Received header is a stamp added by a mail server. Reading them bottom-to-top shows the journey from the sending server to the inbox.",
+            )
+        )
 
     findings.sort(key=lambda f: _status_rank(f["status"]))
 
@@ -619,6 +821,7 @@ def analyze_email(
             "x_mailer": x_mailer,
         },
         "received_chain": chain,
+        "delivery_flow": delivery_flow,
         "body": {
             "has_text": body["has_text"],
             "has_html": body["has_html"],
