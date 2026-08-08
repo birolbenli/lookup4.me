@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import tool_icon %}
 {% block title %}{{ site_name }} — {{ _('DNS, email & network tools') }}{% endblock %}
 {% block content %}
 <section class="hero">
@@ -6,11 +7,15 @@
   <p>{{ _('Pick a tool and run a lookup. Shareable URLs start instantly — for example:') }} <code class="inline">/tools/smtp/mx1.example.com</code></p>
 </section>
 
-<section class="tool-grid">
+<section class="tool-grid" aria-label="{{ _('Tools') }}">
   {% for tool in tools %}
-  <a class="tool-card" href="{{ url_for('tool_page', slug=tool.slug) }}">
-    <h2>{{ tool.name }}</h2>
-    <p>{{ tool.desc }}</p>
+  <a class="tool-card" href="{{ url_for('tool_page', slug=tool.slug) }}" data-tool="{{ tool.slug }}">
+    {{ tool_icon(tool.slug) }}
+    <span class="tool-card-body">
+      <h2>{{ tool.name }}</h2>
+      <p>{{ tool.desc }}</p>
+    </span>
+    <span class="tool-card-arrow" aria-hidden="true">→</span>
   </a>
   {% endfor %}
 </section>
