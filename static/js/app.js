@@ -1,6 +1,7 @@
-const _t = typeof window.t === "function" ? window.t : (key) => key;
 function t(key, vars) {
-  return _t(key, vars);
+  const fn = window.__i18nT;
+  if (typeof fn === "function") return fn(key, vars);
+  return key;
 }
 
 async function runLookup(endpoint, payload, render) {
@@ -795,43 +796,49 @@ async function openVisitorModal() {
     mapEl.innerHTML = "";
 
     if (typeof jsVectorMap !== "function") {
-      if (status) status.textContent = t("Could not load visitor map.");
+      if (status) {
+        status.textContent = countries.length ? t("Top countries") : t("No visitor data yet.");
+      }
       return;
     }
 
-    visitorMapInstance = new jsVectorMap({
-      selector: "#visitor-map",
-      map: "world",
-      backgroundColor: "transparent",
-      zoomOnScroll: false,
-      regionStyle: {
-        initial: {
-          fill: "#d7e3dc",
-          stroke: "#ffffff",
-          strokeWidth: 0.4,
-        },
-        hover: {
-          fill: "#0f6a4f",
-        },
-      },
-      series: {
-        regions: [
-          {
-            attribute: "fill",
-            values,
-            scale: ["#b9d5c6", "#0f6a4f"],
-            normalizeFunction: "polynomial",
+    try {
+      visitorMapInstance = new jsVectorMap({
+        selector: "#visitor-map",
+        map: "world",
+        backgroundColor: "transparent",
+        zoomOnScroll: false,
+        regionStyle: {
+          initial: {
+            fill: "#d7e3dc",
+            stroke: "#ffffff",
+            strokeWidth: 0.4,
           },
-        ],
-      },
-      onRegionTooltipShow(event, tooltip, code) {
-        const hit = countries.find((c) => c.code === code);
-        const label = hit
-          ? `${hit.name}: ${hit.count}`
-          : `${code}: 0`;
-        tooltip.text(label);
-      },
-    });
+          hover: {
+            fill: "#0f6a4f",
+          },
+        },
+        series: {
+          regions: [
+            {
+              values,
+              scale: ["#b9d5c6", "#0f6a4f"],
+              normalizeFunction: "polynomial",
+            },
+          ],
+        },
+        onRegionTooltipShow(event, tooltip, code) {
+          const hit = countries.find((c) => c.code === code);
+          const label = hit ? `${hit.name}: ${hit.count}` : `${code}: 0`;
+          if (tooltip && typeof tooltip.text === "function") tooltip.text(label);
+        },
+      });
+    } catch (mapErr) {
+      console.warn("visitor map render failed", mapErr);
+      mapEl.innerHTML = `<p class="muted" style="padding:1rem">${escapeHtml(
+        countries.length ? t("Top countries") : t("No visitor data yet.")
+      )}</p>`;
+    }
 
     if (status) {
       status.textContent = countries.length ? t("Top countries") : t("No visitor data yet.");

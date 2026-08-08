@@ -18,7 +18,8 @@
       email: "birolbenli@gmail.com",
       site: {{ site_name | tojson }}
     };
-    window.t = function (key, vars) {
+    // Keep on __i18nT — app.js also defines a global t() and must not recurse.
+    window.__i18nT = function (key, vars) {
       var s = (window.__I18N__ && window.__I18N__[key]) || key;
       if (vars) {
         Object.keys(vars).forEach(function (k) {
