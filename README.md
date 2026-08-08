@@ -4,13 +4,28 @@ Simple DNS, email authentication and SSL lookup tools.
 
 ## Tools
 
-- MX Lookup
-- SPF Lookup
-- DKIM Lookup (common selector detection + host/IP chain resolution)
-- DMARC Lookup
-- SSL Checker (up to 10 domains at once)
-- Reverse DNS Lookup
+- MX / SPF / DKIM / DMARC
+- DNS / NS / CAA / WHOIS
+- SSL Checker (up to 10 domains)
+- HTTP Headers, Port Check
+- Reverse DNS, Blacklist (DNSBL)
 - SMTP Test (port 25)
+- IP Lookup (`/ip`, curl-friendly)
+
+### Direct URLs
+
+```text
+/tools/smtp/mx1.example.com
+/tools/mx/gmail.com
+/tools/ssl/google.com,github.com
+/tools/port/1.1.1.1:443
+/tools/dns/example.com?type=TXT
+```
+
+```bash
+curl http://HOST:8080/ip
+curl http://HOST:8080/ip.json
+```
 
 ## Quick start (Docker)
 

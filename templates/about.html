@@ -4,18 +4,44 @@
 <section class="about">
   <h1 class="page-title">About</h1>
   <p>
-    <strong>lookup4.me</strong> is a small collection of practical DNS, email authentication
-    and SSL tools. The goal is a clean interface: open a tool, enter a domain or IP, get a clear result.
-  </p>
-  <p>
-    Current tools include MX, SPF, DKIM (common selector detection), DMARC, bulk SSL checks,
-    reverse DNS and SMTP port 25 connectivity tests. More tools may be added over time.
+    <strong>lookup4.me</strong> is a small collection of practical DNS, email authentication,
+    IP and SSL tools. Open a tool, enter a value, or paste a direct URL and get a clear result.
   </p>
   <p>
     Built by
-    <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">Birol Benli</a>.
-    If you find it useful, you can
-    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">buy me a coffee</a>.
+    <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">Birol Benli</a>
+    ·
+    <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    ·
+    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>.
   </p>
+
+  <h2 class="subhead">Direct URLs</h2>
+  <p class="muted">Every tool accepts <code>/tools/&lt;name&gt;/&lt;query&gt;</code> and runs immediately.</p>
+  <pre class="about-pre">/tools/mx/gmail.com
+/tools/smtp/mx1.bcturk.com
+/tools/ssl/google.com,github.com
+/tools/port/1.1.1.1:443
+/tools/dns/example.com?type=TXT</pre>
+
+  <h2 class="subhead">IP / curl</h2>
+  <pre class="about-pre">curl {{ request.host_url.rstrip('/') }}/ip
+curl {{ request.host_url.rstrip('/') }}/ip.json
+curl {{ request.host_url.rstrip('/') }}/ua</pre>
+
+  {% if counts %}
+  <h2 class="subhead subtle">Usage</h2>
+  <p class="muted tiny">Quiet counter of lookups performed on this instance.</p>
+  <div class="table-wrap quiet-table">
+    <table>
+      <thead><tr><th>Tool</th><th>Queries</th></tr></thead>
+      <tbody>
+        {% for tool, count in counts.items() %}
+        <tr><td class="mono">{{ tool }}</td><td>{{ count }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

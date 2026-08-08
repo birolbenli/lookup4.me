@@ -379,6 +379,96 @@ pre {
   font-size: 0.9rem;
   border-top: 1px solid rgba(201, 212, 204, 0.7);
   margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.footer-main a {
+  color: var(--muted);
+}
+
+.footer-sep {
+  margin: 0 0.25rem;
+}
+
+.footer-meta {
+  font-size: 0.75rem;
+  opacity: 0.55;
+  font-family: var(--mono);
+}
+
+.tool-row {
+  align-items: stretch;
+}
+
+.tool-switch,
+.type-switch {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 0.7rem;
+  font: inherit;
+  background: #fbfcfb;
+  color: var(--ink);
+  min-width: 150px;
+}
+
+.tool-row textarea {
+  flex: 1 1 100%;
+  min-height: 120px;
+}
+
+.tool-row input {
+  flex: 1 1 180px;
+}
+
+.examples {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+.example-url,
+code.inline,
+.examples code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: #eef3ef;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+}
+
+.example-link {
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.subhead {
+  margin: 1.6rem 0 0.4rem;
+  font-size: 1.15rem;
+}
+
+.subhead.subtle {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.tiny {
+  font-size: 0.85rem;
+}
+
+.about-pre {
+  margin-top: 0.4rem;
+}
+
+.quiet-table {
+  opacity: 0.85;
+  max-width: 28rem;
 }
 
 .about {

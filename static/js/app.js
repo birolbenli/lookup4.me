@@ -1,6 +1,7 @@
 async function runLookup(endpoint, payload, render) {
   const out = document.getElementById("results");
-  const btn = document.querySelector("form button[type='submit']");
+  const btn = document.querySelector("#tool-form button[type='submit']");
+  if (!out) return;
   out.innerHTML = `<p class="loading">Looking up…</p>`;
   if (btn) btn.disabled = true;
 
@@ -21,7 +22,7 @@ async function runLookup(endpoint, payload, render) {
 }
 
 function escapeHtml(str) {
-  return String(str)
+  return String(str ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -53,16 +54,6 @@ function renderChain(chain) {
   return `<ul class="chain">${items}</ul>`;
 }
 
-function bindDomainForm(formId, endpoint, field, render) {
-  const form = document.getElementById(formId);
-  if (!form) return;
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const value = form.querySelector(`[name="${field}"]`).value.trim();
-    runLookup(endpoint, { [field]: value }, render);
-  });
-}
-
 function renderMx(data, root) {
   if (!data.ok) return renderError(data, root);
   const rows = (data.records || [])
@@ -92,9 +83,7 @@ function renderSpf(data, root) {
   if (!data.ok) return renderError(data, root);
   const chain = (data.chain || [])
     .map((c) => {
-      const rec = (c.records || [])
-        .map((r) => `<pre>${escapeHtml(r.raw)}</pre>`)
-        .join("");
+      const rec = (c.records || []).map((r) => `<pre>${escapeHtml(r.raw)}</pre>`).join("");
       return `<div class="block">
         <h3 class="mono">${escapeHtml(c.domain)}</h3>
         <p class="muted">via ${escapeHtml(c.via)}</p>
@@ -173,6 +162,41 @@ function renderDmarc(data, root) {
   );
 }
 
+function renderDnsRecords(data, root, label) {
+  if (!data.ok) return renderError(data, root);
+  const rows = (data.records || [])
+    .map(
+      (r) => `<tr>
+        <td class="mono">${escapeHtml(r.data)}</td>
+        <td>${escapeHtml(r.ttl ?? "—")}</td>
+      </tr>`
+    )
+    .join("");
+  root.appendChild(
+    el(`<div>
+      <p><span class="status ok">${label || data.type}</span> for <strong class="mono">${escapeHtml(
+        data.domain
+      )}</strong></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>TTL</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`)
+  );
+}
+
+function renderWhois(data, root) {
+  if (!data.ok) return renderError(data, root);
+  root.appendChild(
+    el(`<div class="block">
+      <p><span class="status ok">WHOIS</span> via <span class="mono">${escapeHtml(
+        data.server
+      )}</span></p>
+      <pre>${escapeHtml(data.raw)}</pre>
+    </div>`)
+  );
+}
+
 function renderSsl(data, root) {
   if (!data.ok) return renderError(data, root);
   const s = data.summary || {};
@@ -209,6 +233,54 @@ function renderSsl(data, root) {
   );
 }
 
+function renderHttp(data, root) {
+  if (!data.ok) return renderError(data, root);
+  const rows = Object.entries(data.headers || {})
+    .map(
+      ([k, v]) =>
+        `<tr><td class="mono">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v)}</td></tr>`
+    )
+    .join("");
+  root.appendChild(
+    el(`<div class="stack">
+      <p><span class="status ok">${escapeHtml(data.status_code)}</span>
+        <span class="mono">${escapeHtml(data.final_url || data.url)}</span>
+        ${data.note ? `<span class="muted">· ${escapeHtml(data.note)}</span>` : ""}
+      </p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Header</th><th>Value</th></tr></thead>
+        <tbody>${rows || "<tr><td colspan='2'>No headers</td></tr>"}</tbody>
+      </table></div>
+    </div>`)
+  );
+}
+
+function renderPort(data, root) {
+  if (!data.ok && !(data.attempts || []).length) return renderError(data, root);
+  const attempts = (data.attempts || [])
+    .map(
+      (a) => `<tr>
+        <td class="mono">${escapeHtml(a.ip)}</td>
+        <td><span class="status ${a.ok ? "ok" : "err"}">${a.ok ? "open" : "closed"}</span></td>
+        <td>${a.latency_ms ?? "—"} ms</td>
+        <td class="muted">${escapeHtml(a.error || "")}</td>
+      </tr>`
+    )
+    .join("");
+  root.appendChild(
+    el(`<div>
+      <p><span class="status ${data.open ? "ok" : "err"}">${
+        data.open ? "Open" : "Closed / unreachable"
+      }</span>
+        <strong class="mono">${escapeHtml(data.host)}:${escapeHtml(data.port)}</strong></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>IP</th><th>Status</th><th>Latency</th><th>Detail</th></tr></thead>
+        <tbody>${attempts}</tbody>
+      </table></div>
+    </div>`)
+  );
+}
+
 function renderRdns(data, root) {
   if (!data.ok) return renderError(data, root);
   const hosts = (data.hosts || []).map((h) => `<li class="mono">${escapeHtml(h)}</li>`).join("");
@@ -218,6 +290,36 @@ function renderRdns(data, root) {
         data.ip
       )}</strong></p>
       <ul>${hosts || "<li>No hosts</li>"}</ul>
+    </div>`)
+  );
+}
+
+function renderBlacklist(data, root) {
+  if (!data.ok) return renderError(data, root);
+  const rows = (data.results || [])
+    .map(
+      (r) => `<tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td class="mono">${escapeHtml(r.zone)}</td>
+        <td><span class="status ${r.listed ? "err" : "ok"}">${
+          r.listed ? "LISTED" : "clean"
+        }</span></td>
+        <td class="mono">${escapeHtml((r.codes || []).join(", "))}</td>
+      </tr>`
+    )
+    .join("");
+  root.appendChild(
+    el(`<div>
+      <p><span class="status ${data.clean ? "ok" : "err"}">${
+        data.clean ? "Not listed" : `${data.listed_count} listing(s)`
+      }</span>
+        IP <strong class="mono">${escapeHtml(data.ip)}</strong>
+        ${data.host ? `<span class="muted">from ${escapeHtml(data.host)}</span>` : ""}
+      </p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>List</th><th>Zone</th><th>Status</th><th>Codes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
     </div>`)
   );
 }
@@ -236,7 +338,11 @@ function renderSmtp(data, root) {
         ${a.banner ? `<p><strong>Banner</strong></p><pre>${escapeHtml(a.banner)}</pre>` : ""}
         ${a.ehlo ? `<p><strong>EHLO</strong></p><pre>${escapeHtml(a.ehlo)}</pre>` : ""}
         <p class="muted">STARTTLS: ${
-          a.starttls_supported ? (a.starttls_ok ? "supported & negotiated" : "supported") : "not advertised"
+          a.starttls_supported
+            ? a.starttls_ok
+              ? "supported & negotiated"
+              : "supported"
+            : "not advertised"
         }</p>
       </div>`;
     })
@@ -244,20 +350,112 @@ function renderSmtp(data, root) {
   root.appendChild(el(`<div class="stack">${attempts}</div>`));
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  bindDomainForm("mx-form", "/api/mx", "domain", renderMx);
-  bindDomainForm("spf-form", "/api/spf", "domain", renderSpf);
-  bindDomainForm("dkim-form", "/api/dkim", "domain", renderDkim);
-  bindDomainForm("dmarc-form", "/api/dmarc", "domain", renderDmarc);
-  bindDomainForm("rdns-form", "/api/rdns", "ip", renderRdns);
-  bindDomainForm("smtp-form", "/api/smtp", "host", renderSmtp);
+function renderIp(data, root) {
+  if (!data.ok) return renderError(data, root);
+  const ptr = (data.ptr || []).map((h) => `<li class="mono">${escapeHtml(h)}</li>`).join("");
+  root.appendChild(
+    el(`<div class="stack">
+      <div class="block">
+        <p><span class="status ok">IP</span></p>
+        <p class="mono" style="font-size:1.4rem;font-weight:700">${escapeHtml(data.ip)}</p>
+      </div>
+      <div class="block">
+        <h3>Reverse DNS</h3>
+        ${ptr ? `<ul>${ptr}</ul>` : `<p class="muted">No PTR</p>`}
+      </div>
+      ${
+        data.user_agent
+          ? `<div class="block">
+        <h3>Client</h3>
+        <p><strong>User-Agent:</strong> <span class="mono">${escapeHtml(data.user_agent)}</span></p>
+        <p><strong>Language:</strong> ${escapeHtml(data.language || "—")}</p>
+        <p><strong>Host:</strong> ${escapeHtml(data.host_header || "—")}</p>
+      </div>`
+          : ""
+      }
+      <div class="block">
+        <h3>curl</h3>
+        <pre>curl ${escapeHtml(location.origin)}/ip
+curl ${escapeHtml(location.origin)}/ip.json
+curl ${escapeHtml(location.origin)}/ua</pre>
+      </div>
+    </div>`)
+  );
+}
 
-  const sslForm = document.getElementById("ssl-form");
-  if (sslForm) {
-    sslForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const domains = sslForm.querySelector('[name="domains"]').value;
-      runLookup("/api/ssl", { domains }, renderSsl);
-    });
+const RENDERERS = {
+  mx: renderMx,
+  spf: renderSpf,
+  dkim: renderDkim,
+  dmarc: renderDmarc,
+  dns: (d, r) => renderDnsRecords(d, r, d.type || "DNS"),
+  ns: (d, r) => renderDnsRecords(d, r, "NS"),
+  caa: (d, r) => renderDnsRecords(d, r, "CAA"),
+  whois: renderWhois,
+  ssl: renderSsl,
+  http: renderHttp,
+  port: renderPort,
+  rdns: renderRdns,
+  blacklist: renderBlacklist,
+  smtp: renderSmtp,
+  ip: renderIp,
+};
+
+function syncUrl(slug, query, type) {
+  let path = `/tools/${slug}`;
+  if (query) path += `/${encodeURI(query).replace(/%2F/gi, "/")}`;
+  if (slug === "dns" && type && type !== "A") {
+    path += `?type=${encodeURIComponent(type)}`;
+  }
+  history.replaceState({}, "", path);
+}
+
+function currentQueryValue(panel) {
+  const field = panel.dataset.field;
+  const input = panel.querySelector(`[name="${field}"]`);
+  return (input?.value || "").trim();
+}
+
+function submitTool(panel) {
+  const slug = panel.dataset.tool;
+  const field = panel.dataset.field;
+  const optional = panel.dataset.optional === "1";
+  const value = currentQueryValue(panel);
+  if (!value && !optional) return;
+
+  const payload = { [field]: value };
+  const typeEl = document.getElementById("dns-type");
+  if (typeEl) payload.type = typeEl.value;
+
+  syncUrl(slug, value, payload.type);
+  const render = RENDERERS[slug] || renderError;
+  runLookup(`/api/${slug}`, payload, render);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const panel = document.querySelector(".panel[data-tool]");
+  if (!panel) return;
+
+  const form = document.getElementById("tool-form");
+  const switcher = document.getElementById("tool-switch");
+
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    submitTool(panel);
+  });
+
+  switcher?.addEventListener("change", () => {
+    const slug = switcher.value;
+    const value = currentQueryValue(panel);
+    const target = value ? `/tools/${slug}/${encodeURI(value)}` : `/tools/${slug}`;
+    window.location.href = target;
+  });
+
+  const auto = (panel.dataset.autoQuery || "").trim();
+  if (auto || panel.dataset.optional === "1") {
+    // IP page with empty query still auto-runs for "my IP"
+    if (auto || panel.dataset.tool === "ip") {
+      submitTool(panel);
+    }
   }
 });

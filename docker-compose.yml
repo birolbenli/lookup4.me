@@ -7,6 +7,9 @@ services:
     environment:
       - FLASK_ENV=production
       - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
+      - LINKEDIN_URL=${LINKEDIN_URL:-https://tr.linkedin.com/in/birolbenli}
+    volumes:
+      - lookup4me_data:/app/instance
     restart: unless-stopped
     mem_limit: 256m
     healthcheck:
@@ -14,3 +17,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+volumes:
+  lookup4me_data:
