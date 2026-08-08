@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from urllib.parse import unquote
 
 from flask import Flask, Response, g, jsonify, render_template, request
@@ -27,6 +28,7 @@ from tools.smtp_test import test_smtp
 from tools.spf import lookup_spf
 from tools.ssl_check import check_bulk
 from tools.stats import bump, get_counts, init_stats, total_count
+from tools.visitors import get_country_counts, init_visitors, track_visitor, visitor_total
 from tools.whois_lookup import lookup_whois
 
 logging.basicConfig(level=logging.INFO)
@@ -215,10 +217,24 @@ def _ensure_runtime():
     init_stats()
     init_mail_store()
     init_feedback()
+    init_visitors()
+
+
+def _should_track_visitor() -> bool:
+    if request.method != "GET":
+        return False
+    path = request.path or "/"
+    if path.startswith("/static") or path.startswith("/api/") or path == "/health":
+        return False
+    if path.endswith(".json"):
+        return False
+    if wants_plain():
+        return False
+    return True
 
 
 @app.after_request
-def _persist_lang(response):
+def _after_request(response):
     if getattr(g, "set_lang_cookie", False):
         response.set_cookie(
             LANG_COOKIE,
@@ -226,6 +242,10 @@ def _persist_lang(response):
             max_age=60 * 60 * 24 * 365,
             samesite="Lax",
         )
+    ctype = (response.content_type or "").lower()
+    if _should_track_visitor() and "text/html" in ctype and response.status_code < 400:
+        ip = client_ip_from_request(request)
+        threading.Thread(target=track_visitor, args=(ip,), daemon=True).start()
     return response
 
 
@@ -316,6 +336,19 @@ def health():
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+@app.get("/api/visitors/geo")
+def api_visitors_geo():
+    countries = get_country_counts()
+    return jsonify(
+        {
+            "ok": True,
+            "total": visitor_total(),
+            "queries": total_count(),
+            "countries": countries,
+        }
+    )
 
 
 @app.get("/about")

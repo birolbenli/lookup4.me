@@ -8,9 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script>
     window.__I18N__ = {{ js_i18n | tojson }};
+    window.__SITE__ = {
+      coffee: {{ buymeacoffee_url | tojson }},
+      linkedin: {{ linkedin_url | tojson }},
+      email: "birolbenli@gmail.com",
+      site: {{ site_name | tojson }}
+    };
     window.t = function (key, vars) {
       var s = (window.__I18N__ && window.__I18N__[key]) || key;
       if (vars) {
@@ -70,9 +77,41 @@
         <span class="footer-sep" aria-hidden="true">·</span>
         <a href="{{ url_for('feedback_page') }}">{{ _('Report') }}</a>
       </div>
-      <div class="footer-meta" title="{{ _('Total successful tool queries') }}">{{ _('queries') }}: {{ total_queries }}</div>
+      <button type="button" class="footer-meta footer-stats" id="open-visitor-map" title="{{ _('Open visitor map') }}">
+        {{ _('queries') }}: {{ total_queries }}
+      </button>
     </footer>
   </div>
+
+  <div class="modal" id="visitor-modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="visitor-modal-title">
+      <button type="button" class="modal-close" data-close-modal aria-label="{{ _('Close') }}">×</button>
+      <h2 id="visitor-modal-title">{{ _('Visitors around the world') }}</h2>
+      <p class="muted modal-lead">{{ _('Unique visitors by country (approx.)') }}</p>
+
+      <div class="visitor-stats" id="visitor-stats"></div>
+      <div class="visitor-map-wrap">
+        <div id="visitor-map" class="visitor-map" aria-label="{{ _('Visitors around the world') }}"></div>
+      </div>
+      <ol class="visitor-list" id="visitor-list"></ol>
+      <p class="muted" id="visitor-map-status">{{ _('Loading map…') }}</p>
+
+      <div class="thanks-block">
+        <p>{{ _('Thank you for using our tools. If you find them useful, you can buy me a coffee — it keeps the lights on.') }}</p>
+        <a class="bmc thanks-bmc" href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee →') }}</a>
+        <div class="contact-block">
+          <strong>{{ _('Contact') }}</strong>
+          <a href="mailto:birolbenli@gmail.com">birolbenli@gmail.com</a>
+          <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+          <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js"></script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

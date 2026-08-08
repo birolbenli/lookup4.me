@@ -24,6 +24,18 @@ TR: dict[str, str] = {
     "IP Lookup": "IP Sorgula",
     "queries": "sorgular",
     "Total successful tool queries": "Başarılı toplam sorgu sayısı",
+    "Open visitor map": "Ziyaretçi haritasını aç",
+    "Visitors around the world": "Dünyadan ziyaretçiler",
+    "Unique visitors by country (approx.)": "Ülkelere göre yaklaşık benzersiz ziyaretçiler",
+    "Thank you for using our tools. If you find them useful, you can buy me a coffee — it keeps the lights on.": "Araçlarımızı kullandığınız için teşekkür ederiz. Faydalı bulduysanız bana bir kahve ısmarlayabilirsiniz — bu sayede hizmeti ayakta tutuyoruz.",
+    "Buy me a coffee →": "Bir kahve ısmarla →",
+    "Contact": "İletişim",
+    "Close": "Kapat",
+    "Loading map…": "Harita yükleniyor…",
+    "No visitor data yet.": "Henüz ziyaretçi verisi yok.",
+    "visitors": "ziyaretçi",
+    "countries": "ülke",
+    "Top countries": "Öne çıkan ülkeler",
     "Free DNS, email authentication, IP and SSL lookup tools.": "Ücretsiz DNS, e-posta kimlik doğrulama, IP ve SSL sorgu araçları.",
     # Home
     "DNS, email & network tools": "DNS, e-posta ve ağ araçları",
@@ -222,6 +234,13 @@ JS_TR: dict[str, str] = {
     "No address to copy yet.": "Henüz kopyalanacak adres yok.",
     "Copy blocked — address selected, press Ctrl+C / Cmd+C.": "Kopyalama engellendi — adres seçildi, Ctrl+C / Cmd+C kullanın.",
     "Sent. Thank you!": "Gönderildi. Teşekkürler!",
+    "Loading map…": "Harita yükleniyor…",
+    "No visitor data yet.": "Henüz ziyaretçi verisi yok.",
+    "Could not load visitor map.": "Ziyaretçi haritası yüklenemedi.",
+    "visitors": "ziyaretçi",
+    "countries": "ülke",
+    "Top countries": "Öne çıkan ülkeler",
+    "queries": "sorgular",
 }
 
 

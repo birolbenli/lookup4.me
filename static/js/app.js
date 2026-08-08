@@ -732,7 +732,126 @@ async function startMailTest(panel, existingId) {
   }, 2500);
 }
 
+let visitorMapInstance = null;
+
+function closeVisitorModal() {
+  const modal = document.getElementById("visitor-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("modal-open");
+}
+
+async function openVisitorModal() {
+  const modal = document.getElementById("visitor-modal");
+  const status = document.getElementById("visitor-map-status");
+  const list = document.getElementById("visitor-list");
+  const stats = document.getElementById("visitor-stats");
+  const mapEl = document.getElementById("visitor-map");
+  if (!modal || !mapEl) return;
+
+  modal.hidden = false;
+  document.body.classList.add("modal-open");
+  if (status) status.textContent = t("Loading map…");
+
+  try {
+    const res = await fetch("/api/visitors/geo");
+    const data = await res.json();
+    if (!data.ok) throw new Error("bad response");
+
+    const countries = data.countries || [];
+    const values = {};
+    countries.forEach((c) => {
+      if (c.code) values[c.code] = c.count;
+    });
+
+    if (stats) {
+      stats.innerHTML = `
+        <span class="pill">${escapeHtml(String(data.queries || 0))} ${escapeHtml(t("queries"))}</span>
+        <span class="pill">${escapeHtml(String(data.total || 0))} ${escapeHtml(t("visitors"))}</span>
+        <span class="pill">${escapeHtml(String(countries.length))} ${escapeHtml(t("countries"))}</span>
+      `;
+    }
+
+    if (list) {
+      if (!countries.length) {
+        list.innerHTML = "";
+      } else {
+        list.innerHTML = countries
+          .slice(0, 12)
+          .map(
+            (c) =>
+              `<li><span>${escapeHtml(c.name || c.code)}</span><span class="count">${escapeHtml(
+                String(c.count)
+              )}</span></li>`
+          )
+          .join("");
+      }
+    }
+
+    if (visitorMapInstance && typeof visitorMapInstance.destroy === "function") {
+      visitorMapInstance.destroy();
+      visitorMapInstance = null;
+    }
+    mapEl.innerHTML = "";
+
+    if (typeof jsVectorMap !== "function") {
+      if (status) status.textContent = t("Could not load visitor map.");
+      return;
+    }
+
+    visitorMapInstance = new jsVectorMap({
+      selector: "#visitor-map",
+      map: "world",
+      backgroundColor: "transparent",
+      zoomOnScroll: false,
+      regionStyle: {
+        initial: {
+          fill: "#d7e3dc",
+          stroke: "#ffffff",
+          strokeWidth: 0.4,
+        },
+        hover: {
+          fill: "#0f6a4f",
+        },
+      },
+      series: {
+        regions: [
+          {
+            attribute: "fill",
+            values,
+            scale: ["#b9d5c6", "#0f6a4f"],
+            normalizeFunction: "polynomial",
+          },
+        ],
+      },
+      onRegionTooltipShow(event, tooltip, code) {
+        const hit = countries.find((c) => c.code === code);
+        const label = hit
+          ? `${hit.name}: ${hit.count}`
+          : `${code}: 0`;
+        tooltip.text(label);
+      },
+    });
+
+    if (status) {
+      status.textContent = countries.length ? t("Top countries") : t("No visitor data yet.");
+    }
+  } catch (_) {
+    if (status) status.textContent = t("Could not load visitor map.");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  const openMapBtn = document.getElementById("open-visitor-map");
+  const visitorModal = document.getElementById("visitor-modal");
+  openMapBtn?.addEventListener("click", () => openVisitorModal());
+  visitorModal?.querySelectorAll("[data-close-modal]").forEach((el) => {
+    el.addEventListener("click", () => closeVisitorModal());
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeVisitorModal();
+  });
+
   const navToggle = document.getElementById("nav-toggle");
   const siteNav = document.getElementById("site-nav");
   if (navToggle && siteNav) {
