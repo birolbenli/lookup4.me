@@ -13,6 +13,7 @@ from tools.dkim import lookup_dkim
 from tools.dmarc import lookup_dmarc
 from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
 from tools.email_analyze import analyze_email
+from tools.feedback import init_feedback, submit_feedback
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
 from tools.mail_store import create_test, get_test, init_mail_store
@@ -209,6 +210,7 @@ def get_tool(slug: str) -> dict | None:
 def _ensure_runtime():
     init_stats()
     init_mail_store()
+    init_feedback()
 
 
 @app.context_processor
@@ -304,6 +306,31 @@ def about():
 @app.get("/privacy")
 def privacy():
     return render_template("privacy.html")
+
+
+@app.get("/feedback")
+@app.get("/report")
+def feedback_page():
+    return render_template("feedback.html")
+
+
+@app.post("/api/feedback")
+def api_feedback():
+    data = request.get_json(silent=True) or {}
+    result = submit_feedback(
+        kind=data.get("kind") or request.form.get("kind", ""),
+        title=data.get("title") or request.form.get("title", ""),
+        message=data.get("message") or request.form.get("message", ""),
+        contact_email=data.get("contact_email") or request.form.get("contact_email", ""),
+        page_url=data.get("page_url") or request.form.get("page_url", ""),
+        honeypot=data.get("website") or request.form.get("website", ""),
+        ip=client_ip_from_request(request),
+        user_agent=request.headers.get("User-Agent", ""),
+    )
+    if result.get("ok"):
+        bump("feedback")
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
 
 
 @app.get("/ip")

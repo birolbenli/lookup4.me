@@ -728,6 +728,53 @@ async function startMailTest(panel, existingId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const feedbackForm = document.getElementById("feedback-form");
+  if (feedbackForm) {
+    feedbackForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const status = document.getElementById("feedback-status");
+      const btn = document.getElementById("feedback-submit");
+      const payload = {
+        kind: feedbackForm.kind.value,
+        title: feedbackForm.title.value.trim(),
+        message: feedbackForm.message.value.trim(),
+        contact_email: feedbackForm.contact_email.value.trim(),
+        page_url: feedbackForm.page_url.value.trim(),
+        website: feedbackForm.website.value,
+      };
+      if (status) {
+        status.className = "hint";
+        status.textContent = "Sending…";
+      }
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          if (status) {
+            status.className = "hint ok";
+            status.textContent = data.message || "Sent. Thank you!";
+          }
+          feedbackForm.reset();
+        } else if (status) {
+          status.className = "hint err";
+          status.textContent = data.error || "Could not send report.";
+        }
+      } catch (err) {
+        if (status) {
+          status.className = "hint err";
+          status.textContent = "Network error — please try again.";
+        }
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
   const panel = document.querySelector(".panel[data-tool]");
   if (!panel) return;
 

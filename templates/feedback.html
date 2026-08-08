@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Report an issue / Feature request — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">Issue &amp; feature request</h1>
+<p class="page-desc">
+  Found a bug or have an idea? Send it here — reports go to
+  <strong>birolbenli@gmail.com</strong>.
+</p>
+
+<div class="notice notice-warn">
+  <strong>Privacy:</strong>
+  Do not include passwords, tokens, or confidential message content.
+  <a href="{{ url_for('privacy') }}">Redaction guide →</a>
+</div>
+
+<section class="panel feedback-panel">
+  <form id="feedback-form" class="feedback-form" autocomplete="on">
+    <div class="feedback-grid">
+      <div>
+        <label for="kind">Type</label>
+        <select id="kind" name="kind" required>
+          <option value="bug">Bug report</option>
+          <option value="issue">Issue</option>
+          <option value="feature" selected>Feature request</option>
+        </select>
+      </div>
+      <div>
+        <label for="contact_email">Your email (optional)</label>
+        <input id="contact_email" name="contact_email" type="email" placeholder="you@example.com">
+      </div>
+    </div>
+
+    <label for="title">Title</label>
+    <input id="title" name="title" type="text" maxlength="200" placeholder="Short summary" required>
+
+    <label for="message">Details</label>
+    <textarea id="message" name="message" class="feedback-message" maxlength="8000" placeholder="What happened, what you expected, or the feature you want…" required></textarea>
+
+    <label for="page_url">Related page URL (optional)</label>
+    <input id="page_url" name="page_url" type="url" placeholder="https://fire.birolbenli.com/tools/...">
+
+    <!-- Honeypot -->
+    <div class="hp-field" aria-hidden="true">
+      <label for="website">Website</label>
+      <input id="website" name="website" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <div class="row" style="margin-top:0.9rem">
+      <button class="btn" type="submit" id="feedback-submit">Send report</button>
+    </div>
+    <p class="hint" id="feedback-status"></p>
+  </form>
+</section>
+{% endblock %}

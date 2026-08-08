@@ -149,6 +149,53 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+.feedback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.feedback-form label {
+  margin-top: 0.55rem;
+}
+
+.feedback-form select,
+.feedback-form input[type="text"],
+.feedback-form input[type="email"],
+.feedback-form input[type="url"] {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  font: inherit;
+  background: #fbfcfb;
+  color: var(--ink);
+}
+
+.feedback-message {
+  min-height: 180px;
+}
+
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+#feedback-status.ok {
+  color: var(--ok);
+  font-weight: 650;
+}
+
+#feedback-status.err {
+  color: var(--danger);
+  font-weight: 650;
+}
+
 .site-header {
   display: flex;
   align-items: center;

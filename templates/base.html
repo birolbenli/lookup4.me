@@ -26,6 +26,7 @@
         <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">Tools</a>
         <a href="{{ url_for('tool_page', slug='ip') }}" class="{% if request.path.startswith('/tools/ip') or request.path.startswith('/ip') %}active{% endif %}">My IP</a>
         <a href="{{ url_for('privacy') }}" class="{% if request.path == '/privacy' %}active{% endif %}">Privacy</a>
+        <a href="{{ url_for('feedback_page') }}" class="{% if request.path in ('/feedback', '/report') %}active{% endif %}">Report</a>
         <a href="{{ url_for('about') }}" class="{% if request.path == '/about' %}active{% endif %}">About</a>
         <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
         <a class="bmc" href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">Buy me a coffee</a>
@@ -41,6 +42,8 @@
         <span>© {{ site_name }}</span>
         <span class="footer-sep">·</span>
         <a href="{{ url_for('privacy') }}">Privacy</a>
+        <span class="footer-sep">·</span>
+        <a href="{{ url_for('feedback_page') }}">Report</a>
         <span class="footer-sep">·</span>
         <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
         <span class="footer-sep">·</span>
