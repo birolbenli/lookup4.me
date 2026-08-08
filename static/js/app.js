@@ -8,7 +8,9 @@ async function runLookup(endpoint, payload, render) {
   const out = document.getElementById("results");
   const btn = document.querySelector("#tool-form button[type='submit']");
   if (!out) return;
-  out.innerHTML = `<p class="loading">${escapeHtml(t("Looking up…"))}</p>`;
+  const loadingMsg =
+    endpoint.includes("/exchange") ? t("Scanning Exchange endpoints…") : t("Looking up…");
+  out.innerHTML = `<p class="loading">${escapeHtml(loadingMsg)}</p>`;
   if (btn) btn.disabled = true;
 
   try {
@@ -614,6 +616,142 @@ function renderEmailReport(data, root) {
   );
 }
 
+function severityClass(sev) {
+  if (sev === "critical" || sev === "expired" || sev === "error") return "err";
+  if (sev === "warning" || sev === "warn") return "warn";
+  if (sev === "ok" || sev === "valid") return "ok";
+  return "";
+}
+
+function renderExchange(data, root) {
+  if (!data.ok) return renderError(data, root);
+  const summary = data.summary || {};
+  const counts = data.counts || {};
+  const ssl = data.ssl || {};
+  const findings = data.findings || [];
+  const endpoints = data.endpoints || [];
+  const hosts = data.hosts || [];
+
+  const findingHtml = findings
+    .map((f) => {
+      const eps = (f.endpoints || [])
+        .map((e) => `<li class="mono">${escapeHtml(e)}</li>`)
+        .join("");
+      return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
+        <div class="finding-head">
+          <span class="status ${severityClass(f.severity)}">${escapeHtml(f.severity || "")}</span>
+          <strong>${escapeHtml(f.title || "")}</strong>
+        </div>
+        <p>${escapeHtml(f.detail || "")}</p>
+        ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  const hostHtml = hosts
+    .map((h) => {
+      const ips = (h.ips || []).join(", ") || "—";
+      return `<tr>
+        <td>${escapeHtml(h.role || "")}</td>
+        <td class="mono">${escapeHtml(h.host || "")}</td>
+        <td class="mono">${escapeHtml(ips)}</td>
+        <td><span class="status ${h.resolves ? "ok" : "warn"}">${h.resolves ? "DNS OK" : "no DNS"}</span></td>
+      </tr>`;
+    })
+    .join("");
+
+  const tableRows = endpoints
+    .map((e) => {
+      let path = e.url || "";
+      try {
+        path = new URL(e.url).pathname;
+      } catch (_) {
+        /* keep raw */
+      }
+      const auth = e.auth || {};
+      const hc = e.healthcheck;
+      let hcCell = "—";
+      if (hc) {
+        const label = hc.healthy
+          ? "open"
+          : hc.reachable
+            ? `HTTP ${hc.status_code || "?"}`
+            : "down";
+        const cls = hc.healthy ? "warn" : "";
+        hcCell = `<a class="status ${cls}" href="${escapeHtml(hc.url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+        if (hc.recommendation) {
+          hcCell += `<div class="tiny muted">${escapeHtml(t("Recommend closing healthchecks to the public internet."))}</div>`;
+        }
+      }
+      const authBits = [];
+      if (auth.ntlm) authBits.push('<span class="status err">NTLM</span>');
+      if (auth.oauth) authBits.push('<span class="status ok">OAuth</span>');
+      if (auth.basic) authBits.push('<span class="status warn">Basic</span>');
+      if (!authBits.length) {
+        authBits.push(
+          `<span class="muted">${escapeHtml((auth.schemes || []).join(", ") || "—")}</span>`
+        );
+      }
+      return `<tr>
+        <td><strong>${escapeHtml(e.name || "")}</strong><div class="tiny muted mono">${escapeHtml(e.host || "")}</div></td>
+        <td><a class="mono" href="${escapeHtml(e.url || "#")}" target="_blank" rel="noopener">${escapeHtml(path)}</a></td>
+        <td><span class="status ${severityClass(e.exposure === "closed" ? "ok" : e.severity)}">${escapeHtml(
+          String(e.status_code ?? "—")
+        )}</span>
+        <div class="tiny">${escapeHtml(t(e.exposure || "error"))}</div></td>
+        <td class="auth-cell">${authBits.join(" ")}</td>
+        <td>${hcCell}</td>
+      </tr>`;
+    })
+    .join("");
+
+  root.appendChild(
+    el(`<div class="stack exchange-report">
+      <div class="summary">
+        <span class="pill score-pill">Score ${escapeHtml(String(summary.score ?? "—"))} · ${escapeHtml(summary.grade || "")} · ${escapeHtml(summary.label || "")}</span>
+        <span class="pill">${escapeHtml(String(counts.reachable || 0))} ${escapeHtml(t("Reachable"))}</span>
+        <span class="pill">${escapeHtml(String(counts.ntlm || 0))} ${escapeHtml(t("NTLM"))}</span>
+        <span class="pill">${escapeHtml(String(counts.oauth || 0))} ${escapeHtml(t("OAuth"))}</span>
+        <span class="pill">${escapeHtml(String(counts.healthcheck_open || 0))} ${escapeHtml(t("Healthcheck open"))}</span>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("External health report"))}</h3>
+        <p class="muted">Host: <span class="mono">${escapeHtml(data.host || "")}</span></p>
+        <div class="findings">${findingHtml || `<p class="muted">${escapeHtml(t("No record"))}</p>`}</div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("TLS certificate"))}</h3>
+        <div class="geo-grid">
+          <div><span class="muted">Status</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(ssl.status || "—")}</strong></div>
+          <div><span class="muted">Days left</span><strong>${escapeHtml(String(ssl.days_left ?? "—"))}</strong></div>
+          <div><span class="muted">Expires</span><strong class="mono">${escapeHtml(String(ssl.expiry_date || "—"))}</strong></div>
+          <div><span class="muted">Issuer</span><strong>${escapeHtml(String(ssl.issuer || "—"))}</strong></div>
+          <div><span class="muted">Subject</span><strong class="mono">${escapeHtml(String(ssl.subject || "—"))}</strong></div>
+          <div><span class="muted">IP</span><strong class="mono">${escapeHtml(String(ssl.ip || "—"))}</strong></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Related hosts"))}</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Role</th><th>Host</th><th>IPs</th><th>DNS</th></tr></thead>
+          <tbody>${hostHtml}</tbody>
+        </table></div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Virtual directories"))}</h3>
+        <div class="table-wrap"><table class="exchange-table">
+          <thead><tr><th>VD</th><th>Path</th><th>HTTP</th><th>Auth</th><th>Healthcheck</th></tr></thead>
+          <tbody>${tableRows || `<tr><td colspan="5">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
+        </table></div>
+      </div>
+    </div>`)
+  );
+}
+
 const RENDERERS = {
   mx: renderMx,
   spf: renderSpf,
@@ -630,6 +768,7 @@ const RENDERERS = {
   rdns: renderRdns,
   blacklist: renderBlacklist,
   smtp: renderSmtp,
+  exchange: renderExchange,
   ip: renderIp,
 };
 

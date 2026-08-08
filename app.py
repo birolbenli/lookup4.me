@@ -16,6 +16,7 @@ from tools.dkim import lookup_dkim
 from tools.dmarc import lookup_dmarc
 from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
 from tools.email_analyze import analyze_email
+from tools.exchange_check import check_exchange
 from tools.feedback import init_feedback, submit_feedback
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
@@ -194,6 +195,15 @@ TOOLS = [
         "input": "text",
     },
     {
+        "slug": "exchange",
+        "name": "Exchange VD Check",
+        "desc": "Probe OWA/ECP/EWS/Autodiscover exposure, NTLM vs OAuth, healthchecks and TLS.",
+        "field": "host",
+        "placeholder": "mail.example.com",
+        "example": "outlook.office365.com",
+        "input": "text",
+    },
+    {
         "slug": "ip",
         "name": "IP Lookup",
         "desc": "See your public IP (curl-friendly) or inspect another IP.",
@@ -319,6 +329,8 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = check_blacklist(query)
     elif slug == "smtp":
         result = test_smtp(query)
+    elif slug == "exchange":
+        result = check_exchange(query)
     elif slug == "ip":
         result = lookup_ip_info(query, request=request)
     else:
