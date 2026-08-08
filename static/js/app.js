@@ -539,22 +539,34 @@ function renderDeliveryFlow(flow) {
   </section>`;
 }
 
+function mailStatusLabel(status) {
+  const map = {
+    pass: t("Pass"),
+    fail: t("Fail"),
+    warn: t("Warn"),
+    info: t("Info"),
+    neutral: t("Info"),
+  };
+  return map[status] || status || "";
+}
+
 function renderEmailReport(data, root) {
   if (!data.ok) return renderError(data, root);
   const score = data.score ?? "—";
   const findings = (data.findings || [])
     .map((f) => {
-      return `<article class="finding finding-${escapeHtml(f.status)}">
-        <div class="finding-top">
-          <span class="status ${escapeHtml(f.status)}">${escapeHtml(f.status)}</span>
+      const st = f.status || "info";
+      return `<article class="mt-finding mt-${escapeHtml(st)}">
+        <div class="mt-finding-top">
+          <span class="mt-badge mt-badge-${escapeHtml(st)}">${escapeHtml(mailStatusLabel(st))}</span>
           <h3>${escapeHtml(f.title)}</h3>
         </div>
-        <p class="finding-summary">${escapeHtml(f.summary)}</p>
-        ${f.detail ? `<pre class="finding-detail">${escapeHtml(f.detail)}</pre>` : ""}
-        ${f.edu ? `<p class="finding-edu"><strong>Why it matters:</strong> ${escapeHtml(f.edu)}</p>` : ""}
+        <p class="mt-finding-summary">${escapeHtml(f.summary)}</p>
+        ${f.detail ? `<pre class="mt-finding-detail">${escapeHtml(f.detail)}</pre>` : ""}
+        ${f.edu ? `<p class="mt-finding-edu"><strong>${escapeHtml(t("Why it matters"))}:</strong> ${escapeHtml(f.edu)}</p>` : ""}
         ${
           f.recommendation
-            ? `<p class="finding-fix"><strong>How to improve:</strong> ${escapeHtml(
+            ? `<p class="mt-finding-fix"><strong>${escapeHtml(t("How to improve"))}:</strong> ${escapeHtml(
                 f.recommendation
               )}</p>`
             : ""
@@ -582,14 +594,14 @@ function renderEmailReport(data, root) {
         <div class="score-number">${escapeHtml(score)}<span>/10</span></div>
         <div>
           <div class="score-label">${escapeHtml(data.score_label || "")}</div>
-          <p class="muted">${escapeHtml(meta.subject || "No subject")} · ${escapeHtml(
+          <p class="muted">${escapeHtml(meta.subject || t("No subject"))} · ${escapeHtml(
             meta.from || ""
           )}</p>
-          <div class="summary">
-            <span class="pill">Pass ${counts.pass || 0}</span>
-            <span class="pill">Warn ${counts.warn || 0}</span>
-            <span class="pill">Fail ${counts.fail || 0}</span>
-            <span class="pill">Info ${counts.info || 0}</span>
+          <div class="mt-count-row">
+            <span class="mt-count mt-count-pass">${escapeHtml(t("Pass"))} ${counts.pass || 0}</span>
+            <span class="mt-count mt-count-warn">${escapeHtml(t("Warn"))} ${counts.warn || 0}</span>
+            <span class="mt-count mt-count-fail">${escapeHtml(t("Fail"))} ${counts.fail || 0}</span>
+            <span class="mt-count mt-count-info">${escapeHtml(t("Info"))} ${counts.info || 0}</span>
           </div>
         </div>
       </div>
@@ -597,17 +609,17 @@ function renderEmailReport(data, root) {
       ${
         recs
           ? `<div class="block rec-block">
-        <h3>Priority improvements</h3>
+        <h3>${escapeHtml(t("Priority improvements"))}</h3>
         <ol class="rec-list">${recs}</ol>
       </div>`
-          : `<div class="block"><p class="status ok">No urgent improvements detected from this source.</p></div>`
+          : `<div class="block"><p class="status ok">${escapeHtml(t("No urgent improvements detected from this source."))}</p></div>`
       }
 
-      <div class="findings-grid">${findings}</div>
+      <div class="mt-findings">${findings}</div>
 
       ${
         chain
-          ? `<details class="block chain-details"><summary>Raw Received headers (${
+          ? `<details class="block chain-details"><summary>${escapeHtml(t("Raw Received headers"))} (${
               data.received_chain.length
             })</summary><ul class="received-list">${chain}</ul></details>`
           : ""

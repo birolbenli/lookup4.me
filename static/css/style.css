@@ -1544,64 +1544,161 @@ code.inline,
   color: var(--warn);
 }
 
-.findings-grid {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.finding {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.9rem 1rem;
-  background: #fff;
-  border-left: 4px solid #9eb5a8;
-}
-
-.finding-pass {
-  border-left-color: var(--ok);
-}
-.finding-warn {
-  border-left-color: var(--warn);
-}
-.finding-fail {
-  border-left-color: var(--danger);
-}
-.finding-info {
-  border-left-color: #6b8f9c;
-}
-
-.finding-top {
+.mt-count-row {
   display: flex;
-  gap: 0.55rem;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+
+.mt-count {
+  display: inline-flex;
   align-items: center;
-  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
 }
 
-.finding-top h3 {
+.mt-count-pass {
+  background: rgba(15, 106, 79, 0.14);
+  color: #0a4d39;
+  border-color: rgba(15, 106, 79, 0.28);
+}
+
+.mt-count-warn {
+  background: rgba(184, 106, 0, 0.16);
+  color: #8a4f00;
+  border-color: rgba(184, 106, 0, 0.35);
+}
+
+.mt-count-fail {
+  background: rgba(180, 35, 24, 0.14);
+  color: #8f1c14;
+  border-color: rgba(180, 35, 24, 0.35);
+}
+
+.mt-count-info {
+  background: rgba(47, 111, 151, 0.14);
+  color: #1f4f6e;
+  border-color: rgba(47, 111, 151, 0.3);
+}
+
+.mt-findings {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.mt-finding {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.95rem 1rem;
+  background: #fff;
+  border-left: 6px solid #9eb5a8;
+  box-shadow: 0 1px 0 rgba(20, 40, 30, 0.04);
+}
+
+.mt-finding.mt-pass {
+  border-left-color: #0f6a4f;
+  background: linear-gradient(90deg, rgba(15, 106, 79, 0.1), #fff 42%);
+}
+
+.mt-finding.mt-warn {
+  border-left-color: #c07800;
+  background: linear-gradient(90deg, rgba(192, 120, 0, 0.12), #fff 42%);
+}
+
+.mt-finding.mt-fail {
+  border-left-color: #b42318;
+  background: linear-gradient(90deg, rgba(180, 35, 24, 0.12), #fff 42%);
+}
+
+.mt-finding.mt-info,
+.mt-finding.mt-neutral {
+  border-left-color: #2f6f97;
+  background: linear-gradient(90deg, rgba(47, 111, 151, 0.1), #fff 42%);
+}
+
+.mt-finding-top {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.mt-finding-top h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.02rem;
 }
 
-.finding-summary {
-  margin: 0.2rem 0 0.45rem;
+.mt-badge {
+  display: inline-flex;
+  align-items: center;
+  min-width: 3.4rem;
+  justify-content: center;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
-.finding-detail {
+.mt-badge-pass {
+  background: #0f6a4f;
+  color: #fff;
+}
+
+.mt-badge-warn {
+  background: #c07800;
+  color: #fff;
+}
+
+.mt-badge-fail {
+  background: #b42318;
+  color: #fff;
+}
+
+.mt-badge-info,
+.mt-badge-neutral {
+  background: #2f6f97;
+  color: #fff;
+}
+
+.mt-finding-summary {
+  margin: 0.15rem 0 0.4rem;
+  color: var(--ink);
+}
+
+.mt-finding-detail {
   margin: 0.35rem 0;
   max-height: 160px;
   overflow: auto;
 }
 
-.finding-edu,
-.finding-fix {
-  margin: 0.35rem 0 0;
+.mt-finding-edu,
+.mt-finding-fix {
+  margin: 0.4rem 0 0;
   font-size: 0.92rem;
 }
 
-.finding-fix {
-  background: rgba(15, 106, 79, 0.06);
-  border-radius: 8px;
-  padding: 0.55rem 0.7rem;
+.mt-finding-fix {
+  background: rgba(15, 106, 79, 0.08);
+  border: 1px solid rgba(15, 106, 79, 0.16);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+}
+
+.mt-finding.mt-fail .mt-finding-fix {
+  background: rgba(180, 35, 24, 0.08);
+  border-color: rgba(180, 35, 24, 0.18);
+}
+
+.mt-finding.mt-warn .mt-finding-fix {
+  background: rgba(192, 120, 0, 0.1);
+  border-color: rgba(192, 120, 0, 0.2);
 }
 
 .rec-list {
