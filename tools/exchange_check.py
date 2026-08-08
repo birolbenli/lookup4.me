@@ -235,10 +235,15 @@ def _probe_vdir(host: str, vdir: dict) -> dict:
         health_res = _request(health_url, method="GET")
         h_status = health_res.get("status_code")
         body = (health_res.get("body_preview") or "").strip()
+        # Classic Exchange healthcheck returns HTTP 200 with a tiny "200 OK" body.
         healthy = bool(
             health_res.get("reachable")
             and h_status == 200
-            and ("200" in body or body.upper().startswith("OK") or len(body) < 40)
+            and (
+                body.upper().startswith("200")
+                or body.upper() in {"OK", "200 OK"}
+                or (len(body) <= 32 and "html" not in body.lower())
+            )
         )
         health = {
             "url": health_url,
@@ -249,7 +254,7 @@ def _probe_vdir(host: str, vdir: dict) -> dict:
             "error": health_res.get("error"),
             "recommendation": (
                 "Healthcheck is publicly reachable. Restrict it to internal networks / load balancer probes only."
-                if healthy or (health_res.get("reachable") and h_status and h_status < 500)
+                if healthy
                 else None
             ),
         }
@@ -332,12 +337,7 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
             }
         )
 
-    hc_open = [
-        e
-        for e in endpoints
-        if e.get("healthcheck")
-        and (e["healthcheck"].get("healthy") or (e["healthcheck"].get("status_code") in (200, 401, 403)))
-    ]
+    hc_open = [e for e in endpoints if e.get("healthcheck") and e["healthcheck"].get("healthy")]
     if hc_open:
         findings.append(
             {
