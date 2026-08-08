@@ -9,4 +9,4 @@ systemctl restart caddy
 sleep 2
 systemctl --no-pager --full status caddy | head -25
 ss -lntp | grep -E ':80|:443' || true
-curl -sI -m 15 https://fire.birolbenli.com/health || true
+curl -sI -m 15 https://tools.birolbenli.com/health || true

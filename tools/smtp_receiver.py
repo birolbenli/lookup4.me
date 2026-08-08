@@ -23,7 +23,7 @@ class _Handler:
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
         test = accept_address(address, expected_domain=self.domain)
         if not test:
-            return "550 No such test mailbox. Create a new test on lookup4.me first."
+            return "550 No such test mailbox. Create a new test on tools.birolbenli.com first."
         envelope.rcpt_tos.append(address)
         return "250 OK"
 
@@ -57,7 +57,7 @@ class _Handler:
             mode="mailtest",
         )
 
-        domain = os.environ.get("MAILTEST_DOMAIN", "fire.birolbenli.com").lower()
+        domain = os.environ.get("MAILTEST_DOMAIN", "tools.birolbenli.com").lower()
         saved_any = False
         for rcpt in envelope.rcpt_tos:
             test = accept_address(rcpt, expected_domain=domain)
@@ -97,7 +97,7 @@ def start_smtp_receiver() -> None:
 
     host = os.environ.get("MAILTEST_SMTP_HOST", "0.0.0.0")
     port = int(os.environ.get("MAILTEST_SMTP_PORT", "2525"))
-    domain = os.environ.get("MAILTEST_DOMAIN", "fire.birolbenli.com")
+    domain = os.environ.get("MAILTEST_DOMAIN", "tools.birolbenli.com")
 
     def runner():
         try:

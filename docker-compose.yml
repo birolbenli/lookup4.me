@@ -10,13 +10,13 @@ services:
       - FLASK_ENV=production
       - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
       - LINKEDIN_URL=${LINKEDIN_URL:-https://tr.linkedin.com/in/birolbenli}
-      - MAILTEST_DOMAIN=${MAILTEST_DOMAIN:-fire.birolbenli.com}
+      - MAILTEST_DOMAIN=${MAILTEST_DOMAIN:-tools.birolbenli.com}
       - MAILTEST_SMTP_ENABLED=1
       - MAILTEST_SMTP_HOST=0.0.0.0
       - MAILTEST_SMTP_PORT=2525
       - FEEDBACK_TO=${FEEDBACK_TO:-birolbenli@gmail.com}
-      - FEEDBACK_FROM=${FEEDBACK_FROM:-noreply@fire.birolbenli.com}
-      - FEEDBACK_HELO=${FEEDBACK_HELO:-fire.birolbenli.com}
+      - FEEDBACK_FROM=${FEEDBACK_FROM:-noreply@tools.birolbenli.com}
+      - FEEDBACK_HELO=${FEEDBACK_HELO:-tools.birolbenli.com}
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped

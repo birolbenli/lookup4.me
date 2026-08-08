@@ -82,7 +82,7 @@ def _send_via_smtp(msg: EmailMessage, to_addr: str, from_addr: str) -> None:
     user = os.environ.get("FEEDBACK_SMTP_USER", "").strip()
     password = os.environ.get("FEEDBACK_SMTP_PASSWORD", "").strip()
     use_tls = os.environ.get("FEEDBACK_SMTP_TLS", "1") == "1"
-    helo = os.environ.get("FEEDBACK_HELO", "fire.birolbenli.com")
+    helo = os.environ.get("FEEDBACK_HELO", "tools.birolbenli.com")
     from_domain = from_addr.rsplit("@", 1)[-1]
     payload = sign_message_bytes(msg.as_bytes(), from_domain)
 
@@ -127,17 +127,17 @@ def send_feedback_email(
     user_agent: str = "",
 ) -> None:
     to_addr = os.environ.get("FEEDBACK_TO", "birolbenli@gmail.com")
-    from_addr = os.environ.get("FEEDBACK_FROM", "noreply@fire.birolbenli.com")
+    from_addr = os.environ.get("FEEDBACK_FROM", "noreply@tools.birolbenli.com")
     kind_label = TYPES.get(kind, kind)
 
     domain = from_addr.rsplit("@", 1)[-1]
     msg = EmailMessage()
-    msg["Subject"] = f"[lookup4.me {kind_label}] {title[:120]}"
-    msg["From"] = f"lookup4.me Feedback <{from_addr}>"
+    msg["Subject"] = f"[tools.birolbenli.com {kind_label}] {title[:120]}"
+    msg["From"] = f"tools.birolbenli.com <{from_addr}>"
     msg["To"] = to_addr
     msg["Date"] = formatdate(localtime=False)
     msg["Message-ID"] = make_msgid(domain=domain)
-    msg["X-Mailer"] = "lookup4.me-feedback"
+    msg["X-Mailer"] = "tools.birolbenli.com-feedback"
     if contact_email:
         msg["Reply-To"] = contact_email
 

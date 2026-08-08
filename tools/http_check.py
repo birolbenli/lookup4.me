@@ -20,7 +20,7 @@ def check_http(url: str, timeout: float = 10.0) -> dict:
     req = urllib.request.Request(
         raw,
         method="GET",
-        headers={"User-Agent": "lookup4.me/1.0 (+https://lookup4.me)"},
+        headers={"User-Agent": "tools.birolbenli.com/1.0 (+https://tools.birolbenli.com)"},
     )
     context = ssl.create_default_context()
 
@@ -52,7 +52,7 @@ def check_http(url: str, timeout: float = 10.0) -> dict:
                 req = urllib.request.Request(
                     http_url,
                     method="GET",
-                    headers={"User-Agent": "lookup4.me/1.0"},
+                    headers={"User-Agent": "tools.birolbenli.com/1.0"},
                 )
                 with urllib.request.urlopen(req, timeout=timeout) as resp:
                     headers = {k: v for k, v in resp.headers.items()}

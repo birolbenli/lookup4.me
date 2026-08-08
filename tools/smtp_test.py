@@ -71,7 +71,7 @@ def _resolve_targets(host: str) -> list[dict[str, Any]]:
     return []
 
 
-def test_smtp(host: str, port: int = 25, helo_name: str = "lookup4.me") -> dict:
+def test_smtp(host: str, port: int = 25, helo_name: str = "tools.birolbenli.com") -> dict:
     host = (host or "").strip()
     if not host:
         return {"ok": False, "error": "Please enter a domain or IP address"}

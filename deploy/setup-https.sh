@@ -9,7 +9,7 @@ cat > /etc/nginx/sites-available/lookup4me <<'EOF'
 server {
     listen 80;
     listen [::]:80;
-    server_name fire.birolbenli.com;
+    server_name tools.birolbenli.com;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -30,11 +30,11 @@ systemctl enable nginx
 systemctl restart nginx
 
 # Obtain/renew certificate and auto-configure HTTPS
-certbot --nginx -d fire.birolbenli.com --non-interactive --agree-tos -m birolbenli@gmail.com --redirect
+certbot --nginx -d tools.birolbenli.com --non-interactive --agree-tos -m birolbenli@gmail.com --redirect
 
 systemctl reload nginx
 sleep 2
 systemctl --no-pager --full status nginx | head -20
 ss -lntp | grep -E ':80|:443' || true
-curl -sS -m 20 https://fire.birolbenli.com/health || true
+curl -sS -m 20 https://tools.birolbenli.com/health || true
 echo

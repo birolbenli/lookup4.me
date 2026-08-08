@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}lookup4.me{% endblock %}</title>
+  <title>{% block title %}tools.birolbenli.com{% endblock %}</title>
   <meta name="description" content="Free DNS, email authentication, IP and SSL lookup tools.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +21,7 @@
 
   <div class="wrap">
     <header class="site-header">
-      <a class="brand" href="{{ url_for('index') }}">lookup<span>4</span>.me</a>
+      <a class="brand" href="{{ url_for('index') }}"><span>tools</span>.birolbenli.com</a>
       <nav class="nav">
         <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">Tools</a>
         <a href="{{ url_for('tool_page', slug='ip') }}" class="{% if request.path.startswith('/tools/ip') or request.path.startswith('/ip') %}active{% endif %}">My IP</a>

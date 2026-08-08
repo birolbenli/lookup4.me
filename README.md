@@ -1,4 +1,4 @@
-# lookup4.me
+# tools.birolbenli.com
 
 Simple DNS, email authentication and SSL lookup tools.
 
@@ -16,7 +16,7 @@ Simple DNS, email authentication and SSL lookup tools.
 
 ### Mail Tester DNS
 
-Set an MX record for your `MAILTEST_DOMAIN` (default `fire.birolbenli.com`) to this VPS IP, and expose port **25**.
+Set an MX record for your `MAILTEST_DOMAIN` (default `tools.birolbenli.com`) to this VPS IP, and expose port **25**.
 
 ### Direct URLs
 

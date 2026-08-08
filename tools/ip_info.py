@@ -45,7 +45,7 @@ def lookup_geo(ip: str) -> dict:
     url = f"https://ipwho.is/{ip}"
     req = urllib.request.Request(
         url,
-        headers={"User-Agent": "lookup4.me/1.0", "Accept": "application/json"},
+        headers={"User-Agent": "tools.birolbenli.com/1.0", "Accept": "application/json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=5) as resp:

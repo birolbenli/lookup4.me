@@ -11,7 +11,7 @@ systemctl disable nginx 2>/dev/null || true
 
 cat > /etc/apache2/sites-available/lookup4me.conf <<'EOF'
 <VirtualHost *:80>
-    ServerName fire.birolbenli.com
+    ServerName tools.birolbenli.com
 
     ProxyPreserveHost On
     RequestHeader set X-Forwarded-Proto "http"
@@ -28,7 +28,7 @@ a2dissite 000-default.conf 2>/dev/null || true
 apache2ctl configtest
 systemctl reload apache2
 
-certbot --apache -d fire.birolbenli.com --non-interactive --agree-tos -m birolbenli@gmail.com --redirect
+certbot --apache -d tools.birolbenli.com --non-interactive --agree-tos -m birolbenli@gmail.com --redirect
 
 # Ensure forwarded proto is https behind SSL vhost
 if ! grep -q 'X-Forwarded-Proto "https"' /etc/apache2/sites-enabled/*lookup4me* 2>/dev/null; then
@@ -39,6 +39,6 @@ apache2ctl configtest
 systemctl reload apache2
 sleep 2
 ss -lntp | grep -E ':80|:443' || true
-curl -sS -m 20 https://fire.birolbenli.com/health || true
+curl -sS -m 20 https://tools.birolbenli.com/health || true
 echo
-curl -sI -m 20 https://fire.birolbenli.com/tools/headers | head -15 || true
+curl -sI -m 20 https://tools.birolbenli.com/tools/headers | head -15 || true

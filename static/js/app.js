@@ -805,7 +805,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!window.isSecureContext) {
       if (headersHint) {
         headersHint.textContent =
-          "One-click paste needs HTTPS. Open https://fire.birolbenli.com/tools/headers";
+          "One-click paste needs HTTPS. Open https://tools.birolbenli.com/tools/headers";
       }
       return;
     }

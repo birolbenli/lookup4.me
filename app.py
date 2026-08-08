@@ -1,4 +1,4 @@
-"""lookup4.me — DNS, email & SSL lookup tools."""
+"""tools.birolbenli.com — DNS, email & SSL lookup tools."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ app.config["LINKEDIN_URL"] = os.environ.get(
     "LINKEDIN_URL", "https://tr.linkedin.com/in/birolbenli"
 )
 app.config["MAILTEST_DOMAIN"] = os.environ.get(
-    "MAILTEST_DOMAIN", "fire.birolbenli.com"
+    "MAILTEST_DOMAIN", "tools.birolbenli.com"
 )
 
 TOOLS = [
@@ -219,7 +219,7 @@ def inject_globals():
         "tools": TOOLS,
         "buymeacoffee_url": app.config["BUYMEACOFFEE_URL"],
         "linkedin_url": app.config["LINKEDIN_URL"],
-        "site_name": "lookup4.me",
+        "site_name": "tools.birolbenli.com",
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
         "mailtest_domain": app.config["MAILTEST_DOMAIN"],
@@ -290,7 +290,7 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
 
 @app.get("/health")
 def health():
-    return jsonify({"status": "ok", "service": "lookup4.me"})
+    return jsonify({"status": "ok", "service": "tools.birolbenli.com"})
 
 
 @app.get("/")
