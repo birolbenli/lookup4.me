@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 import smtplib
 import sqlite3
 import threading
@@ -10,6 +11,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 import dns.resolver
 
@@ -124,10 +126,14 @@ def send_feedback_email(
     from_addr = os.environ.get("FEEDBACK_FROM", "noreply@fire.birolbenli.com")
     kind_label = TYPES.get(kind, kind)
 
+    domain = from_addr.rsplit("@", 1)[-1]
     msg = EmailMessage()
     msg["Subject"] = f"[lookup4.me {kind_label}] {title[:120]}"
     msg["From"] = f"lookup4.me Feedback <{from_addr}>"
     msg["To"] = to_addr
+    msg["Date"] = formatdate(localtime=False)
+    msg["Message-ID"] = make_msgid(domain=domain)
+    msg["X-Mailer"] = "lookup4.me-feedback"
     if contact_email:
         msg["Reply-To"] = contact_email
 
