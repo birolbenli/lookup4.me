@@ -674,6 +674,9 @@ function renderExchange(data, root) {
   const posture = data.posture || {};
   const hybrid = posture.hybrid || {};
   const teams = posture.teams || {};
+  const headersReport = data.headers_report || {};
+  const headerItems = headersReport.items || [];
+  const shared = data.shared_frontends || [];
 
   const findingHtml = findings
     .map((f) => {
@@ -709,6 +712,24 @@ function renderExchange(data, root) {
         <td class="mono">${escapeHtml(h.host || "")}</td>
         <td class="mono">${escapeHtml(ips)}</td>
         <td><span class="status ${h.resolves ? "ok" : "warn"}">${h.resolves ? "DNS OK" : "no DNS"}</span></td>
+      </tr>`;
+    })
+    .join("");
+
+  const sharedHtml = shared.length
+    ? `<p class="muted tiny">${escapeHtml(t("Same frontend IP"))}: ${shared
+        .map((s) => `<span class="mono">${escapeHtml(s.ip)}</span> → ${(s.hosts || []).map((h) => escapeHtml(h)).join(", ")}`)
+        .join(" · ")}</p>`
+    : "";
+
+  const headerRows = headerItems
+    .map((r) => {
+      return `<tr>
+        <td><span class="status ${severityClass(r.risk)}">${escapeHtml(r.risk || "")}</span>
+          <div class="tiny muted">${escapeHtml(r.note || "")}</div></td>
+        <td class="mono">${escapeHtml(r.header || "")}</td>
+        <td class="mono">${escapeHtml(r.value || "")}</td>
+        <td><strong>${escapeHtml(r.vd || "")}</strong><div class="tiny muted mono">${escapeHtml(r.host || "")}</div></td>
       </tr>`;
     })
     .join("");
@@ -752,6 +773,10 @@ function renderExchange(data, root) {
           )}</span>`
         );
       }
+      const leaks = (e.leaky_headers || [])
+        .slice(0, 3)
+        .map((h) => `${h.header}`)
+        .join(", ");
       return `<tr>
         <td><strong>${escapeHtml(e.name || "")}</strong><div class="tiny muted mono">${escapeHtml(e.host || "")}</div></td>
         <td><a class="mono" href="${escapeHtml(e.url || "#")}" target="_blank" rel="noopener">${escapeHtml(path)}</a></td>
@@ -761,6 +786,7 @@ function renderExchange(data, root) {
         <div class="tiny">${escapeHtml(t(e.exposure || "error"))}</div></td>
         <td class="auth-cell">${authBits.join(" ")}</td>
         <td>${hcCell}</td>
+        <td class="tiny mono">${leaks ? escapeHtml(leaks) : "—"}</td>
       </tr>`;
     })
     .join("");
@@ -797,12 +823,29 @@ function renderExchange(data, root) {
         <span class="pill">${escapeHtml(String(counts.oauth || 0))} ${escapeHtml(t("OAuth 2.0"))}</span>
         <span class="pill">${escapeHtml(String(counts.basic || 0))} ${escapeHtml(t("Basic"))}</span>
         <span class="pill">${escapeHtml(String(counts.healthcheck_open || 0))} ${escapeHtml(t("Healthcheck open"))}</span>
+        <span class="pill">${escapeHtml(String(counts.header_leaks || 0))} ${escapeHtml(t("Header leaks"))}</span>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("External health report"))}</h3>
+        <p class="muted">Host: <span class="mono">${escapeHtml(data.host || "")}</span>
+          ${data.org_domain ? ` · org: <span class="mono">${escapeHtml(data.org_domain)}</span>` : ""}</p>
+        <div class="findings">${findingHtml || `<p class="muted">${escapeHtml(t("No record"))}</p>`}</div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("HTTP headers"))}</h3>
+        <p class="muted tiny">${escapeHtml(t("Server name, version, or internal IP in headers is risky."))}</p>
+        <div class="table-wrap"><table class="exchange-table">
+          <thead><tr><th>Risk</th><th>Header</th><th>Value</th><th>VD</th></tr></thead>
+          <tbody>${headerRows || `<tr><td colspan="4">${escapeHtml(t("No sensitive headers found"))}</td></tr>`}</tbody>
+        </table></div>
       </div>
 
       <div class="block">
         <h3>${escapeHtml(t("Authentication audit"))}</h3>
-        <p class="muted"><strong>${escapeHtml(t("How we checked"))}:</strong> ${escapeHtml(audit.method || "")}</p>
-        <p class="muted">Endpoints probed for auth challenges: <strong>${escapeHtml(String(audit.endpoints_probed ?? 0))}</strong></p>
+        <p class="muted tiny"><strong>${escapeHtml(t("How we checked"))}:</strong> ${escapeHtml(audit.method || "")}
+          · ${escapeHtml(String(audit.endpoints_probed ?? 0))} endpoints</p>
         <div class="auth-audit-grid">
           ${renderAuthAuditCard("NTLM / Negotiate", audit.ntlm)}
           ${renderAuthAuditCard(t("OAuth 2.0") + " / Bearer", audit.oauth2)}
@@ -838,12 +881,6 @@ function renderExchange(data, root) {
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("External health report"))}</h3>
-        <p class="muted">Host: <span class="mono">${escapeHtml(data.host || "")}</span></p>
-        <div class="findings">${findingHtml || `<p class="muted">${escapeHtml(t("No record"))}</p>`}</div>
-      </div>
-
-      <div class="block">
         <h3>${escapeHtml(t("TLS certificate"))}</h3>
         <div class="geo-grid">
           <div><span class="muted">Status</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(ssl.status || "—")}</strong></div>
@@ -857,6 +894,7 @@ function renderExchange(data, root) {
 
       <div class="block">
         <h3>${escapeHtml(t("Related hosts"))}</h3>
+        ${sharedHtml}
         <div class="table-wrap"><table>
           <thead><tr><th>Role</th><th>Host</th><th>IPs</th><th>DNS</th></tr></thead>
           <tbody>${hostHtml}</tbody>
@@ -866,8 +904,8 @@ function renderExchange(data, root) {
       <div class="block">
         <h3>${escapeHtml(t("Virtual directories"))}</h3>
         <div class="table-wrap"><table class="exchange-table">
-          <thead><tr><th>VD</th><th>Path</th><th>HTTP</th><th>Auth</th><th>Healthcheck</th></tr></thead>
-          <tbody>${tableRows || `<tr><td colspan="5">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
+          <thead><tr><th>VD</th><th>Path</th><th>HTTP</th><th>Auth</th><th>Healthcheck</th><th>Headers</th></tr></thead>
+          <tbody>${tableRows || `<tr><td colspan="6">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
         </table></div>
       </div>
     </div>`)
