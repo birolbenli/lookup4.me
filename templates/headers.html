@@ -13,10 +13,12 @@
         {% endfor %}
       </select>
       <button class="btn" type="submit">Analyze headers</button>
+      <button class="btn btn-secondary" type="button" id="headers-paste">Paste</button>
       <button class="btn btn-secondary" type="button" id="headers-clear">Clear</button>
     </div>
     <label for="query">Raw email source / headers</label>
     <textarea id="query" name="raw" class="headers-input" placeholder="{{ tool.placeholder }}" required></textarea>
+    <p class="hint" id="headers-hint"></p>
   </form>
 
   <div class="examples">

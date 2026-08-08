@@ -29,6 +29,41 @@ function escapeHtml(str) {
     .replaceAll('"', "&quot;");
 }
 
+async function copyText(text) {
+  const value = String(text ?? "");
+  if (!value) throw new Error("Nothing to copy");
+
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  // Fallback for HTTP / older browsers
+  const ta = document.createElement("textarea");
+  ta.value = value;
+  ta.setAttribute("readonly", "");
+  ta.style.position = "fixed";
+  ta.style.top = "0";
+  ta.style.left = "0";
+  ta.style.width = "1px";
+  ta.style.height = "1px";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, value.length);
+  const ok = document.execCommand("copy");
+  document.body.removeChild(ta);
+  if (!ok) throw new Error("Copy failed");
+}
+
+async function pasteText() {
+  if (navigator.clipboard && window.isSecureContext) {
+    return await navigator.clipboard.readText();
+  }
+  throw new Error("Clipboard paste needs HTTPS or Ctrl+V");
+}
+
 function el(html) {
   const t = document.createElement("template");
   t.innerHTML = html.trim();
@@ -644,11 +679,35 @@ document.addEventListener("DOMContentLoaded", () => {
     submitTool(panel);
   });
 
+  const headersHint = document.getElementById("headers-hint");
+
   document.getElementById("headers-clear")?.addEventListener("click", () => {
     const q = document.getElementById("query");
     if (q) q.value = "";
     const out = document.getElementById("results");
     if (out) out.innerHTML = "";
+    if (headersHint) headersHint.textContent = "";
+  });
+
+  document.getElementById("headers-paste")?.addEventListener("click", async () => {
+    const q = document.getElementById("query");
+    if (!q) return;
+    try {
+      const text = await pasteText();
+      if (!text) {
+        if (headersHint) headersHint.textContent = "Clipboard is empty.";
+        return;
+      }
+      q.value = text;
+      q.focus();
+      if (headersHint) headersHint.textContent = "Pasted from clipboard.";
+    } catch (_) {
+      q.focus();
+      if (headersHint) {
+        headersHint.textContent =
+          "Could not read clipboard here (HTTP). Click the box and press Ctrl+V / Cmd+V.";
+      }
+    }
   });
 
   switcher?.addEventListener("change", () => {
@@ -664,13 +723,36 @@ document.addEventListener("DOMContentLoaded", () => {
       startMailTest(panel, "");
     });
     document.getElementById("mailtest-copy")?.addEventListener("click", async () => {
-      const text = document.getElementById("mailtest-address")?.textContent || "";
+      const text = (document.getElementById("mailtest-address")?.textContent || "").trim();
+      const statusEl = document.getElementById("mailtest-status");
+      const btn = document.getElementById("mailtest-copy");
+      if (!text) {
+        if (statusEl) statusEl.textContent = "No address to copy yet.";
+        return;
+      }
       try {
-        await navigator.clipboard.writeText(text);
-        const statusEl = document.getElementById("mailtest-status");
+        await copyText(text);
         if (statusEl) statusEl.textContent = "Address copied. Send your test email now…";
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(() => {
+            btn.textContent = prev || "Copy";
+          }, 1500);
+        }
       } catch (_) {
-        /* ignore */
+        // Last-resort: select the address so user can copy manually
+        const addr = document.getElementById("mailtest-address");
+        if (addr) {
+          const range = document.createRange();
+          range.selectNodeContents(addr);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        if (statusEl) {
+          statusEl.textContent = "Copy blocked — address selected, press Ctrl+C / Cmd+C.";
+        }
       }
     });
     const existing = (panel.dataset.testId || "").trim();
