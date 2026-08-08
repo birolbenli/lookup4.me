@@ -716,20 +716,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (headersHint) headersHint.textContent = "";
   });
 
-  let cancelArmedPaste = null;
   document.getElementById("headers-paste")?.addEventListener("click", async () => {
     const q = document.getElementById("query");
     const pasteBtn = document.getElementById("headers-paste");
     if (!q) return;
 
-    // Cancel any previous armed capture
-    if (typeof cancelArmedPaste === "function") {
-      cancelArmedPaste();
-      cancelArmedPaste = null;
+    if (!window.isSecureContext) {
+      if (headersHint) {
+        headersHint.textContent =
+          "One-click paste needs HTTPS. Open https://fire.birolbenli.com/tools/headers";
+      }
+      return;
     }
 
+    if (pasteBtn) pasteBtn.disabled = true;
     try {
-      const text = await pasteText();
+      const text = await navigator.clipboard.readText();
       if (!text) {
         if (headersHint) headersHint.textContent = "Clipboard is empty.";
         return;
@@ -737,34 +739,14 @@ document.addEventListener("DOMContentLoaded", () => {
       q.value = text;
       q.focus();
       if (headersHint) headersHint.textContent = "Pasted from clipboard.";
-      return;
-    } catch (_) {
-      // HTTP / permission blocked — arm one-shot paste capture
-    }
-
-    q.classList.add("paste-armed");
-    if (pasteBtn) {
-      pasteBtn.textContent = "Press Ctrl+V…";
-      pasteBtn.disabled = true;
-    }
-    if (headersHint) {
-      headersHint.textContent =
-        "Ready — press Ctrl+V (Windows) or Cmd+V (Mac) now to paste into the box.";
-    }
-
-    cancelArmedPaste = armPasteCapture(q, (ok) => {
-      cancelArmedPaste = null;
-      q.classList.remove("paste-armed");
-      if (pasteBtn) {
-        pasteBtn.textContent = "Paste";
-        pasteBtn.disabled = false;
-      }
+    } catch (err) {
       if (headersHint) {
-        headersHint.textContent = ok
-          ? "Pasted. Click Analyze headers when ready."
-          : "Paste timed out. Click Paste again, then press Ctrl+V / Cmd+V.";
+        headersHint.textContent =
+          "Clipboard permission denied. Allow clipboard access for this site, then try Paste again.";
       }
-    });
+    } finally {
+      if (pasteBtn) pasteBtn.disabled = false;
+    }
   });
 
   switcher?.addEventListener("change", () => {
