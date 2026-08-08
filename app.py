@@ -7,7 +7,7 @@ import os
 import threading
 from urllib.parse import unquote
 
-from flask import Flask, Response, g, jsonify, render_template, request
+from flask import Flask, Response, g, jsonify, redirect, render_template, request
 
 from i18n import COOKIE as LANG_COOKIE
 from i18n import _, detect_lang, get_lang, js_bundle, localize_tools
@@ -258,6 +258,18 @@ def get_tool(slug: str) -> dict | None:
     return next((t for t in TOOLS if t["slug"] == slug), None)
 
 
+def _is_https_request() -> bool:
+    if request.is_secure:
+        return True
+    proto = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+    return proto == "https"
+
+
+def _blacklist_redirect():
+    """Send blocked clients away — do not serve any site content."""
+    return redirect("https://www.google.com/", code=302)
+
+
 @app.before_request
 def _ensure_runtime():
     g.lang = detect_lang()
@@ -270,13 +282,22 @@ def _ensure_runtime():
     init_admin_store()
 
     path = request.path or "/"
-    if path.startswith("/static") or path.startswith("/admin") or path == "/health":
-        return None
     ip = client_ip_from_request(request)
-    if is_blacklisted(ip):
-        if path.startswith("/api/") or request.args.get("format") == "json":
-            return jsonify({"ok": False, "error": "Forbidden", "code": "blacklisted"}), 403
-        return Response("Forbidden\n", status=403, mimetype="text/plain")
+    remote = (request.remote_addr or "").strip()
+
+    # Local healthchecks stay on HTTP (Docker / Apache probes).
+    local_health = path == "/health" and remote in {"127.0.0.1", "::1"}
+
+    # Blacklisted IPs never see the site (admin/static included).
+    if not local_health and is_blacklisted(ip):
+        return _blacklist_redirect()
+
+    # Force HTTPS (behind reverse proxy via X-Forwarded-Proto).
+    force_https = os.environ.get("FORCE_HTTPS", "1").strip() not in {"0", "false", "no"}
+    if force_https and not local_health and not _is_https_request():
+        https_url = request.url.replace("http://", "https://", 1)
+        return redirect(https_url, code=301)
+
     return None
 
 
