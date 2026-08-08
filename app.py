@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from urllib.parse import unquote
 
@@ -11,16 +12,21 @@ from tools.blacklist import check_blacklist
 from tools.dkim import lookup_dkim
 from tools.dmarc import lookup_dmarc
 from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
+from tools.email_analyze import analyze_email
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
+from tools.mail_store import create_test, get_test, init_mail_store
 from tools.mx import lookup_mx
 from tools.port_check import check_port
 from tools.rdns import lookup_rdns
+from tools.smtp_receiver import start_smtp_receiver
 from tools.smtp_test import test_smtp
 from tools.spf import lookup_spf
 from tools.ssl_check import check_bulk
 from tools.stats import bump, get_counts, init_stats, total_count
 from tools.whois_lookup import lookup_whois
+
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 app.config["BUYMEACOFFEE_URL"] = os.environ.get(
@@ -28,6 +34,9 @@ app.config["BUYMEACOFFEE_URL"] = os.environ.get(
 )
 app.config["LINKEDIN_URL"] = os.environ.get(
     "LINKEDIN_URL", "https://tr.linkedin.com/in/birolbenli"
+)
+app.config["MAILTEST_DOMAIN"] = os.environ.get(
+    "MAILTEST_DOMAIN", "fire.birolbenli.com"
 )
 
 TOOLS = [
@@ -66,6 +75,27 @@ TOOLS = [
         "placeholder": "example.com",
         "example": "microsoft.com",
         "input": "text",
+    },
+    {
+        "slug": "headers",
+        "name": "Email Header Analyzer",
+        "desc": "Paste raw headers/source and get a clear, educational report.",
+        "field": "raw",
+        "placeholder": "Paste full email source or headers here…",
+        "example": "",
+        "input": "special",
+        "template": "headers.html",
+    },
+    {
+        "slug": "mailtest",
+        "name": "Mail Tester",
+        "desc": "Get a random inbox, send a message, and see a deliverability score.",
+        "field": "id",
+        "placeholder": "",
+        "example": "",
+        "input": "special",
+        "template": "mailtest.html",
+        "optional": True,
     },
     {
         "slug": "dns",
@@ -176,8 +206,9 @@ def get_tool(slug: str) -> dict | None:
 
 
 @app.before_request
-def _ensure_stats():
+def _ensure_runtime():
     init_stats()
+    init_mail_store()
 
 
 @app.context_processor
@@ -189,6 +220,7 @@ def inject_globals():
         "site_name": "lookup4.me",
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
+        "mailtest_domain": app.config["MAILTEST_DOMAIN"],
     }
 
 
@@ -221,6 +253,8 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = lookup_dkim(query)
     elif slug == "dmarc":
         result = lookup_dmarc(query)
+    elif slug == "headers":
+        result = analyze_email(query, mode="headers")
     elif slug == "dns":
         result = lookup_dns(query, extra.get("type") or request.args.get("type") or "A")
     elif slug == "ns":
@@ -298,13 +332,8 @@ def tool_page(slug: str, query: str | None = None):
         return render_template("404.html"), 404
 
     query = unquote(query) if query else ""
-    # Convenience: /tools/dns/example.com/AAAA style via ?type= or trailing
     dns_type = request.args.get("type", "A")
-    if slug == "dns" and query and "/" in query:
-        # path already decoded; support example.com/TXT only if typed oddly — skip
-        pass
 
-    # Curl-friendly direct responses for simple tools
     if query and wants_plain() and slug in {"ip", "rdns"}:
         result = run_tool(slug, query)
         if slug == "ip":
@@ -312,14 +341,16 @@ def tool_page(slug: str, query: str | None = None):
         hosts = result.get("hosts") or []
         return Response("\n".join(hosts) + ("\n" if hosts else ""), mimetype="text/plain")
 
-    if query and request.args.get("format") == "json":
+    if query and request.args.get("format") == "json" and slug not in {"mailtest"}:
         return jsonify(run_tool(slug, query, {"type": dns_type}))
 
+    template = tool.get("template") or "tool.html"
     return render_template(
-        "tool.html",
+        template,
         tool=tool,
         auto_query=query,
         dns_type=dns_type,
+        test_id=query if slug == "mailtest" else "",
     )
 
 
@@ -329,15 +360,17 @@ def api_tool(slug: str):
     if not tool:
         return jsonify({"ok": False, "error": "Unknown tool"}), 404
 
+    if slug == "mailtest":
+        return jsonify({"ok": False, "error": "Use /api/mailtest/create"}), 400
+
     data = request.get_json(silent=True) or {}
     field = tool["field"]
     query = data.get(field)
     if query is None:
-        query = data.get("query") or data.get("domain") or data.get("host") or ""
+        query = data.get("query") or data.get("domain") or data.get("host") or data.get("raw") or ""
     if isinstance(query, list):
         query = "\n".join(str(x) for x in query)
 
-    # Allow empty IP lookup (self)
     if not str(query).strip() and not tool.get("optional"):
         return jsonify({"ok": False, "error": "Missing query"}), 400
 
@@ -345,9 +378,29 @@ def api_tool(slug: str):
     return jsonify(run_tool(slug, str(query), extra))
 
 
+@app.post("/api/mailtest/create")
+def api_mailtest_create():
+    domain = app.config["MAILTEST_DOMAIN"]
+    result = create_test(domain)
+    bump("mailtest")
+    return jsonify(result)
+
+
+@app.get("/api/mailtest/<test_id>")
+def api_mailtest_status(test_id: str):
+    test = get_test(test_id)
+    if not test:
+        return jsonify({"ok": False, "error": "Test not found"}), 404
+    return jsonify(test)
+
+
 @app.errorhandler(404)
 def not_found(_err):
     return render_template("404.html"), 404
+
+
+# Start SMTP sink once per process (gunicorn workers=1)
+start_smtp_receiver()
 
 
 if __name__ == "__main__":

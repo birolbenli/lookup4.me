@@ -4,14 +4,19 @@ services:
     container_name: lookup4me
     ports:
       - "8080:8080"
+      - "25:2525"
     environment:
       - FLASK_ENV=production
       - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
       - LINKEDIN_URL=${LINKEDIN_URL:-https://tr.linkedin.com/in/birolbenli}
+      - MAILTEST_DOMAIN=${MAILTEST_DOMAIN:-fire.birolbenli.com}
+      - MAILTEST_SMTP_ENABLED=1
+      - MAILTEST_SMTP_HOST=0.0.0.0
+      - MAILTEST_SMTP_PORT=2525
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped
-    mem_limit: 256m
+    mem_limit: 300m
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s

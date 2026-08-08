@@ -29,6 +29,9 @@
 curl {{ request.host_url.rstrip('/') }}/ip.json
 curl {{ request.host_url.rstrip('/') }}/ua</pre>
 
+  <h2 class="subhead">Mail Tester DNS</h2>
+  <p class="muted">For Mail Tester delivery, point MX for <code>{{ mailtest_domain }}</code> to this server IP and keep port 25 open.</p>
+
   {% if counts %}
   <h2 class="subhead subtle">Usage</h2>
   <p class="muted tiny">Quiet counter of lookups performed on this instance.</p>

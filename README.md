@@ -11,6 +11,12 @@ Simple DNS, email authentication and SSL lookup tools.
 - Reverse DNS, Blacklist (DNSBL)
 - SMTP Test (port 25)
 - IP Lookup (`/ip`, curl-friendly)
+- Email Header Analyzer (educational report)
+- Mail Tester (random address + deliverability score)
+
+### Mail Tester DNS
+
+Set an MX record for your `MAILTEST_DOMAIN` (default `fire.birolbenli.com`) to this VPS IP, and expose port **25**.
 
 ### Direct URLs
 

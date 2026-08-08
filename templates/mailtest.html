@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Mail Tester — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ tool.name }}</h1>
+<p class="page-desc">{{ tool.desc }} Like mail-tester.com — send one message to your unique address and get a score with fixes.</p>
+
+<section class="panel" data-tool="mailtest" data-test-id="{{ test_id or '' }}" data-mail-domain="{{ mailtest_domain }}">
+  <div class="row tool-row" style="margin-bottom:0.8rem">
+    <select id="tool-switch" class="tool-switch" aria-label="Switch tool">
+      {% for t in tools %}
+      <option value="{{ t.slug }}" {% if t.slug == tool.slug %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="button" id="mailtest-create">Create test address</button>
+  </div>
+
+  <div id="mailtest-waiting" class="mailtest-box hidden">
+    <p class="muted">Send an email to this address, then keep this page open:</p>
+    <div class="mailtest-address-row">
+      <code id="mailtest-address" class="mailtest-address"></code>
+      <button class="btn btn-secondary" type="button" id="mailtest-copy">Copy</button>
+    </div>
+    <p class="hint" id="mailtest-status">Waiting for your message…</p>
+    <div class="progress-dot" aria-hidden="true"></div>
+  </div>
+
+  <div class="examples">
+    <span class="muted">Inbox domain:</span>
+    <code>{{ mailtest_domain }}</code>
+    <span class="muted">· MX for this domain must point to this server’s IP for delivery to work.</span>
+  </div>
+
+  <div id="results" class="results"></div>
+</section>
+{% endblock %}

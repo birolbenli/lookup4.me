@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Email Header Analyzer — lookup4.me{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ tool.name }}</h1>
+<p class="page-desc">{{ tool.desc }} Paste the full source (“Show original”) for the richest report.</p>
+
+<section class="panel" data-tool="headers" data-field="raw" data-optional="0">
+  <form id="tool-form" class="tool-form" autocomplete="off">
+    <div class="row tool-row" style="margin-bottom:0.7rem">
+      <select id="tool-switch" class="tool-switch" aria-label="Switch tool">
+        {% for t in tools %}
+        <option value="{{ t.slug }}" {% if t.slug == tool.slug %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Analyze headers</button>
+      <button class="btn btn-secondary" type="button" id="headers-clear">Clear</button>
+    </div>
+    <label for="query">Raw email source / headers</label>
+    <textarea id="query" name="raw" class="headers-input" placeholder="{{ tool.placeholder }}" required></textarea>
+  </form>
+
+  <div class="examples">
+    <span class="muted">Tip:</span>
+    <span class="muted">In Gmail use ··· → Show original → Copy to clipboard. Outlook: View message source.</span>
+  </div>
+
+  <div id="results" class="results"></div>
+</section>
+{% endblock %}

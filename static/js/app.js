@@ -383,11 +383,87 @@ curl ${escapeHtml(location.origin)}/ua</pre>
   );
 }
 
+function renderEmailReport(data, root) {
+  if (!data.ok) return renderError(data, root);
+  const score = data.score ?? "—";
+  const findings = (data.findings || [])
+    .map((f) => {
+      return `<article class="finding finding-${escapeHtml(f.status)}">
+        <div class="finding-top">
+          <span class="status ${escapeHtml(f.status)}">${escapeHtml(f.status)}</span>
+          <h3>${escapeHtml(f.title)}</h3>
+        </div>
+        <p class="finding-summary">${escapeHtml(f.summary)}</p>
+        ${f.detail ? `<pre class="finding-detail">${escapeHtml(f.detail)}</pre>` : ""}
+        ${f.edu ? `<p class="finding-edu"><strong>Why it matters:</strong> ${escapeHtml(f.edu)}</p>` : ""}
+        ${
+          f.recommendation
+            ? `<p class="finding-fix"><strong>How to improve:</strong> ${escapeHtml(
+                f.recommendation
+              )}</p>`
+            : ""
+        }
+      </article>`;
+    })
+    .join("");
+
+  const recs = (data.recommendations || [])
+    .map((r, i) => `<li><span class="rec-num">${i + 1}</span>${escapeHtml(r)}</li>`)
+    .join("");
+
+  const chain = (data.received_chain || [])
+    .map((h) => `<li><span class="muted">#${h.hop}</span> ${escapeHtml(h.value)}</li>`)
+    .join("");
+
+  const meta = data.meta || {};
+  const counts = data.counts || {};
+
+  root.appendChild(
+    el(`<div class="email-report">
+      <div class="score-hero score-${escapeHtml(String(data.score_label || "").toLowerCase())}">
+        <div class="score-number">${escapeHtml(score)}<span>/10</span></div>
+        <div>
+          <div class="score-label">${escapeHtml(data.score_label || "")}</div>
+          <p class="muted">${escapeHtml(meta.subject || "No subject")} · ${escapeHtml(
+            meta.from || ""
+          )}</p>
+          <div class="summary">
+            <span class="pill">Pass ${counts.pass || 0}</span>
+            <span class="pill">Warn ${counts.warn || 0}</span>
+            <span class="pill">Fail ${counts.fail || 0}</span>
+            <span class="pill">Info ${counts.info || 0}</span>
+          </div>
+        </div>
+      </div>
+
+      ${
+        recs
+          ? `<div class="block rec-block">
+        <h3>Priority improvements</h3>
+        <ol class="rec-list">${recs}</ol>
+      </div>`
+          : `<div class="block"><p class="status ok">No urgent improvements detected from this source.</p></div>`
+      }
+
+      <div class="findings-grid">${findings}</div>
+
+      ${
+        chain
+          ? `<details class="block chain-details"><summary>Received path (${
+              data.received_chain.length
+            } hops)</summary><ul class="received-list">${chain}</ul></details>`
+          : ""
+      }
+    </div>`)
+  );
+}
+
 const RENDERERS = {
   mx: renderMx,
   spf: renderSpf,
   dkim: renderDkim,
   dmarc: renderDmarc,
+  headers: renderEmailReport,
   dns: (d, r) => renderDnsRecords(d, r, d.type || "DNS"),
   ns: (d, r) => renderDnsRecords(d, r, "NS"),
   caa: (d, r) => renderDnsRecords(d, r, "CAA"),
@@ -432,29 +508,125 @@ function submitTool(panel) {
   runLookup(`/api/${slug}`, payload, render);
 }
 
+let mailtestTimer = null;
+
+async function startMailTest(panel, existingId) {
+  const waiting = document.getElementById("mailtest-waiting");
+  const addressEl = document.getElementById("mailtest-address");
+  const statusEl = document.getElementById("mailtest-status");
+  const results = document.getElementById("results");
+  if (!waiting || !addressEl || !statusEl || !results) return;
+
+  let testId = existingId;
+  let address = "";
+
+  if (!testId) {
+    statusEl.textContent = "Creating test address…";
+    waiting.classList.remove("hidden");
+    const res = await fetch("/api/mailtest/create", { method: "POST" });
+    const data = await res.json();
+    if (!data.ok) {
+      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || "Could not create test")}</div>`;
+      return;
+    }
+    testId = data.id;
+    address = data.address;
+    history.replaceState({}, "", `/tools/mailtest/${testId}`);
+  } else {
+    const res = await fetch(`/api/mailtest/${testId}`);
+    const data = await res.json();
+    if (!data.ok) {
+      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || "Test not found")}</div>`;
+      return;
+    }
+    address = data.address;
+    if (data.status === "received" && data.analysis) {
+      waiting.classList.add("hidden");
+      results.innerHTML = "";
+      renderEmailReport(data.analysis, results);
+      return;
+    }
+  }
+
+  addressEl.textContent = address;
+  waiting.classList.remove("hidden");
+  statusEl.textContent = "Waiting for your message…";
+  results.innerHTML = "";
+
+  if (mailtestTimer) clearInterval(mailtestTimer);
+  mailtestTimer = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/mailtest/${testId}`);
+      const data = await res.json();
+      if (!data.ok) return;
+      if (data.status === "received" && data.analysis) {
+        clearInterval(mailtestTimer);
+        mailtestTimer = null;
+        statusEl.textContent = "Message received — analysis ready.";
+        waiting.classList.add("hidden");
+        results.innerHTML = "";
+        renderEmailReport(data.analysis, results);
+      } else if (data.status === "expired") {
+        clearInterval(mailtestTimer);
+        mailtestTimer = null;
+        statusEl.textContent = "This test expired. Create a new address.";
+      }
+    } catch (_) {
+      /* ignore transient poll errors */
+    }
+  }, 2500);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const panel = document.querySelector(".panel[data-tool]");
   if (!panel) return;
 
   const form = document.getElementById("tool-form");
   const switcher = document.getElementById("tool-switch");
+  const slug = panel.dataset.tool;
 
   form?.addEventListener("submit", (e) => {
     e.preventDefault();
     submitTool(panel);
   });
 
-  switcher?.addEventListener("change", () => {
-    const slug = switcher.value;
-    const value = currentQueryValue(panel);
-    const target = value ? `/tools/${slug}/${encodeURI(value)}` : `/tools/${slug}`;
-    window.location.href = target;
+  document.getElementById("headers-clear")?.addEventListener("click", () => {
+    const q = document.getElementById("query");
+    if (q) q.value = "";
+    const out = document.getElementById("results");
+    if (out) out.innerHTML = "";
   });
+
+  switcher?.addEventListener("change", () => {
+    const next = switcher.value;
+    const value = currentQueryValue(panel);
+    // Don't put huge header dumps into the URL
+    const useValue = value && slug !== "headers" && value.length < 180 ? value : "";
+    window.location.href = useValue ? `/tools/${next}/${encodeURI(useValue)}` : `/tools/${next}`;
+  });
+
+  if (slug === "mailtest") {
+    document.getElementById("mailtest-create")?.addEventListener("click", () => {
+      startMailTest(panel, "");
+    });
+    document.getElementById("mailtest-copy")?.addEventListener("click", async () => {
+      const text = document.getElementById("mailtest-address")?.textContent || "";
+      try {
+        await navigator.clipboard.writeText(text);
+        const statusEl = document.getElementById("mailtest-status");
+        if (statusEl) statusEl.textContent = "Address copied. Send your test email now…";
+      } catch (_) {
+        /* ignore */
+      }
+    });
+    const existing = (panel.dataset.testId || "").trim();
+    if (existing) startMailTest(panel, existing);
+    return;
+  }
 
   const auto = (panel.dataset.autoQuery || "").trim();
   if (auto || panel.dataset.optional === "1") {
-    // IP page with empty query still auto-runs for "my IP"
-    if (auto || panel.dataset.tool === "ip") {
+    if (auto || slug === "ip") {
       submitTool(panel);
     }
   }
