@@ -24,6 +24,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 body {
@@ -49,6 +51,8 @@ a:hover {
 .wrap {
   width: min(1100px, calc(100% - 2rem));
   margin: 0 auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .site-header {
@@ -166,6 +170,9 @@ a:hover {
   box-shadow: var(--shadow);
   padding: 1.25rem;
   margin: 0.5rem 0 2rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .page-title {
@@ -530,6 +537,9 @@ code.inline,
 .email-report {
   display: grid;
   gap: 1rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .delivery-flow {
@@ -540,6 +550,9 @@ code.inline,
     #fff;
   padding: 1rem 1.05rem 0.95rem;
   box-shadow: var(--shadow);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .flow-head {
@@ -560,32 +573,79 @@ code.inline,
   margin: 0.2rem 0 0;
 }
 
+/* Vertical timeline — never widens the page */
 .flow-track {
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
   gap: 0;
-  overflow-x: auto;
-  padding: 0.2rem 0.1rem 0.55rem;
-  scroll-snap-type: x proximity;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
+  padding-left: 0.15rem;
 }
 
 .flow-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 0.85rem;
+  align-items: stretch;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.flow-rail {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  position: relative;
+}
+
+.flow-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(15, 106, 79, 0.25);
   flex: 0 0 auto;
-  scroll-snap-align: start;
+  margin-top: 1.15rem;
+  z-index: 1;
+}
+
+.flow-item.role-origin .flow-dot,
+.flow-item.role-destination .flow-dot {
+  background: var(--brand-dark);
+}
+
+.flow-item.role-relay .flow-dot {
+  background: #6b8f9c;
+  box-shadow: 0 0 0 2px rgba(107, 143, 156, 0.25);
+}
+
+.flow-connector {
+  width: 2px;
+  flex: 1 1 auto;
+  min-height: 12px;
+  background: linear-gradient(180deg, var(--brand), #b9d0c4);
+  margin-top: 0.25rem;
+}
+
+.flow-item:last-child .flow-connector {
+  display: none;
 }
 
 .flow-node {
-  width: min(200px, 72vw);
-  min-height: 118px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fbfcfb;
-  padding: 0.7rem 0.75rem;
+  padding: 0.7rem 0.8rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  margin-bottom: 0.55rem;
 }
 
 .flow-node.role-origin,
@@ -620,6 +680,7 @@ code.inline,
   font-weight: 700;
   font-size: 0.95rem;
   letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
   word-break: break-word;
   line-height: 1.25;
 }
@@ -628,59 +689,30 @@ code.inline,
   color: var(--muted);
   font-size: 0.8rem;
   font-family: var(--mono);
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .flow-time {
-  margin-top: auto;
   font-size: 0.72rem;
   color: var(--muted);
   line-height: 1.3;
-}
-
-.flow-arrow {
-  display: flex;
-  align-items: center;
-  width: 34px;
-  flex: 0 0 34px;
-  color: var(--brand);
-  opacity: 0.75;
-  position: relative;
-}
-
-.flow-arrow-line {
-  display: block;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, #b9d0c4, var(--brand));
-}
-
-.flow-arrow-head {
-  position: absolute;
-  right: -2px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .flow-summary {
   margin: 0.35rem 0 0;
   font-size: 0.78rem;
   color: var(--muted);
+  overflow-wrap: anywhere;
   word-break: break-word;
+  max-width: 100%;
 }
 
 .flow-empty {
   padding: 0.8rem;
   border: 1px dashed var(--line);
   border-radius: 12px;
-}
-
-@media (max-width: 640px) {
-  .flow-node {
-    width: min(180px, 78vw);
-    min-height: 108px;
-  }
 }
 
 .score-hero {

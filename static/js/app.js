@@ -388,30 +388,25 @@ function renderDeliveryFlow(flow) {
     return `<div class="flow-empty muted">No Received headers found — delivery path unavailable.</div>`;
   }
 
+  const roleLabel = (role) => {
+    if (role === "origin") return "From";
+    if (role === "destination") return "To";
+    if (role === "origin-mta") return "Sending server";
+    if (role === "inbox-mta") return "Receiving server";
+    return "Relay";
+  };
+
   const nodes = flow.nodes
-    .map((node, idx) => {
+    .map((node) => {
       const role = escapeHtml(node.role || "relay");
       const kind = escapeHtml(node.kind || "server");
-      const arrow =
-        idx < flow.nodes.length - 1
-          ? `<div class="flow-arrow" aria-hidden="true">
-              <span class="flow-arrow-line"></span>
-              <span class="flow-arrow-head">›</span>
-            </div>`
-          : "";
-      return `<div class="flow-item">
+      return `<div class="flow-item role-${role}">
+        <div class="flow-rail" aria-hidden="true">
+          <span class="flow-dot"></span>
+          <span class="flow-connector"></span>
+        </div>
         <div class="flow-node kind-${kind} role-${role}">
-          <div class="flow-role">${escapeHtml(
-            node.role === "origin"
-              ? "From"
-              : node.role === "destination"
-                ? "To"
-                : node.role === "origin-mta"
-                  ? "Sending server"
-                  : node.role === "inbox-mta"
-                    ? "Receiving server"
-                    : "Relay"
-          )}</div>
+          <div class="flow-role">${escapeHtml(roleLabel(node.role))}</div>
           <div class="flow-title" title="${escapeHtml(node.title || "")}">${escapeHtml(
             node.title || "—"
           )}</div>
@@ -424,7 +419,6 @@ function renderDeliveryFlow(flow) {
               : ""
           }
         </div>
-        ${arrow}
       </div>`;
     })
     .join("");
@@ -433,16 +427,11 @@ function renderDeliveryFlow(flow) {
     <div class="flow-head">
       <div>
         <h2>Delivery path</h2>
-        <p class="muted">How this message traveled — sender → servers → recipient</p>
+        <p class="muted">Top to bottom: sender → servers → recipient</p>
       </div>
-      <span class="pill">${escapeHtml(flow.hop_count || 0)} hop(s)</span>
+      <span class="pill">${escapeHtml(String(flow.hop_count || 0))} hop(s)</span>
     </div>
     <div class="flow-track">${nodes}</div>
-    ${
-      flow.summary
-        ? `<p class="flow-summary mono">${escapeHtml(flow.summary)}</p>`
-        : ""
-    }
   </section>`;
 }
 
