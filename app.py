@@ -221,6 +221,7 @@ def inject_globals():
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
         "mailtest_domain": app.config["MAILTEST_DOMAIN"],
+        "visitor_ip": client_ip_from_request(request),
     }
 
 
@@ -298,6 +299,11 @@ def index():
 @app.get("/about")
 def about():
     return render_template("about.html", counts=get_counts())
+
+
+@app.get("/privacy")
+def privacy():
+    return render_template("privacy.html")
 
 
 @app.get("/ip")

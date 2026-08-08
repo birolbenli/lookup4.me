@@ -415,12 +415,46 @@ function renderSmtp(data, root) {
 function renderIp(data, root) {
   if (!data.ok) return renderError(data, root);
   const ptr = (data.ptr || []).map((h) => `<li class="mono">${escapeHtml(h)}</li>`).join("");
+  const geo = data.geo || {};
+  const place = [geo.city, geo.region, geo.country].filter(Boolean).join(", ");
+  const geoBlock = geo.ok
+    ? `<div class="block">
+        <h3>Geolocation</h3>
+        <p class="geo-place">${escapeHtml(place || "Unknown location")}</p>
+        <div class="geo-grid">
+          <div><span class="muted">Country</span><strong>${escapeHtml(geo.country || "—")} ${
+            geo.country_code ? `(${escapeHtml(geo.country_code)})` : ""
+          }</strong></div>
+          <div><span class="muted">City / Region</span><strong>${escapeHtml(
+            [geo.city, geo.region].filter(Boolean).join(", ") || "—"
+          )}</strong></div>
+          <div><span class="muted">ISP / Org</span><strong>${escapeHtml(
+            geo.isp || geo.org || "—"
+          )}</strong></div>
+          <div><span class="muted">ASN</span><strong class="mono">${escapeHtml(
+            geo.asn != null ? String(geo.asn) : "—"
+          )}</strong></div>
+          <div><span class="muted">Timezone</span><strong>${escapeHtml(geo.timezone || "—")}</strong></div>
+          <div><span class="muted">Coordinates</span><strong class="mono">${escapeHtml(
+            geo.latitude != null && geo.longitude != null
+              ? `${geo.latitude}, ${geo.longitude}`
+              : "—"
+          )}</strong></div>
+        </div>
+      </div>`
+    : `<div class="block">
+        <h3>Geolocation</h3>
+        <p class="muted">${escapeHtml(geo.error || "Geolocation unavailable")}</p>
+      </div>`;
+
   root.appendChild(
     el(`<div class="stack">
       <div class="block">
         <p><span class="status ok">IP</span></p>
         <p class="mono" style="font-size:1.4rem;font-weight:700">${escapeHtml(data.ip)}</p>
+        ${place ? `<p class="muted">${escapeHtml(place)}</p>` : ""}
       </div>
+      ${geoBlock}
       <div class="block">
         <h3>Reverse DNS</h3>
         ${ptr ? `<ul>${ptr}</ul>` : `<p class="muted">No PTR</p>`}

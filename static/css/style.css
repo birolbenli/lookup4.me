@@ -55,6 +55,100 @@ a:hover {
   min-width: 0;
 }
 
+.ip-bar {
+  background: #0f6a4f;
+  color: #f4faf7;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ip-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0;
+  font-size: 0.92rem;
+}
+
+.ip-bar-label {
+  opacity: 0.9;
+  font-weight: 600;
+}
+
+.ip-bar-value {
+  color: #fff !important;
+  font-weight: 750;
+  font-size: 1.05rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+}
+
+.ip-bar-value:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ip-bar-link {
+  margin-left: auto;
+  color: #d7efe6 !important;
+  font-weight: 650;
+  font-size: 0.88rem;
+}
+
+.ip-bar-link:hover {
+  color: #fff !important;
+}
+
+.notice {
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.notice a {
+  font-weight: 700;
+}
+
+.notice-warn {
+  background: rgba(184, 106, 0, 0.1);
+  border: 1px solid rgba(184, 106, 0, 0.28);
+  color: #7a4a00;
+}
+
+.guide-list {
+  color: var(--muted);
+  padding-left: 1.2rem;
+}
+
+.guide-list li {
+  margin: 0.35rem 0;
+}
+
+.geo-place {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.2rem 0 0.7rem;
+}
+
+.geo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.7rem;
+}
+
+.geo-grid span {
+  display: block;
+  font-size: 0.78rem;
+  margin-bottom: 0.15rem;
+}
+
+.geo-grid strong {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
 .site-header {
   display: flex;
   align-items: center;

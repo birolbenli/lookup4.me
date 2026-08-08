@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Privacy &amp; redaction guide — lookup4.me{% endblock %}
+{% block content %}
+<section class="about privacy-guide">
+  <h1 class="page-title">Privacy &amp; redaction guide</h1>
+  <p>
+    lookup4.me tools are meant for technical debugging. Do <strong>not</strong> paste secrets,
+    customer data, or anything you would not want stored or logged by mistake.
+    <strong>You are responsible</strong> for every value you submit.
+  </p>
+
+  <div class="notice notice-warn">
+    <strong>Important:</strong> Email headers and full message sources can contain personal names,
+    addresses, internal hostnames, tracking IDs, authentication tokens, and business content.
+    Redact before pasting whenever possible.
+  </div>
+
+  <h2 class="subhead">What to remove or mask</h2>
+  <ul class="guide-list">
+    <li><strong>Email addresses</strong> of people (keep only domains if needed): <code>j***@example.com</code></li>
+    <li><strong>Names</strong> in From / To / Cc display names</li>
+    <li><strong>Subjects</strong> that reveal private topics — replace with <code>[REDACTED]</code></li>
+    <li><strong>Message bodies</strong> — prefer headers-only unless body analysis is required</li>
+    <li><strong>Cookies / tokens / API keys</strong> in custom headers (Authorization, X-*, tracking pixels)</li>
+    <li><strong>Internal IPs / hostnames</strong> if they are sensitive in your environment</li>
+    <li><strong>DKIM / ARC signatures</strong> are usually fine to keep for auth checks; body content is not</li>
+  </ul>
+
+  <h2 class="subhead">Quick redaction method</h2>
+  <ol class="guide-list">
+    <li>Open the message source (“Show original”).</li>
+    <li>Copy into a local editor (Notepad, VS Code, etc.).</li>
+    <li>Search and replace personal emails, names, and subject text with placeholders.</li>
+    <li>Delete everything after the first blank line if you only need headers.</li>
+    <li>Paste the cleaned text into the Header Analyzer.</li>
+  </ol>
+
+  <h2 class="subhead">Example</h2>
+  <pre class="about-pre">From: Alice Example &lt;a***@company.com&gt;
+To: Bob &lt;b***@client.com&gt;
+Subject: [REDACTED]
+Message-ID: &lt;keep-or-mask@mail.company.com&gt;
+DKIM-Signature: ... (ok to keep)
+Authentication-Results: ... (ok to keep)
+
+[body removed]</pre>
+
+  <h2 class="subhead">Our expectations</h2>
+  <ul class="guide-list">
+    <li>Do not submit credentials, private keys, session cookies, or confidential documents.</li>
+    <li>Mail Tester addresses are temporary; still avoid sending sensitive production mail.</li>
+    <li>If you paste something by mistake, treat it as exposed and rotate any secrets involved.</li>
+  </ul>
+
+  <p class="muted">
+    Back to
+    <a href="{{ url_for('tool_page', slug='headers') }}">Email Header Analyzer</a>
+    ·
+    <a href="{{ url_for('index') }}">all tools</a>
+  </p>
+</section>
+{% endblock %}

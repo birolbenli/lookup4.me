@@ -4,6 +4,13 @@
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }} Paste the full source (“Show original”) for the richest report.</p>
 
+<div class="notice notice-warn">
+  <strong>Security &amp; privacy:</strong>
+  Do not paste passwords, tokens, customer data, or confidential message content.
+  You are responsible for anything you submit.
+  <a href="{{ url_for('privacy') }}">How to redact sensitive details before pasting →</a>
+</div>
+
 <section class="panel" data-tool="headers" data-field="raw" data-optional="0">
   <form id="tool-form" class="tool-form" autocomplete="off">
     <div class="row tool-row" style="margin-bottom:0.7rem">
@@ -23,8 +30,10 @@
 
   <div class="examples">
     <span class="muted">Tip:</span>
-    <span class="muted">Copy the message source, then click Paste. Use HTTPS:
-      <a href="https://fire.birolbenli.com/tools/headers">https://fire.birolbenli.com/tools/headers</a>
+    <span class="muted">Prefer headers-only. Redact names, subjects, and personal addresses first —
+      <a href="{{ url_for('privacy') }}">redaction guide</a>.
+      Best on HTTPS:
+      <a href="https://fire.birolbenli.com/tools/headers">fire.birolbenli.com</a>
     </span>
   </div>
 
