@@ -1,10 +1,11 @@
 #!/bin/bash
-set -e
+# Run ON the VPS only. Do not embed sudo/login passwords here.
+set -euo pipefail
 cd /home/birolbenli/apps/lookup4.me
 git pull
-echo 'Bb12345' | sudo -S docker compose up --build -d
+sudo docker compose up --build -d
 sleep 6
-echo 'Bb12345' | sudo -S docker exec lookup4me python3 - <<'PY'
+sudo docker exec lookup4me python3 - <<'PY'
 from tools.feedback_dkim import ensure_dkim_keys, dkim_dns_value, SELECTOR
 ensure_dkim_keys()
 print("SELECTOR", SELECTOR)
