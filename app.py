@@ -311,6 +311,9 @@ def privacy():
 @app.get("/feedback")
 @app.get("/report")
 def feedback_page():
+    from tools.feedback_dkim import ensure_dkim_keys
+
+    ensure_dkim_keys()
     return render_template("feedback.html")
 
 

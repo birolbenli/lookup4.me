@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import secrets
 import smtplib
 import sqlite3
 import threading
@@ -75,22 +74,27 @@ def _rate_ok(ip: str, limit: int = 5, window: int = 3600) -> bool:
         return True
 
 
-def _send_via_smtp(msg: EmailMessage, to_addr: str) -> None:
+def _send_via_smtp(msg: EmailMessage, to_addr: str, from_addr: str) -> None:
+    from .feedback_dkim import sign_message_bytes
+
     host = os.environ.get("FEEDBACK_SMTP_HOST", "").strip()
     port = int(os.environ.get("FEEDBACK_SMTP_PORT", "587"))
     user = os.environ.get("FEEDBACK_SMTP_USER", "").strip()
     password = os.environ.get("FEEDBACK_SMTP_PASSWORD", "").strip()
     use_tls = os.environ.get("FEEDBACK_SMTP_TLS", "1") == "1"
+    helo = os.environ.get("FEEDBACK_HELO", "fire.birolbenli.com")
+    from_domain = from_addr.rsplit("@", 1)[-1]
+    payload = sign_message_bytes(msg.as_bytes(), from_domain)
 
     if host:
         with smtplib.SMTP(host, port, timeout=30) as smtp:
-            smtp.ehlo()
+            smtp.ehlo(helo)
             if use_tls:
                 smtp.starttls()
-                smtp.ehlo()
+                smtp.ehlo(helo)
             if user:
                 smtp.login(user, password)
-            smtp.send_message(msg, to_addrs=[to_addr])
+            smtp.sendmail(from_addr, [to_addr], payload)
         return
 
     # Direct delivery to recipient MX (works when outbound :25 is open)
@@ -104,8 +108,8 @@ def _send_via_smtp(msg: EmailMessage, to_addr: str) -> None:
     for _, mx in mx_hosts[:3]:
         try:
             with smtplib.SMTP(mx, 25, timeout=30) as smtp:
-                smtp.ehlo(os.environ.get("FEEDBACK_HELO", "fire.birolbenli.com"))
-                smtp.send_message(msg, to_addrs=[to_addr])
+                smtp.ehlo(helo)
+                smtp.sendmail(from_addr, [to_addr], payload)
             return
         except Exception as exc:  # noqa: BLE001
             last_err = exc
@@ -148,7 +152,7 @@ def send_feedback_email(
         f"\n--- Message ---\n{message}\n"
     )
     msg.set_content(body)
-    _send_via_smtp(msg, to_addr)
+    _send_via_smtp(msg, to_addr, from_addr)
 
 
 def submit_feedback(
