@@ -19,6 +19,8 @@ services:
       - FEEDBACK_HELO=${FEEDBACK_HELO:-tools.birolbenli.com}
       - RATE_LIMIT_MAILTEST=${RATE_LIMIT_MAILTEST:-5}
       - RATE_LIMIT_TOOLS=${RATE_LIMIT_TOOLS:-10}
+      - ADMIN_SETUP_TOKEN=${ADMIN_SETUP_TOKEN:-}
+      - SECRET_KEY=${SECRET_KEY:-}
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Admin — {{ site_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js" defer></script>
+  <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
+</head>
+<body class="admin-body" data-setup-complete="{{ '1' if setup_complete else '0' }}">
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-card">
+      <h1>Admin</h1>
+      <p class="muted" id="auth-lead">Sign in with your authenticator app.</p>
+
+      <div id="setup-panel" class="hidden">
+        <p class="muted">Scan this QR with Google Authenticator / Authy, then enter the 6-digit code.</p>
+        <div id="qr-box" class="qr-box"></div>
+        <p class="mono tiny" id="setup-secret"></p>
+        <label class="field">
+          <span>Setup token (if required)</span>
+          <input id="setup-token" type="password" autocomplete="off" placeholder="ADMIN_SETUP_TOKEN">
+        </label>
+        <label class="field">
+          <span>Authenticator code</span>
+          <input id="setup-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code">
+        </label>
+        <button type="button" class="btn" id="btn-confirm-setup">Activate</button>
+      </div>
+
+      <div id="login-panel" class="hidden">
+        <label class="field">
+          <span>Authenticator code</span>
+          <input id="login-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code">
+        </label>
+        <button type="button" class="btn" id="btn-login">Sign in</button>
+      </div>
+
+      <p class="error-text" id="auth-error" hidden></p>
+    </div>
+  </div>
+
+  <div id="app-screen" class="hidden">
+    <header class="admin-top">
+      <div class="admin-brand">
+        <strong>Admin</strong>
+        <span class="muted tiny">{{ site_name }}</span>
+      </div>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
+      <button type="button" class="btn btn-ghost" id="btn-logout">Logout</button>
+    </header>
+
+    <div class="admin-shell">
+      <nav class="admin-nav" id="admin-nav">
+        <button type="button" data-tab="overview" class="nav-item active">Overview</button>
+        <button type="button" data-tab="ips" class="nav-item">Top IPs</button>
+        <button type="button" data-tab="lists" class="nav-item">Allow / Block</button>
+        <button type="button" data-tab="queries" class="nav-item">Query logs</button>
+        <button type="button" data-tab="tools" class="nav-item">Tools & charts</button>
+        <button type="button" data-tab="mail" class="nav-item">Mail Tester</button>
+        <button type="button" data-tab="visitors" class="nav-item">Visitors</button>
+      </nav>
+
+      <main class="admin-main">
+        <section class="tab active" id="tab-overview">
+          <h2>Overview</h2>
+          <div class="stat-grid" id="overview-stats"></div>
+        </section>
+
+        <section class="tab" id="tab-ips">
+          <h2>Top IPs</h2>
+          <p class="muted">Last 7 days — quick allow / block.</p>
+          <div class="table-scroll"><table class="admin-table" id="table-top-ips">
+            <thead><tr>
+              <th>IP</th><th>Hits</th><th>Tools</th><th>Last</th><th>Geo / UA</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+
+        <section class="tab" id="tab-lists">
+          <h2>Allow / Block lists</h2>
+          <form id="list-form" class="inline-form">
+            <input name="ip" required placeholder="IP address" class="mono">
+            <select name="list_type">
+              <option value="whitelist">Whitelist (no rate limit)</option>
+              <option value="blacklist">Blacklist (blocked)</option>
+            </select>
+            <input name="note" placeholder="Note (optional)">
+            <button class="btn" type="submit">Add</button>
+          </form>
+          <div class="split-lists">
+            <div>
+              <h3>Whitelist</h3>
+              <ul class="ip-list" id="list-whitelist"></ul>
+            </div>
+            <div>
+              <h3>Blacklist</h3>
+              <ul class="ip-list" id="list-blacklist"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab" id="tab-queries">
+          <h2>Query logs</h2>
+          <div class="filters">
+            <input id="filter-tool" placeholder="tool (mx, exchange…)">
+            <input id="filter-ip" placeholder="IP" class="mono">
+            <button type="button" class="btn btn-ghost" id="btn-reload-queries">Filter</button>
+          </div>
+          <div class="table-scroll"><table class="admin-table" id="table-queries">
+            <thead><tr>
+              <th>When</th><th>IP</th><th>Tool</th><th>Query</th><th>UA</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+
+        <section class="tab" id="tab-tools">
+          <h2>Tools & charts</h2>
+          <div class="chart-wrap"><canvas id="chart-tools" height="160"></canvas></div>
+          <div class="chart-wrap"><canvas id="chart-days" height="180"></canvas></div>
+          <div class="table-scroll"><table class="admin-table" id="table-tool-counts">
+            <thead><tr><th>Tool</th><th>Count (14d)</th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+
+        <section class="tab" id="tab-mail">
+          <h2>Mail Tester</h2>
+          <p class="muted">Generated inboxes and sender details.</p>
+          <div class="table-scroll"><table class="admin-table" id="table-mail">
+            <thead><tr>
+              <th>Created</th><th>Address</th><th>Status</th><th>Peer IP</th><th>Envelope / From</th><th>Score</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+
+        <section class="tab" id="tab-visitors">
+          <h2>Visitors</h2>
+          <div id="admin-map" class="admin-map"></div>
+          <div class="stat-grid" id="visitor-countries"></div>
+          <h3>Top visitor IPs</h3>
+          <div class="table-scroll"><table class="admin-table" id="table-visitors">
+            <thead><tr>
+              <th>IP</th><th>Hits</th><th>Country</th><th>City / ISP</th><th>OS / Browser</th><th>Last</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <h3>Recent page hits</h3>
+          <div class="table-scroll"><table class="admin-table" id="table-visits">
+            <thead><tr>
+              <th>When</th><th>IP</th><th>Path</th><th>OS</th><th>Browser</th><th>Geo</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table></div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

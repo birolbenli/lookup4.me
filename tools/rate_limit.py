@@ -112,12 +112,32 @@ def consume(ip: str, bucket: str) -> dict:
     """
     Consume one daily credit for ip/bucket.
     Returns allowed=False when the limit is already reached (no increment).
+    Whitelisted IPs never consume credits.
     """
     ip = (ip or "").strip() or "unknown"
     bucket = (bucket or BUCKET_TOOLS).strip().lower()
     limit = limit_for(bucket)
     day = _day_key()
     init_rate_limit()
+
+    try:
+        from .admin_store import is_whitelisted
+
+        if is_whitelisted(ip):
+            return {
+                "ok": True,
+                "allowed": True,
+                "whitelisted": True,
+                "ip": ip,
+                "bucket": bucket,
+                "limit": limit,
+                "used": 0,
+                "remaining": limit,
+                "day": day,
+                "reset_at": _reset_at(day),
+            }
+    except Exception:  # noqa: BLE001
+        pass
 
     with _LOCK:
         with _conn() as conn:

@@ -11,6 +11,33 @@ from flask import Flask, Response, g, jsonify, render_template, request
 
 from i18n import COOKIE as LANG_COOKIE
 from i18n import _, detect_lang, get_lang, js_bundle, localize_tools
+from tools.admin_auth import (
+    begin_setup,
+    confirm_setup,
+    flask_secret_key,
+    is_setup_complete,
+    issue_session,
+    setup_token_ok,
+    validate_session,
+    verify_login,
+)
+from tools.admin_store import (
+    add_ip,
+    cleanup_old_logs,
+    country_visit_stats,
+    init_admin_store,
+    is_blacklisted,
+    list_ips,
+    log_query,
+    log_visit,
+    overview_stats,
+    recent_queries,
+    recent_visits,
+    remove_ip,
+    tool_stats,
+    top_ips,
+    top_visitors,
+)
 from tools.blacklist import check_blacklist
 from tools.dkim import lookup_dkim
 from tools.dmarc import lookup_dmarc
@@ -20,7 +47,7 @@ from tools.exchange_check import check_exchange
 from tools.feedback import init_feedback, submit_feedback
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
-from tools.mail_store import create_test, get_test, init_mail_store
+from tools.mail_store import create_test, get_test, init_mail_store, list_tests
 from tools.mx import lookup_mx
 from tools.port_check import check_port
 from tools.rdns import lookup_rdns
@@ -42,7 +69,10 @@ from tools.whois_lookup import lookup_whois
 
 logging.basicConfig(level=logging.INFO)
 
+ADMIN_COOKIE = "admin_session"
+
 app = Flask(__name__)
+app.secret_key = flask_secret_key()
 app.config["BUYMEACOFFEE_URL"] = os.environ.get(
     "BUYMEACOFFEE_URL", "https://buymeacoffee.com/birolbenli"
 )
@@ -237,6 +267,17 @@ def _ensure_runtime():
     init_feedback()
     init_visitors()
     init_rate_limit()
+    init_admin_store()
+
+    path = request.path or "/"
+    if path.startswith("/static") or path.startswith("/admin") or path == "/health":
+        return None
+    ip = client_ip_from_request(request)
+    if is_blacklisted(ip):
+        if path.startswith("/api/") or request.args.get("format") == "json":
+            return jsonify({"ok": False, "error": "Forbidden", "code": "blacklisted"}), 403
+        return Response("Forbidden\n", status=403, mimetype="text/plain")
+    return None
 
 
 def _should_track_visitor() -> bool:
@@ -245,11 +286,32 @@ def _should_track_visitor() -> bool:
     path = request.path or "/"
     if path.startswith("/static") or path.startswith("/api/") or path == "/health":
         return False
+    if path.startswith("/admin"):
+        return False
     if path.endswith(".json"):
         return False
     if wants_plain():
         return False
     return True
+
+
+def _log_visit_bg(ip: str, path: str, ua: str) -> None:
+    try:
+        track_visitor(ip)
+        from tools.ip_info import lookup_geo
+
+        geo = lookup_geo(ip) if ip else {}
+        log_visit(
+            ip=ip,
+            path=path,
+            user_agent=ua,
+            country_code=(geo.get("country_code") or "") if geo.get("ok") else "",
+            country_name=(geo.get("country") or "") if geo.get("ok") else "",
+            city=(geo.get("city") or "") if geo.get("ok") else "",
+            isp=(geo.get("isp") or geo.get("org") or "") if geo.get("ok") else "",
+        )
+    except Exception:  # noqa: BLE001
+        logging.exception("visit log failed")
 
 
 @app.after_request
@@ -264,7 +326,11 @@ def _after_request(response):
     ctype = (response.content_type or "").lower()
     if _should_track_visitor() and "text/html" in ctype and response.status_code < 400:
         ip = client_ip_from_request(request)
-        threading.Thread(target=track_visitor, args=(ip,), daemon=True).start()
+        ua = request.headers.get("User-Agent", "")
+        path = request.path or "/"
+        threading.Thread(
+            target=_log_visit_bg, args=(ip, path, ua), daemon=True
+        ).start()
     return response
 
 
@@ -388,7 +454,27 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = {"ok": False, "error": "Unknown tool"}
 
     bump(slug)
+    try:
+        log_query(
+            ip=client_ip_from_request(request),
+            tool=slug,
+            query=query,
+            ok=bool(result.get("ok", True)) if isinstance(result, dict) else True,
+            user_agent=request.headers.get("User-Agent", ""),
+        )
+    except Exception:  # noqa: BLE001
+        logging.exception("query log failed")
     return result
+
+
+def _admin_authed() -> bool:
+    return validate_session(request.cookies.get(ADMIN_COOKIE))
+
+
+def _require_admin():
+    if not _admin_authed():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+    return None
 
 
 @app.get("/health")
@@ -557,7 +643,175 @@ def api_mailtest_create():
             "remaining": usage.get("remaining"),
             "reset_at": usage.get("reset_at"),
         }
+        try:
+            log_query(
+                ip=client_ip_from_request(request),
+                tool="mailtest",
+                query=result.get("address") or "create",
+                ok=True,
+                user_agent=request.headers.get("User-Agent", ""),
+            )
+        except Exception:  # noqa: BLE001
+            logging.exception("mailtest log failed")
     return jsonify(result)
+
+
+@app.get("/admin")
+@app.get("/admin/")
+def admin_page():
+    return render_template(
+        "admin.html",
+        setup_complete=is_setup_complete(),
+        site_name="tools.birolbenli.com",
+    )
+
+
+@app.post("/admin/api/setup/begin")
+def admin_setup_begin():
+    data = request.get_json(silent=True) or {}
+    if is_setup_complete():
+        return jsonify({"ok": False, "error": "Already configured", "active": True}), 400
+    if not setup_token_ok(data.get("setup_token")):
+        return jsonify({"ok": False, "error": "Invalid setup token"}), 403
+    return jsonify(begin_setup())
+
+
+@app.post("/admin/api/setup/confirm")
+def admin_setup_confirm():
+    data = request.get_json(silent=True) or {}
+    if is_setup_complete():
+        return jsonify({"ok": False, "error": "Already configured"}), 400
+    if not setup_token_ok(data.get("setup_token")):
+        return jsonify({"ok": False, "error": "Invalid setup token"}), 403
+    result = confirm_setup(data.get("code") or "")
+    if not result.get("ok"):
+        return jsonify(result), 400
+    token = issue_session()
+    resp = jsonify({"ok": True})
+    resp.set_cookie(
+        ADMIN_COOKIE,
+        token,
+        httponly=True,
+        samesite="Lax",
+        secure=request.is_secure,
+        max_age=60 * 60 * 12,
+    )
+    return resp
+
+
+@app.post("/admin/api/login")
+def admin_login():
+    data = request.get_json(silent=True) or {}
+    result = verify_login(data.get("code") or "")
+    if not result.get("ok"):
+        return jsonify(result), 401
+    resp = jsonify({"ok": True})
+    resp.set_cookie(
+        ADMIN_COOKIE,
+        result["token"],
+        httponly=True,
+        samesite="Lax",
+        secure=request.is_secure,
+        max_age=60 * 60 * 12,
+    )
+    return resp
+
+
+@app.post("/admin/api/logout")
+def admin_logout():
+    resp = jsonify({"ok": True})
+    resp.delete_cookie(ADMIN_COOKIE)
+    return resp
+
+
+@app.get("/admin/api/overview")
+def admin_overview():
+    denied = _require_admin()
+    if denied:
+        return denied
+    try:
+        cleanup_old_logs()
+    except Exception:  # noqa: BLE001
+        pass
+    return jsonify({"ok": True, "stats": overview_stats()})
+
+
+@app.get("/admin/api/top-ips")
+def admin_top_ips():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify({"ok": True, "items": top_ips(40, 7)})
+
+
+@app.get("/admin/api/lists")
+def admin_lists_get():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify({"ok": True, "items": list_ips()})
+
+
+@app.post("/admin/api/lists")
+def admin_lists_add():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = add_ip(data.get("ip") or "", data.get("list_type") or "", data.get("note") or "")
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
+
+
+@app.delete("/admin/api/lists")
+def admin_lists_del():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    return jsonify(remove_ip(data.get("ip") or "", data.get("list_type") or ""))
+
+
+@app.get("/admin/api/queries")
+def admin_queries():
+    denied = _require_admin()
+    if denied:
+        return denied
+    tool = (request.args.get("tool") or "").strip() or None
+    ip = (request.args.get("ip") or "").strip() or None
+    return jsonify({"ok": True, "items": recent_queries(150, tool=tool, ip=ip)})
+
+
+@app.get("/admin/api/tool-stats")
+def admin_tool_stats():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify({"ok": True, **tool_stats(14)})
+
+
+@app.get("/admin/api/mail")
+def admin_mail():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify({"ok": True, "items": list_tests(150)})
+
+
+@app.get("/admin/api/visitors")
+def admin_visitors():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify(
+        {
+            "ok": True,
+            "countries": country_visit_stats(30),
+            "top": top_visitors(50, 7),
+            "recent": recent_visits(120),
+            "legacy_countries": get_country_counts(),
+        }
+    )
 
 
 @app.get("/api/mailtest/<test_id>")

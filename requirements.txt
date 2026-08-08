@@ -4,3 +4,5 @@ cryptography==45.0.5
 gunicorn==23.0.0
 dkimpy==1.1.8
 aiosmtpd==1.4.6
+pyotp==2.9.0
+qrcode==8.0

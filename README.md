@@ -18,6 +18,10 @@ Simple DNS, email authentication and SSL lookup tools.
 
 Set an MX record for your `MAILTEST_DOMAIN` (default `tools.birolbenli.com`) to this VPS IP, and expose port **25**.
 
+### Admin panel
+
+Open `/admin` and link an authenticator app (TOTP) on first visit. Optional `ADMIN_SETUP_TOKEN` env protects first-time setup. Whitelist IPs skip rate limits; blacklist IPs are blocked.
+
 ### Direct URLs
 
 ```text

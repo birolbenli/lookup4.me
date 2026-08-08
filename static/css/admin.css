@@ -1,0 +1,281 @@
+:root {
+  --bg: #f3f5f2;
+  --card: #ffffff;
+  --ink: #14231c;
+  --muted: #5c6b63;
+  --line: #d7ddd8;
+  --brand: #0f6a4f;
+  --danger: #b42318;
+  --warn: #b86a00;
+  --ok: #0f6a4f;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --sans: "DM Sans", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body.admin-body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: linear-gradient(180deg, #e8efe9 0%, var(--bg) 180px);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.tiny { font-size: 0.78rem; }
+.mono { font-family: var(--mono); }
+.error-text { color: var(--danger); margin-top: 0.75rem; }
+
+.btn {
+  border: 0;
+  background: var(--brand);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-sm {
+  padding: 0.35rem 0.55rem;
+  font-size: 0.78rem;
+  border-radius: 8px;
+}
+.btn-danger { background: var(--danger); }
+.btn-ok { background: var(--ok); }
+.btn-warn { background: var(--warn); }
+
+.auth-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+.auth-card {
+  width: min(420px, 100%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(20, 35, 28, 0.08);
+}
+.auth-card h1 { margin: 0 0 0.35rem; }
+.field {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+.field input, .inline-form input, .inline-form select, .filters input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: #fff;
+}
+.qr-box {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: #f7faf7;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+}
+.qr-box svg { width: min(200px, 70vw); height: auto; }
+
+.admin-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.admin-brand { flex: 1; display: grid; }
+.nav-toggle {
+  display: none;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.45rem 0.7rem;
+  font-size: 1.1rem;
+}
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 60px);
+}
+.admin-nav {
+  border-right: 1px solid var(--line);
+  background: #fbfcfb;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+}
+.nav-item {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.nav-item.active, .nav-item:hover {
+  background: rgba(15, 106, 79, 0.1);
+  color: var(--brand);
+}
+
+.admin-main { padding: 1rem 1.1rem 2rem; }
+.tab { display: none; }
+.tab.active { display: block; }
+.tab h2 { margin: 0 0 0.35rem; font-size: 1.35rem; }
+.tab h3 { margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.85rem;
+}
+.stat-card strong {
+  display: block;
+  font-size: 1.45rem;
+  margin-top: 0.2rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  margin-top: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  min-width: 640px;
+}
+.admin-table th, .admin-table td {
+  text-align: left;
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.admin-table th {
+  background: #f5f7f4;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+}
+.admin-table tr:last-child td { border-bottom: 0; }
+.truncate {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pill {
+  display: inline-flex;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #eef2ef;
+}
+.pill.wl { background: rgba(15,106,79,.14); color: var(--ok); }
+.pill.bl { background: rgba(180,35,24,.12); color: var(--danger); }
+
+.inline-form, .filters {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1fr auto;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.filters { grid-template-columns: 1fr 1fr auto; }
+
+.split-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.ip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+.ip-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+}
+
+.chart-wrap {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.85rem;
+  margin: 0.75rem 0;
+}
+.admin-map {
+  height: 280px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin-top: 0.75rem;
+}
+.row-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+
+@media (max-width: 900px) {
+  .admin-shell { grid-template-columns: 1fr; }
+  .nav-toggle { display: inline-flex; }
+  .admin-nav {
+    display: none;
+    position: absolute;
+    left: 0; right: 0;
+    top: 58px;
+    z-index: 30;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 12px 24px rgba(0,0,0,.08);
+  }
+  .admin-nav.open { display: grid; }
+  .inline-form, .filters, .split-lists {
+    grid-template-columns: 1fr;
+  }
+  .admin-table { min-width: 560px; }
+}

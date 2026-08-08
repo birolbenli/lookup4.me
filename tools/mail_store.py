@@ -199,6 +199,46 @@ def store_message(
             return cur.rowcount > 0
 
 
+def list_tests(limit: int = 100, status: str | None = None) -> list[dict]:
+    """Admin listing of mail tests (no raw message bodies)."""
+    init_mail_store()
+    with _conn() as conn:
+        if status:
+            rows = conn.execute(
+                """
+                SELECT id, token, address, created_at, expires_at, status,
+                       peer_ip, envelope_from, raw_message, analysis_json
+                FROM mail_tests
+                WHERE status = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (status, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT id, token, address, created_at, expires_at, status,
+                       peer_ip, envelope_from, raw_message, analysis_json
+                FROM mail_tests
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+    out = []
+    for row in rows:
+        item = _row_to_dict(row)
+        # Drop bulky analysis for list view; keep score if present.
+        analysis = item.pop("analysis", None) or {}
+        item["score"] = analysis.get("score")
+        item["score_label"] = analysis.get("score_label")
+        item["from_header"] = (analysis.get("meta") or {}).get("from")
+        item["subject"] = (analysis.get("meta") or {}).get("subject")
+        out.append(item)
+    return out
+
+
 def cleanup_expired(limit: int = 200) -> int:
     init_mail_store()
     cutoff = _iso(_now())
