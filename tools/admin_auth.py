@@ -19,6 +19,10 @@ SESSION_TTL_SEC = 60 * 60 * 12  # full session 12h
 PREAUTH_TTL_SEC = 60 * 15  # password-ok window for OTP/setup
 SETTING_TOTP = "totp_secret"
 SETTING_TOTP_ACTIVE = "totp_active"
+SETTING_USER = "admin_username"
+SETTING_PASS_HASH = "admin_password_hash"
+_PBKDF2_ITERS = 200_000
+_MIN_PASSWORD_LEN = 10
 
 
 def _secret_key() -> bytes:
@@ -47,27 +51,127 @@ def flask_secret_key() -> str:
     return base64.urlsafe_b64encode(_secret_key()).decode("ascii")
 
 
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac(
+        "sha256",
+        (password or "").encode("utf-8"),
+        salt.encode("ascii"),
+        _PBKDF2_ITERS,
+    )
+    return f"pbkdf2_sha256${_PBKDF2_ITERS}${salt}${dk.hex()}"
+
+
+def verify_password_hash(password: str, stored: str) -> bool:
+    try:
+        algo, iters_s, salt, digest = (stored or "").split("$", 3)
+        if algo != "pbkdf2_sha256":
+            return False
+        iters = int(iters_s)
+        dk = hashlib.pbkdf2_hmac(
+            "sha256",
+            (password or "").encode("utf-8"),
+            salt.encode("ascii"),
+            iters,
+        )
+        return hmac.compare_digest(dk.hex(), digest)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def admin_username() -> str:
+    db_user = (get_setting(SETTING_USER) or "").strip()
+    if db_user:
+        return db_user
+    return (os.environ.get("ADMIN_USER") or "admin").strip() or "admin"
+
+
 def admin_credentials() -> tuple[str, str]:
-    user = (os.environ.get("ADMIN_USER") or "admin").strip()
+    """Bootstrap credentials from env (used only when no DB password hash)."""
+    user = admin_username()
     password = (os.environ.get("ADMIN_PASSWORD") or "").strip()
     return user, password
 
 
 def password_configured() -> bool:
-    return bool(admin_credentials()[1])
+    if get_setting(SETTING_PASS_HASH):
+        return True
+    return bool((os.environ.get("ADMIN_PASSWORD") or "").strip())
 
 
 def verify_password(username: str, password: str) -> bool:
-    expect_user, expect_pass = admin_credentials()
+    expect_user = admin_username()
+    if not hmac.compare_digest(expect_user, (username or "").strip()):
+        return False
+    stored = get_setting(SETTING_PASS_HASH) or ""
+    if stored:
+        return verify_password_hash(password or "", stored)
+    expect_pass = (os.environ.get("ADMIN_PASSWORD") or "").strip()
     if not expect_pass:
         return False
-    user_ok = hmac.compare_digest(expect_user, (username or "").strip())
-    pass_ok = hmac.compare_digest(expect_pass, password or "")
-    return user_ok and pass_ok
+    return hmac.compare_digest(expect_pass, password or "")
 
 
 def is_setup_complete() -> bool:
     return get_setting(SETTING_TOTP_ACTIVE) == "1" and bool(get_setting(SETTING_TOTP))
+
+
+def profile_info() -> dict:
+    return {
+        "ok": True,
+        "username": admin_username(),
+        "password_source": "database" if get_setting(SETTING_PASS_HASH) else "env",
+        "totp_active": is_setup_complete(),
+        "min_password_len": _MIN_PASSWORD_LEN,
+    }
+
+
+def update_username(new_username: str, current_password: str) -> dict:
+    new_username = (new_username or "").strip()
+    if len(new_username) < 3 or len(new_username) > 64:
+        return {"ok": False, "error": "Username must be 3–64 characters"}
+    if not all(ch.isalnum() or ch in "._-" for ch in new_username):
+        return {"ok": False, "error": "Username may only use letters, digits, . _ -"}
+    if not verify_password(admin_username(), current_password):
+        return {"ok": False, "error": "Current password is wrong"}
+    set_setting(SETTING_USER, new_username)
+    return {"ok": True, "username": new_username}
+
+
+def change_password(current_password: str, new_password: str, otp: str = "") -> dict:
+    if not verify_password(admin_username(), current_password):
+        return {"ok": False, "error": "Current password is wrong"}
+    new_password = new_password or ""
+    if len(new_password) < _MIN_PASSWORD_LEN:
+        return {
+            "ok": False,
+            "error": f"New password must be at least {_MIN_PASSWORD_LEN} characters",
+        }
+    if new_password == current_password:
+        return {"ok": False, "error": "New password must be different"}
+    if is_setup_complete() and not verify_code(otp):
+        return {"ok": False, "error": "Invalid authenticator code"}
+    set_setting(SETTING_PASS_HASH, hash_password(new_password))
+    return {"ok": True}
+
+
+def reset_authenticator(current_password: str, otp: str = "") -> dict:
+    """Clear TOTP and start a new enrollment (requires password + current OTP)."""
+    if not verify_password(admin_username(), current_password):
+        return {"ok": False, "error": "Current password is wrong"}
+    if is_setup_complete() and not verify_code(otp):
+        return {"ok": False, "error": "Invalid authenticator code"}
+    set_setting(SETTING_TOTP, "")
+    set_setting(SETTING_TOTP_ACTIVE, "0")
+    setup = begin_setup()
+    setup["ok"] = True
+    setup["reset"] = True
+    return setup
+
+
+def confirm_authenticator(code: str) -> dict:
+    """Confirm TOTP while already logged in (re-enrollment)."""
+    return confirm_setup(code)
 
 
 def _sign(parts: list[str]) -> str:
@@ -113,7 +217,7 @@ def validate_preauth(token: str | None) -> bool:
 
 def begin_setup() -> dict:
     """Create/reuse pending TOTP secret and return QR provisioning info."""
-    secret = get_setting(SETTING_TOTP)
+    secret = (get_setting(SETTING_TOTP) or "").strip()
     if is_setup_complete():
         return {"ok": False, "error": "Authenticator already configured", "active": True}
     if not secret:
@@ -122,8 +226,9 @@ def begin_setup() -> dict:
         set_setting(SETTING_TOTP_ACTIVE, "0")
 
     issuer = "tools.birolbenli.com"
+    account = f"{admin_username()}@{issuer}"
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name="admin@" + issuer, issuer_name=issuer)
+    uri = totp.provisioning_uri(name=account, issuer_name=issuer)
     return {
         "ok": True,
         "secret": secret,

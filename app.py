@@ -13,12 +13,17 @@ from i18n import COOKIE as LANG_COOKIE
 from i18n import _, detect_lang, get_lang, js_bundle, localize_tools
 from tools.admin_auth import (
     begin_setup,
+    change_password,
+    confirm_authenticator,
     confirm_setup,
     flask_secret_key,
     is_setup_complete,
     login as admin_password_login,
     login_otp,
     password_configured,
+    profile_info,
+    reset_authenticator,
+    update_username,
     validate_preauth,
     validate_session,
 )
@@ -794,6 +799,76 @@ def admin_logout():
     resp.delete_cookie(ADMIN_COOKIE)
     resp.delete_cookie(ADMIN_PREAUTH_COOKIE)
     return resp
+
+
+@app.get("/admin/api/profile")
+def admin_profile_get():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify(profile_info())
+
+
+@app.post("/admin/api/profile/username")
+def admin_profile_username():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = update_username(
+        data.get("username") or "",
+        data.get("current_password") or "",
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.post("/admin/api/profile/password")
+def admin_profile_password():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    new_password = data.get("new_password") or ""
+    confirm = data.get("confirm_password") or ""
+    if new_password != confirm:
+        return jsonify({"ok": False, "error": "Password confirmation does not match"}), 400
+    result = change_password(
+        data.get("current_password") or "",
+        new_password,
+        data.get("otp") or "",
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.post("/admin/api/profile/totp/reset")
+def admin_profile_totp_reset():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = reset_authenticator(
+        data.get("current_password") or "",
+        data.get("otp") or "",
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.post("/admin/api/profile/totp/confirm")
+def admin_profile_totp_confirm():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = confirm_authenticator(data.get("code") or "")
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify({"ok": True, "totp_active": True})
 
 
 @app.get("/admin/api/overview")

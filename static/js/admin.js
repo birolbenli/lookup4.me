@@ -189,10 +189,139 @@
       $$(".tab").forEach((t) => t.classList.remove("active"));
       $(`#tab-${btn.dataset.tab}`)?.classList.add("active");
       $("#admin-nav")?.classList.remove("open");
+      if (btn.dataset.tab === "account") loadAccount();
     });
   });
   $("#nav-toggle")?.addEventListener("click", () => {
     $("#admin-nav")?.classList.toggle("open");
+  });
+
+  function setAccountMsg(ok, err) {
+    const okEl = $("#account-ok");
+    const errEl = $("#account-error");
+    if (okEl) {
+      okEl.hidden = !ok;
+      okEl.textContent = ok || "";
+    }
+    if (errEl) {
+      errEl.hidden = !err;
+      errEl.textContent = err || "";
+    }
+  }
+
+  function renderAccountQr(setup) {
+    const box = $("#acct-qr-box");
+    const secretEl = $("#acct-setup-secret");
+    if (!box) return;
+    if (secretEl) secretEl.textContent = setup?.secret || "";
+    if (setup?.qr_svg) {
+      box.innerHTML = setup.qr_svg;
+    } else if (setup?.qr_img) {
+      box.innerHTML = `<img src="${esc(setup.qr_img)}" width="220" height="220" alt="QR code">`;
+    } else if (setup?.otpauth_url) {
+      box.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+        setup.otpauth_url
+      )}" width="220" height="220" alt="QR code">`;
+    } else {
+      box.innerHTML = "<p class='muted'>QR üretilemedi — gizli anahtarı elle girin.</p>";
+    }
+  }
+
+  async function loadAccount() {
+    setAccountMsg("", "");
+    const data = await api("/profile");
+    $("#acct-username").value = data.username || "";
+    $("#account-meta").textContent =
+      data.password_source === "database"
+        ? "Password is stored in the admin database (overrides .env)."
+        : "Password currently comes from server .env — changing it here moves it into the database.";
+    const totpOn = !!data.totp_active;
+    $("#acct-totp-status").textContent = totpOn
+      ? "Authenticator is active."
+      : "Authenticator is not active — scan a new QR below after reset.";
+    $("#acct-pass-otp-wrap")?.classList.toggle("hidden", !totpOn);
+    $("#acct-totp-otp-wrap")?.classList.toggle("hidden", !totpOn);
+  }
+
+  $("#btn-save-username")?.addEventListener("click", async () => {
+    setAccountMsg("", "");
+    try {
+      const data = await api("/profile/username", {
+        method: "POST",
+        body: JSON.stringify({
+          username: $("#acct-username").value,
+          current_password: $("#acct-user-pass").value,
+        }),
+      });
+      $("#acct-user-pass").value = "";
+      $("#login-user").value = data.username || $("#acct-username").value;
+      setAccountMsg("Username updated.", "");
+      await loadAccount();
+    } catch (err) {
+      setAccountMsg("", String(err.message || err));
+    }
+  });
+
+  $("#btn-save-password")?.addEventListener("click", async () => {
+    setAccountMsg("", "");
+    try {
+      await api("/profile/password", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: $("#acct-pass-current").value,
+          new_password: $("#acct-pass-new").value,
+          confirm_password: $("#acct-pass-confirm").value,
+          otp: $("#acct-pass-otp")?.value || "",
+        }),
+      });
+      $("#acct-pass-current").value = "";
+      $("#acct-pass-new").value = "";
+      $("#acct-pass-confirm").value = "";
+      if ($("#acct-pass-otp")) $("#acct-pass-otp").value = "";
+      setAccountMsg("Password updated. Use the new password next login.", "");
+      await loadAccount();
+    } catch (err) {
+      setAccountMsg("", String(err.message || err));
+    }
+  });
+
+  $("#btn-totp-reset")?.addEventListener("click", async () => {
+    setAccountMsg("", "");
+    if (!confirm("Remove the current authenticator and show a new QR?")) return;
+    try {
+      const data = await api("/profile/totp/reset", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: $("#acct-totp-pass").value,
+          otp: $("#acct-totp-otp")?.value || "",
+        }),
+      });
+      $("#acct-totp-pass").value = "";
+      if ($("#acct-totp-otp")) $("#acct-totp-otp").value = "";
+      $("#acct-totp-enroll")?.classList.remove("hidden");
+      renderAccountQr(data);
+      setAccountMsg("Old authenticator removed. Scan the new QR and activate it.", "");
+      await loadAccount();
+    } catch (err) {
+      setAccountMsg("", String(err.message || err));
+    }
+  });
+
+  $("#btn-totp-confirm")?.addEventListener("click", async () => {
+    setAccountMsg("", "");
+    try {
+      await api("/profile/totp/confirm", {
+        method: "POST",
+        body: JSON.stringify({ code: $("#acct-totp-confirm").value }),
+      });
+      $("#acct-totp-confirm").value = "";
+      $("#acct-totp-enroll")?.classList.add("hidden");
+      setAccountMsg("New authenticator activated.", "");
+      document.body.dataset.setupComplete = "1";
+      await loadAccount();
+    } catch (err) {
+      setAccountMsg("", String(err.message || err));
+    }
   });
 
   async function setList(ip, listType) {

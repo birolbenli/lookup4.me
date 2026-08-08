@@ -92,6 +92,7 @@
         <button type="button" data-tab="tools" class="nav-item">Tools & charts</button>
         <button type="button" data-tab="mail" class="nav-item">Mail Tester</button>
         <button type="button" data-tab="visitors" class="nav-item">Visitors</button>
+        <button type="button" data-tab="account" class="nav-item">Account</button>
       </nav>
 
       <main class="admin-main">
@@ -188,6 +189,75 @@
             </tr></thead>
             <tbody></tbody>
           </table></div>
+        </section>
+
+        <section class="tab" id="tab-account">
+          <h2>Account</h2>
+          <p class="muted">Update username, password, or re-enroll authenticator.</p>
+          <p class="tiny muted" id="account-meta"></p>
+          <p class="error-text" id="account-error" hidden></p>
+          <p class="ok-text" id="account-ok" hidden></p>
+
+          <div class="account-card">
+            <h3>Username</h3>
+            <label class="field">
+              <span>Username</span>
+              <input id="acct-username" type="text" autocomplete="username">
+            </label>
+            <label class="field">
+              <span>Current password</span>
+              <input id="acct-user-pass" type="password" autocomplete="current-password">
+            </label>
+            <button type="button" class="btn" id="btn-save-username">Save username</button>
+          </div>
+
+          <div class="account-card">
+            <h3>Password</h3>
+            <label class="field">
+              <span>Current password</span>
+              <input id="acct-pass-current" type="password" autocomplete="current-password">
+            </label>
+            <label class="field">
+              <span>New password</span>
+              <input id="acct-pass-new" type="password" autocomplete="new-password">
+            </label>
+            <label class="field">
+              <span>Confirm new password</span>
+              <input id="acct-pass-confirm" type="password" autocomplete="new-password">
+            </label>
+            <label class="field" id="acct-pass-otp-wrap">
+              <span>Authenticator code</span>
+              <input id="acct-pass-otp" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="123456">
+            </label>
+            <button type="button" class="btn" id="btn-save-password">Change password</button>
+          </div>
+
+          <div class="account-card">
+            <h3>Authenticator</h3>
+            <p class="muted" id="acct-totp-status">—</p>
+            <div id="acct-totp-reset-form">
+              <label class="field">
+                <span>Current password</span>
+                <input id="acct-totp-pass" type="password" autocomplete="current-password">
+              </label>
+              <label class="field" id="acct-totp-otp-wrap">
+                <span>Current authenticator code</span>
+                <input id="acct-totp-otp" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="123456">
+              </label>
+              <button type="button" class="btn btn-warn" id="btn-totp-reset">Remove &amp; show new QR</button>
+            </div>
+            <div id="acct-totp-enroll" class="hidden">
+              <p class="muted">Scan the new QR, then enter the new 6-digit code.</p>
+              <div id="acct-qr-box" class="qr-box"></div>
+              <p class="tiny muted">Secret:</p>
+              <p class="mono tiny select-all" id="acct-setup-secret"></p>
+              <label class="field">
+                <span>New authenticator code</span>
+                <input id="acct-totp-confirm" type="text" inputmode="numeric" maxlength="8" autocomplete="one-time-code" placeholder="123456">
+              </label>
+              <button type="button" class="btn" id="btn-totp-confirm">Activate new authenticator</button>
+            </div>
+          </div>
         </section>
       </main>
     </div>
