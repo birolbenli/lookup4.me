@@ -4,6 +4,22 @@ function t(key, vars) {
   return key;
 }
 
+function rateLimitMessage(data) {
+  const limit = data?.limit ?? "";
+  const reset = data?.reset_at
+    ? `${String(data.reset_at).replace("T", " ").slice(0, 16)} UTC`
+    : "";
+  const base =
+    data?.bucket === "mailtest"
+      ? t("Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.", {
+          limit,
+        })
+      : t("Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.", {
+          limit,
+        });
+  return reset ? `${base} (${reset})` : base;
+}
+
 async function runLookup(endpoint, payload, render) {
   const out = document.getElementById("results");
   const btn = document.querySelector("#tool-form button[type='submit']");
@@ -21,6 +37,12 @@ async function runLookup(endpoint, payload, render) {
     });
     const data = await res.json();
     out.innerHTML = "";
+    if (res.status === 429 || data.code === "rate_limited") {
+      out.innerHTML = `<div class="error-box rate-limit-box">${escapeHtml(
+        data.error || rateLimitMessage(data)
+      )}</div>`;
+      return;
+    }
     render(data, out);
   } catch (err) {
     out.innerHTML = `<div class="error-box">${escapeHtml(t("Request failed"))}: ${escapeHtml(String(err))}</div>`;
@@ -1049,8 +1071,13 @@ async function startMailTest(panel, existingId) {
     waiting.classList.remove("hidden");
     const res = await fetch("/api/mailtest/create", { method: "POST" });
     const data = await res.json();
-    if (!data.ok) {
-      results.innerHTML = `<div class="error-box">${escapeHtml(data.error || t("Could not create test"))}</div>`;
+    if (!data.ok || res.status === 429 || data.code === "rate_limited") {
+      waiting.classList.add("hidden");
+      results.innerHTML = `<div class="error-box rate-limit-box">${escapeHtml(
+        data.code === "rate_limited"
+          ? data.error || rateLimitMessage(data)
+          : data.error || t("Could not create test")
+      )}</div>`;
       return;
     }
     testId = data.id;

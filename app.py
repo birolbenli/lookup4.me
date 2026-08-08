@@ -28,6 +28,14 @@ from tools.smtp_receiver import start_smtp_receiver
 from tools.smtp_test import test_smtp
 from tools.spf import lookup_spf
 from tools.ssl_check import check_bulk
+from tools.rate_limit import (
+    BUCKET_MAILTEST,
+    BUCKET_TOOLS,
+    consume as consume_rate,
+    init_rate_limit,
+    limit_for as rate_limit_for,
+    peek as peek_rate,
+)
 from tools.stats import bump, get_counts, init_stats, total_count
 from tools.visitors import get_country_counts, init_visitors, track_visitor, visitor_total
 from tools.whois_lookup import lookup_whois
@@ -228,6 +236,7 @@ def _ensure_runtime():
     init_mail_store()
     init_feedback()
     init_visitors()
+    init_rate_limit()
 
 
 def _should_track_visitor() -> bool:
@@ -274,7 +283,49 @@ def inject_globals():
         "visitor_ip": client_ip_from_request(request),
         "lang": get_lang(),
         "js_i18n": js_bundle(),
+        "rate_limit_mailtest": rate_limit_for(BUCKET_MAILTEST),
+        "rate_limit_tools": rate_limit_for(BUCKET_TOOLS),
     }
+
+
+def _rate_limit_response(info: dict, as_json: bool = True):
+    headers = {
+        "X-RateLimit-Limit": str(info.get("limit", 0)),
+        "X-RateLimit-Remaining": str(info.get("remaining", 0)),
+        "X-RateLimit-Reset": str(info.get("reset_at") or ""),
+    }
+    limit = info.get("limit") or 0
+    if info.get("bucket") == BUCKET_MAILTEST:
+        error = _(
+            "Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.",
+            limit=limit,
+        )
+    else:
+        error = _(
+            "Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.",
+            limit=limit,
+        )
+    payload = {
+        "ok": False,
+        "error": error,
+        "code": "rate_limited",
+        "limit": info.get("limit"),
+        "used": info.get("used"),
+        "remaining": info.get("remaining"),
+        "reset_at": info.get("reset_at"),
+        "bucket": info.get("bucket"),
+    }
+    if as_json:
+        return jsonify(payload), 429, headers
+    return Response(error + "\n", status=429, mimetype="text/plain", headers=headers)
+
+
+def _consume_or_reject(bucket: str, as_json: bool = True):
+    ip = client_ip_from_request(request)
+    info = consume_rate(ip, bucket)
+    if not info.get("allowed"):
+        return _rate_limit_response(info, as_json=as_json)
+    return None
 
 
 def wants_plain() -> bool:
@@ -436,6 +487,9 @@ def tool_page(slug: str, query: str | None = None):
     dns_type = request.args.get("type", "A")
 
     if query and wants_plain() and slug in {"ip", "rdns"}:
+        blocked = _consume_or_reject(BUCKET_TOOLS, as_json=False)
+        if blocked:
+            return blocked
         result = run_tool(slug, query)
         if slug == "ip":
             return Response((result.get("ip") or "") + "\n", mimetype="text/plain")
@@ -443,6 +497,9 @@ def tool_page(slug: str, query: str | None = None):
         return Response("\n".join(hosts) + ("\n" if hosts else ""), mimetype="text/plain")
 
     if query and request.args.get("format") == "json" and slug not in {"mailtest"}:
+        blocked = _consume_or_reject(BUCKET_TOOLS, as_json=True)
+        if blocked:
+            return blocked
         return jsonify(run_tool(slug, query, {"type": dns_type}))
 
     template = tool.get("template") or "tool.html"
@@ -476,15 +533,30 @@ def api_tool(slug: str):
     if not str(query).strip() and not tool.get("optional"):
         return jsonify({"ok": False, "error": "Missing query"}), 400
 
+    blocked = _consume_or_reject(BUCKET_TOOLS, as_json=True)
+    if blocked:
+        return blocked
+
     extra = {"type": data.get("type") or "A"}
     return jsonify(run_tool(slug, str(query), extra))
 
 
 @app.post("/api/mailtest/create")
 def api_mailtest_create():
+    blocked = _consume_or_reject(BUCKET_MAILTEST, as_json=True)
+    if blocked:
+        return blocked
     domain = app.config["MAILTEST_DOMAIN"]
     result = create_test(domain)
     bump("mailtest")
+    if isinstance(result, dict):
+        usage = peek_rate(client_ip_from_request(request), BUCKET_MAILTEST)
+        result["rate_limit"] = {
+            "limit": usage.get("limit"),
+            "used": usage.get("used"),
+            "remaining": usage.get("remaining"),
+            "reset_at": usage.get("reset_at"),
+        }
     return jsonify(result)
 
 

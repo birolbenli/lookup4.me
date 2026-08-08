@@ -1789,6 +1789,13 @@ code.inline,
   padding: 0.8rem 0.95rem;
 }
 
+.rate-limit-box {
+  background: rgba(184, 106, 0, 0.1);
+  border-color: rgba(184, 106, 0, 0.35);
+  color: #8a4f00;
+  font-weight: 600;
+}
+
 .loading {
   color: var(--muted);
   font-size: 0.95rem;

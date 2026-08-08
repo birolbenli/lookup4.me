@@ -17,6 +17,8 @@ services:
       - FEEDBACK_TO=${FEEDBACK_TO:-birolbenli@gmail.com}
       - FEEDBACK_FROM=${FEEDBACK_FROM:-noreply@tools.birolbenli.com}
       - FEEDBACK_HELO=${FEEDBACK_HELO:-tools.birolbenli.com}
+      - RATE_LIMIT_MAILTEST=${RATE_LIMIT_MAILTEST:-5}
+      - RATE_LIMIT_TOOLS=${RATE_LIMIT_TOOLS:-10}
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped
