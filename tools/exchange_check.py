@@ -13,8 +13,39 @@ from urllib.parse import urlparse
 from .dns_common import is_ip, normalize_domain, query_records
 from .ssl_check import get_ssl_info
 
-UA = "tools.birolbenli.com/1.0 (+https://tools.birolbenli.com; Exchange VD check)"
+UA = "tools.birolbenli.com/1.0 (+https://tools.birolbenli.com; Exchange HC)"
 TIMEOUT = 8.0
+
+MS_REFS = {
+    "hma": {
+        "title": "Configure Exchange Server for Hybrid Modern Authentication",
+        "url": "https://learn.microsoft.com/en-us/microsoft-365/enterprise/configure-exchange-server-for-hybrid-modern-authentication",
+    },
+    "block_legacy": {
+        "title": "Use authentication policies to block legacy auth (hybrid)",
+        "url": "https://learn.microsoft.com/en-us/exchange/hybrid-deployment/block-legacy-auth-2019-hybrid",
+    },
+    "disable_basic": {
+        "title": "Disable Basic authentication on Exchange virtual directories",
+        "url": "https://learn.microsoft.com/en-us/exchange/plan-and-deploy/post-installation-tasks/disable-basic-authentication-on-exchange-server-virtual-directories",
+    },
+    "legacy_blog": {
+        "title": "Disabling Legacy Authentication in Exchange Server 2019",
+        "url": "https://techcommunity.microsoft.com/blog/exchange/disabling-legacy-authentication-in-exchange-server-2019/712048",
+    },
+    "vd_defaults": {
+        "title": "Default settings for Exchange virtual directories",
+        "url": "https://learn.microsoft.com/en-us/exchange/clients/default-virtual-directory-settings",
+    },
+    "teams_ews": {
+        "title": "How Exchange and Microsoft Teams interact",
+        "url": "https://learn.microsoft.com/en-us/microsoftteams/exchange-teams-interact",
+    },
+    "publish": {
+        "title": "Client access services (publishing Exchange)",
+        "url": "https://learn.microsoft.com/en-us/exchange/architecture/client-access",
+    },
+}
 
 # Common Exchange virtual directories and optional healthcheck paths.
 VDIRS = [
@@ -158,13 +189,23 @@ def _parse_auth(www_authenticate: str | None) -> dict:
     if "bearer" in lower:
         schemes.append("Bearer")
     oauth = "Bearer" in schemes or "oauth" in lower
+    # Negotiate often includes NTLM fallback on Windows; treat as legacy Windows auth exposure.
     ntlm = "NTLM" in schemes or "Negotiate" in schemes
+    auth_uri = ""
+    m = re.search(r'authorization_uri="([^"]+)"', raw, flags=re.I)
+    if m:
+        auth_uri = m.group(1)
+    entra = "login.microsoftonline.com" in auth_uri.lower() or "login.windows.net" in auth_uri.lower()
     return {
         "raw": raw,
         "schemes": schemes,
         "ntlm": ntlm,
         "oauth": oauth,
         "basic": "Basic" in schemes,
+        "authorization_uri": auth_uri,
+        "entra_oauth": entra,
+        "checked": True,
+        "www_authenticate_present": bool(raw.strip()),
     }
 
 
@@ -298,42 +339,280 @@ def _probe_vdir(host: str, vdir: dict) -> dict:
     }
 
 
-def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict]) -> list[dict]:
+def _auth_audit(endpoints: list[dict]) -> dict:
+    """Explicit statement of what was checked for NTLM / OAuth 2.0 / Basic."""
+    probed = [e for e in endpoints if e.get("reachable")]
+    ntlm_eps = [e for e in probed if e.get("auth", {}).get("ntlm")]
+    oauth_eps = [e for e in probed if e.get("auth", {}).get("oauth")]
+    basic_eps = [e for e in probed if e.get("auth", {}).get("basic")]
+    negotiate_eps = [
+        e for e in probed if "Negotiate" in (e.get("auth", {}).get("schemes") or [])
+    ]
+    entra_eps = [e for e in probed if e.get("auth", {}).get("entra_oauth")]
+    no_challenge = [
+        e
+        for e in probed
+        if e.get("exposure") in {"open", "auth_required", "error"}
+        and not e.get("auth", {}).get("www_authenticate_present")
+    ]
+
+    def _status(found: bool, found_label: str, missing_label: str) -> dict:
+        return {
+            "checked": True,
+            "found": found,
+            "status": "detected" if found else "not_detected",
+            "summary": found_label if found else missing_label,
+        }
+
+    return {
+        "method": (
+            "For every reachable virtual directory we issued an unauthenticated HTTPS GET and "
+            "parsed the WWW-Authenticate response header (and related auth challenges)."
+        ),
+        "endpoints_probed": len(probed),
+        "ntlm": {
+            **_status(
+                bool(ntlm_eps),
+                f"NTLM and/or Negotiate challenge detected on {len(ntlm_eps)} endpoint(s).",
+                "No NTLM or Negotiate challenge was advertised on probed endpoints.",
+            ),
+            "endpoints": [
+                {
+                    "url": e["url"],
+                    "name": e.get("name"),
+                    "schemes": e.get("auth", {}).get("schemes") or [],
+                }
+                for e in ntlm_eps
+            ],
+            "microsoft": (
+                "Microsoft recommends moving clients to Modern Authentication and using Authentication Policies "
+                "to block legacy authentication in hybrid environments. Directly disabling NTLM/Negotiate on "
+                "virtual directories is not the supported approach."
+            ),
+            "refs": [MS_REFS["block_legacy"], MS_REFS["legacy_blog"], MS_REFS["hma"]],
+        },
+        "oauth2": {
+            **_status(
+                bool(oauth_eps),
+                f"OAuth 2.0 / Bearer challenge detected on {len(oauth_eps)} endpoint(s).",
+                "No OAuth 2.0 Bearer challenge was advertised on probed endpoints.",
+            ),
+            "entra_hint": bool(entra_eps),
+            "endpoints": [
+                {
+                    "url": e["url"],
+                    "name": e.get("name"),
+                    "authorization_uri": e.get("auth", {}).get("authorization_uri") or "",
+                    "entra": bool(e.get("auth", {}).get("entra_oauth")),
+                }
+                for e in oauth_eps
+            ],
+            "microsoft": (
+                "Hybrid Modern Authentication (HMA) uses OAuth tokens against Microsoft Entra ID instead of "
+                "legacy NTLM. Enable HMA for Exchange on-premises when you run hybrid / Teams scenarios."
+            ),
+            "refs": [MS_REFS["hma"], MS_REFS["block_legacy"]],
+        },
+        "basic": {
+            **_status(
+                bool(basic_eps),
+                f"HTTP Basic authentication advertised on {len(basic_eps)} endpoint(s).",
+                "HTTP Basic authentication was not advertised on probed endpoints.",
+            ),
+            "endpoints": [{"url": e["url"], "name": e.get("name")} for e in basic_eps],
+            "microsoft": (
+                "Microsoft documents how to disable Basic authentication on Exchange virtual directories "
+                "because it increases credential-theft risk."
+            ),
+            "refs": [MS_REFS["disable_basic"]],
+        },
+        "negotiate": {
+            **_status(
+                bool(negotiate_eps),
+                f"Negotiate (Windows Integrated Auth) detected on {len(negotiate_eps)} endpoint(s).",
+                "No Negotiate challenge was advertised on probed endpoints.",
+            ),
+            "endpoints": [{"url": e["url"], "name": e.get("name")} for e in negotiate_eps],
+        },
+        "no_www_authenticate": {
+            "count": len(no_challenge),
+            "note": (
+                "Some reachable endpoints returned no WWW-Authenticate header. "
+                "That can still mean forms/cookie auth (OWA/ECP) or a front-door/WAF response — "
+                "it does not prove Modern Auth is enabled."
+            ),
+            "endpoints": [e["url"] for e in no_challenge[:8]],
+        },
+    }
+
+
+def _posture(endpoints: list[dict], hosts: list[dict], auth_audit: dict) -> dict:
+    """Hybrid / Teams oriented interpretation based on remote signals + Microsoft guidance."""
+    signals = []
+    autodiscover_host = next((h for h in hosts if h.get("role") == "autodiscover"), None)
+    download_host = next((h for h in hosts if h.get("role") == "download"), None)
+    ews = [e for e in endpoints if e.get("id") == "ews" and e.get("reachable")]
+    mapi = [e for e in endpoints if e.get("id") == "mapi" and e.get("reachable")]
+    owa = [e for e in endpoints if e.get("id") == "owa" and e.get("reachable")]
+
+    leak_blob = " ".join(
+        f"{h.get('header','')}:{h.get('value','')}"
+        for e in endpoints
+        for h in (e.get("leaky_headers") or [])
+    ).lower()
+    if "outlook.com" in leak_blob or "prod.outlook.com" in leak_blob:
+        signals.append("cloud_frontend_headers")
+    if any(e.get("auth", {}).get("entra_oauth") for e in endpoints):
+        signals.append("entra_oauth_challenge")
+    if auth_audit.get("ntlm", {}).get("found"):
+        signals.append("legacy_windows_auth")
+    if autodiscover_host and autodiscover_host.get("resolves"):
+        signals.append("autodiscover_dns")
+    if download_host and download_host.get("resolves"):
+        signals.append("download_dns")
+    if ews:
+        signals.append("ews_published")
+    if mapi:
+        signals.append("mapi_published")
+
+    likely_hybrid = bool(
+        signals.count("legacy_windows_auth")
+        or (signals.count("ews_published") and signals.count("autodiscover_dns"))
+        or signals.count("entra_oauth_challenge")
+    )
+    likely_onprem_publish = bool(auth_audit.get("ntlm", {}).get("found") or owa or ews)
+
+    hybrid = {
+        "likely": likely_hybrid or likely_onprem_publish,
+        "signals": signals,
+        "summary": (
+            "Remote signals look like a published Exchange endpoint (often hybrid or internet-facing on-premises)."
+            if likely_hybrid or likely_onprem_publish
+            else "Could not strongly infer hybrid vs pure cloud from external probes alone."
+        ),
+        "guidance": [
+            "If this namespace is hybrid Exchange: enable Hybrid Modern Authentication (HMA) so Outlook/OWA can use Entra ID OAuth instead of NTLM.",
+            "After HMA works, create Authentication Policies to BlockLegacyAuth* for EAS/Autodiscover/MAPI/EWS/OAB/RPC (Exchange 2019 CU2+).",
+            "Keep migration/service accounts out of policies that block EWS legacy auth until cutover is finished.",
+            "Publish only required namespaces; keep ECP and remote PowerShell off the public internet when possible.",
+        ],
+        "refs": [MS_REFS["hma"], MS_REFS["block_legacy"], MS_REFS["legacy_blog"], MS_REFS["vd_defaults"]],
+    }
+
+    teams = {
+        "relevant": True,
+        "summary": (
+            "Microsoft Teams depends on Exchange for calendar and related workloads. "
+            "If Teams is actively used with on-premises or hybrid mailboxes, EWS/Autodiscover availability matters — "
+            "but authentication should be Modern Auth / HMA, not internet-exposed NTLM."
+        ),
+        "guidance": [
+            "Do not simply “turn off EWS” if Teams calendar integration is required; secure it with Modern Auth and least privilege.",
+            "Internet-facing NTLM on EWS is high risk for password spray / relay style abuse — prioritize removing legacy auth challenges from the edge.",
+            "Confirm Teams–Exchange integration prerequisites and that mailboxes/users are in the expected hybrid topology.",
+            "Prefer Entra ID Conditional Access + MFA for cloud identities; avoid publishing admin surfaces (ECP/PowerShell) publicly.",
+        ],
+        "refs": [MS_REFS["teams_ews"], MS_REFS["hma"], MS_REFS["block_legacy"]],
+        "ews_status": (
+            "EWS is reachable externally."
+            if ews
+            else "EWS did not answer externally from this probe (may be blocked, renamed, or fronted differently)."
+        ),
+        "ntlm_on_ews": any(e.get("auth", {}).get("ntlm") for e in ews),
+        "oauth_on_ews": any(e.get("auth", {}).get("oauth") for e in ews),
+    }
+
+    return {"hybrid": hybrid, "teams": teams}
+
+
+def _security_findings(
+    endpoints: list[dict],
+    ssl_info: dict,
+    hosts: list[dict],
+    auth_audit: dict,
+) -> list[dict]:
     findings: list[dict] = []
 
-    ntlm_eps = [e for e in endpoints if e.get("auth", {}).get("ntlm") and e.get("reachable")]
-    if ntlm_eps:
+    ntlm = auth_audit.get("ntlm") or {}
+    if ntlm.get("found"):
         findings.append(
             {
                 "severity": "critical",
-                "title": "NTLM / Negotiate exposed on the internet",
+                "title": "NTLM / Negotiate challenge is exposed on the internet",
+                "detail": ntlm.get("summary"),
+                "guidance": ntlm.get("microsoft"),
+                "endpoints": [e["url"] for e in ntlm.get("endpoints") or []][:8],
+                "refs": ntlm.get("refs") or [],
+                "context": "legacy_auth",
+            }
+        )
+    else:
+        findings.append(
+            {
+                "severity": "ok",
+                "title": "NTLM / Negotiate: checked — not detected on probed endpoints",
                 "detail": (
-                    f"{len(ntlm_eps)} endpoint(s) advertise NTLM or Negotiate. "
-                    "Prefer Modern Auth (OAuth 2.0) and block NTLM at the edge."
+                    f"{ntlm.get('summary')} "
+                    "Note: absence of a challenge in one probe does not guarantee legacy auth is disabled organization-wide."
                 ),
-                "endpoints": [e["url"] for e in ntlm_eps[:8]],
+                "guidance": (
+                    "Still enable Authentication Policies in hybrid to block legacy auth for users/protocols you no longer need."
+                ),
+                "endpoints": [],
+                "refs": [MS_REFS["block_legacy"]],
+                "context": "legacy_auth",
             }
         )
 
-    basic_eps = [e for e in endpoints if e.get("auth", {}).get("basic") and e.get("reachable")]
-    if basic_eps:
+    oauth = auth_audit.get("oauth2") or {}
+    if oauth.get("found"):
+        findings.append(
+            {
+                "severity": "ok",
+                "title": "OAuth 2.0 / Bearer: checked — challenge detected",
+                "detail": (
+                    f"{oauth.get('summary')} "
+                    + (
+                        "Authorization URI points at Microsoft Entra ID (good hybrid/cloud Modern Auth signal)."
+                        if oauth.get("entra_hint")
+                        else "Bearer was advertised; confirm it is Entra ID / HMA and not a custom issuer only."
+                    )
+                ),
+                "guidance": oauth.get("microsoft"),
+                "endpoints": [e["url"] for e in oauth.get("endpoints") or []][:8],
+                "refs": oauth.get("refs") or [],
+                "context": "modern_auth",
+            }
+        )
+    else:
+        findings.append(
+            {
+                "severity": "warning",
+                "title": "OAuth 2.0 / Bearer: checked — not detected on probed endpoints",
+                "detail": (
+                    f"{oauth.get('summary')} "
+                    "If this is hybrid Exchange, Microsoft expects Hybrid Modern Authentication so clients can use OAuth."
+                ),
+                "guidance": (
+                    "Configure and validate HMA, then migrate clients before blocking legacy auth with Authentication Policies."
+                ),
+                "endpoints": [],
+                "refs": [MS_REFS["hma"], MS_REFS["block_legacy"]],
+                "context": "modern_auth",
+            }
+        )
+
+    basic = auth_audit.get("basic") or {}
+    if basic.get("found"):
         findings.append(
             {
                 "severity": "warning",
                 "title": "HTTP Basic authentication advertised",
-                "detail": "Basic auth over the internet increases credential-theft risk. Disable where possible.",
-                "endpoints": [e["url"] for e in basic_eps[:8]],
-            }
-        )
-
-    oauth_eps = [e for e in endpoints if e.get("auth", {}).get("oauth")]
-    if oauth_eps and not ntlm_eps:
-        findings.append(
-            {
-                "severity": "ok",
-                "title": "OAuth / Bearer challenge observed",
-                "detail": "At least one endpoint advertises Bearer/OAuth-style authentication.",
-                "endpoints": [e["url"] for e in oauth_eps[:5]],
+                "detail": basic.get("summary"),
+                "guidance": basic.get("microsoft"),
+                "endpoints": [e["url"] for e in basic.get("endpoints") or []][:8],
+                "refs": basic.get("refs") or [],
+                "context": "legacy_auth",
             }
         )
 
@@ -344,28 +623,52 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
                 "severity": "warning",
                 "title": "Exchange healthcheck URLs are publicly reachable",
                 "detail": (
-                    "Healthcheck pages help attackers fingerprint Exchange. "
-                    "Allow only from load balancers / monitoring networks."
+                    "Anonymous healthcheck responses fingerprint Exchange roles and versions. "
+                    "Allow only from load balancers / monitoring networks — not the whole internet."
                 ),
+                "guidance": "Put healthchecks behind private probes or IP allow lists on the reverse proxy / WAF.",
                 "endpoints": [e["healthcheck"]["url"] for e in hc_open if e.get("healthcheck")][:8],
+                "refs": [MS_REFS["publish"]],
+                "context": "exposure",
             }
         )
 
     open_admin = [
         e
         for e in endpoints
-        if e.get("id") in {"ecp", "powershell", "owa"} and e.get("exposure") in {"open", "auth_required"}
+        if e.get("id") in {"ecp", "powershell"} and e.get("exposure") in {"open", "auth_required"}
+    ]
+    open_owa = [
+        e for e in endpoints if e.get("id") == "owa" and e.get("exposure") in {"open", "auth_required", "error"}
     ]
     if open_admin:
         findings.append(
             {
                 "severity": "warning",
-                "title": "Admin / mailbox web surfaces reachable from the internet",
+                "title": "Admin surfaces (ECP / PowerShell) reachable from the internet",
                 "detail": (
-                    "ECP/PowerShell should usually stay internal. OWA may be intentional — "
-                    "confirm MFA/Modern Auth and publish only what you need."
+                    "Exchange admin endpoints should usually stay on internal networks or privileged access paths. "
+                    "Public ECP/PowerShell expands attack surface."
                 ),
+                "guidance": "Prefer publishing OWA/EWS/Autodiscover/MAPI as needed; keep ECP and remote PowerShell internal.",
                 "endpoints": [e["url"] for e in open_admin[:8]],
+                "refs": [MS_REFS["vd_defaults"], MS_REFS["publish"]],
+                "context": "exposure",
+            }
+        )
+    if open_owa:
+        findings.append(
+            {
+                "severity": "info",
+                "title": "OWA is reachable externally",
+                "detail": (
+                    "Publishing Outlook on the web is common. Ensure Modern Auth / HMA + MFA / Conditional Access "
+                    "rather than legacy auth."
+                ),
+                "guidance": "Align OWA/ECP auth methods per Microsoft virtual directory guidance.",
+                "endpoints": [e["url"] for e in open_owa[:4]],
+                "refs": [MS_REFS["hma"], MS_REFS["vd_defaults"]],
+                "context": "exposure",
             }
         )
 
@@ -379,8 +682,14 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
             {
                 "severity": "warning",
                 "title": "Response headers may leak server identity",
-                "detail": "Headers such as X-FEServer / X-OWA-Version / Server can reveal internal names and versions.",
+                "detail": (
+                    "Headers such as X-FEServer, X-CalculatedBETarget, X-OWA-Version, or Server can reveal "
+                    "internal hostnames and versions useful for targeted attacks."
+                ),
+                "guidance": "Strip or rewrite sensitive headers at the reverse proxy / WAF where possible.",
                 "endpoints": samples[:8],
+                "refs": [],
+                "context": "hardening",
             }
         )
 
@@ -391,7 +700,10 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
                 "severity": "critical",
                 "title": "Private / internal IP addresses visible externally",
                 "detail": "Internal addresses appeared in redirects, bodies, or headers.",
+                "guidance": "Fix absolute redirects and remove internal URLs from public responses.",
                 "endpoints": priv,
+                "refs": [],
+                "context": "hardening",
             }
         )
 
@@ -404,7 +716,10 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
                     "severity": "critical",
                     "title": "TLS certificate expired",
                     "detail": f"Certificate for {ssl_info.get('domain')} is expired.",
+                    "guidance": "Renew immediately; Outlook/Teams/mobile clients will fail hard on expired TLS.",
                     "endpoints": [],
+                    "refs": [],
+                    "context": "tls",
                 }
             )
         elif isinstance(days, int) and days <= 30:
@@ -412,24 +727,28 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
                 {
                     "severity": "warning",
                     "title": "TLS certificate expires soon",
-                    "detail":                     f"{ssl_info.get('domain')} expires in {days} day(s) "
-                    f"(not after {ssl_info.get('expiry_date')}).",
+                    "detail": (
+                        f"{ssl_info.get('domain')} expires in {days} day(s) "
+                        f"(not after {ssl_info.get('expiry_date')})."
+                    ),
+                    "guidance": "Renew before expiry and monitor with automated alerts.",
                     "endpoints": [],
+                    "refs": [],
+                    "context": "tls",
                 }
             )
-        elif status in {"ok", "valid", "warning"} or isinstance(days, int):
+        elif status == "valid":
             findings.append(
                 {
-                    "severity": "ok" if status == "valid" else "warning",
-                    "title": "TLS certificate looks valid remotely"
-                    if status == "valid"
-                    else "TLS certificate checked",
+                    "severity": "ok",
+                    "title": "TLS certificate looks valid remotely",
                     "detail": (
                         f"{ssl_info.get('domain')}: {days} day(s) left, issuer {ssl_info.get('issuer')}."
-                        if days is not None
-                        else str(ssl_info.get("message") or "Checked")
                     ),
+                    "guidance": "Keep automated renewal and monitor SAN coverage for all published namespaces.",
                     "endpoints": [],
+                    "refs": [],
+                    "context": "tls",
                 }
             )
 
@@ -439,18 +758,11 @@ def _security_findings(endpoints: list[dict], ssl_info: dict, hosts: list[dict])
             {
                 "severity": "info",
                 "title": "Some related hostnames did not resolve",
-                "detail": "Missing DNS is fine if you do not use that name (e.g. download.* / autodiscover.*).",
+                "detail": "Missing DNS is fine if you do not use that name (e.g. download.*).",
+                "guidance": "Ensure Autodiscover namespace matches your hybrid/Autodiscover design.",
                 "endpoints": [h["host"] for h in unresolved],
-            }
-        )
-
-    if not findings:
-        findings.append(
-            {
-                "severity": "info",
-                "title": "Limited public Exchange footprint detected",
-                "detail": "Few or no classic virtual directories answered. Confirm the hostname fronts Exchange.",
-                "endpoints": [],
+                "refs": [MS_REFS["vd_defaults"]],
+                "context": "dns",
             }
         )
 
@@ -547,7 +859,14 @@ def check_exchange(host: str) -> dict:
                         "reachable": False,
                         "exposure": "closed",
                         "severity": "info",
-                        "auth": {"schemes": [], "ntlm": False, "oauth": False, "basic": False},
+                        "auth": {
+                            "schemes": [],
+                            "ntlm": False,
+                            "oauth": False,
+                            "basic": False,
+                            "checked": False,
+                            "www_authenticate_present": False,
+                        },
                         "error": str(exc),
                     }
                 )
@@ -556,26 +875,29 @@ def check_exchange(host: str) -> dict:
     role_rank = {h["host"]: i for i, h in enumerate(host_rows)}
     endpoints.sort(key=lambda e: (role_rank.get(e.get("host"), 99), e.get("name") or ""))
 
-    findings = _security_findings(endpoints, ssl_info, host_rows)
+    auth_audit = _auth_audit(endpoints)
+    posture = _posture(endpoints, host_rows, auth_audit)
+    findings = _security_findings(endpoints, ssl_info, host_rows, auth_audit)
     summary = _score(findings, endpoints)
 
     return {
         "ok": True,
         "host": host,
+        "tool": "Microsoft Exchange Server HC",
         "hosts": host_rows,
         "ssl": ssl_info,
         "endpoints": endpoints,
+        "auth_audit": auth_audit,
+        "posture": posture,
         "findings": findings,
         "summary": summary,
         "counts": {
             "reachable": sum(1 for e in endpoints if e.get("reachable")),
             "ntlm": sum(1 for e in endpoints if e.get("auth", {}).get("ntlm")),
             "oauth": sum(1 for e in endpoints if e.get("auth", {}).get("oauth")),
+            "basic": sum(1 for e in endpoints if e.get("auth", {}).get("basic")),
             "healthcheck_open": sum(
-                1
-                for e in endpoints
-                if e.get("healthcheck")
-                and (e["healthcheck"].get("healthy") or e["healthcheck"].get("status_code") == 200)
+                1 for e in endpoints if e.get("healthcheck") and e["healthcheck"].get("healthy")
             ),
         },
     }

@@ -979,6 +979,50 @@ body.modal-open {
   margin-top: 0.15rem;
 }
 
+.auth-audit-grid,
+.posture-grid {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 800px) {
+  .auth-audit-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .posture-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.auth-audit-card,
+.posture-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: #fbfcfb;
+}
+
+.auth-audit-card.is-bad {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: rgba(180, 35, 24, 0.05);
+}
+
+.auth-audit-card.is-ok {
+  border-color: rgba(15, 106, 79, 0.28);
+  background: rgba(15, 106, 79, 0.05);
+}
+
+.posture-card h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
+.posture-card .guide-list {
+  margin: 0.5rem 0 0;
+}
+
 .tool-row {
   align-items: stretch;
 }

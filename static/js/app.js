@@ -623,6 +623,45 @@ function severityClass(sev) {
   return "";
 }
 
+function renderAuthAuditCard(title, block) {
+  if (!block) return "";
+  const found = !!block.found;
+  const badge = found
+    ? `<span class="status err">${escapeHtml(t("Detected"))}</span>`
+    : `<span class="status ok">${escapeHtml(t("Not detected"))}</span>`;
+  const eps = (block.endpoints || [])
+    .slice(0, 8)
+    .map((e) => {
+      if (typeof e === "string") return `<li class="mono">${escapeHtml(e)}</li>`;
+      const extra = e.authorization_uri
+        ? ` <span class="muted">→ ${escapeHtml(e.authorization_uri)}</span>`
+        : e.schemes
+          ? ` <span class="muted">(${escapeHtml((e.schemes || []).join(", "))})</span>`
+          : "";
+      return `<li><span class="mono">${escapeHtml(e.url || "")}</span>${extra}</li>`;
+    })
+    .join("");
+  const refs = (block.refs || [])
+    .map(
+      (r) =>
+        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+          r.title || r.url
+        )}</a></li>`
+    )
+    .join("");
+  return `<div class="auth-audit-card ${found ? "is-bad" : "is-ok"}">
+    <div class="finding-head">
+      <span class="status">${escapeHtml(t("Checked"))}</span>
+      ${badge}
+      <strong>${escapeHtml(title)}</strong>
+    </div>
+    <p>${escapeHtml(block.summary || "")}</p>
+    ${block.microsoft ? `<p><strong>${escapeHtml(t("Guidance"))}:</strong> ${escapeHtml(block.microsoft)}</p>` : ""}
+    ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
+    ${refs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${refs}</ul>` : ""}
+  </div>`;
+}
+
 function renderExchange(data, root) {
   if (!data.ok) return renderError(data, root);
   const summary = data.summary || {};
@@ -631,11 +670,23 @@ function renderExchange(data, root) {
   const findings = data.findings || [];
   const endpoints = data.endpoints || [];
   const hosts = data.hosts || [];
+  const audit = data.auth_audit || {};
+  const posture = data.posture || {};
+  const hybrid = posture.hybrid || {};
+  const teams = posture.teams || {};
 
   const findingHtml = findings
     .map((f) => {
       const eps = (f.endpoints || [])
         .map((e) => `<li class="mono">${escapeHtml(e)}</li>`)
+        .join("");
+      const refs = (f.refs || [])
+        .map(
+          (r) =>
+            `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+              r.title || r.url
+            )}</a></li>`
+        )
         .join("");
       return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
         <div class="finding-head">
@@ -643,7 +694,9 @@ function renderExchange(data, root) {
           <strong>${escapeHtml(f.title || "")}</strong>
         </div>
         <p>${escapeHtml(f.detail || "")}</p>
+        ${f.guidance ? `<p><strong>${escapeHtml(t("Guidance"))}:</strong> ${escapeHtml(f.guidance)}</p>` : ""}
         ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
+        ${refs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${refs}</ul>` : ""}
       </div>`;
     })
     .join("");
@@ -684,12 +737,19 @@ function renderExchange(data, root) {
         }
       }
       const authBits = [];
-      if (auth.ntlm) authBits.push('<span class="status err">NTLM</span>');
-      if (auth.oauth) authBits.push('<span class="status ok">OAuth</span>');
+      if (auth.ntlm) authBits.push('<span class="status err">NTLM/Negotiate</span>');
+      if (auth.oauth) {
+        authBits.push(
+          `<span class="status ok">OAuth 2.0${auth.entra_oauth ? " (Entra)" : ""}</span>`
+        );
+      }
       if (auth.basic) authBits.push('<span class="status warn">Basic</span>');
       if (!authBits.length) {
         authBits.push(
-          `<span class="muted">${escapeHtml((auth.schemes || []).join(", ") || "—")}</span>`
+          `<span class="muted">${escapeHtml(
+            (auth.schemes || []).join(", ") ||
+              (auth.www_authenticate_present ? "challenge" : "no WWW-Authenticate")
+          )}</span>`
         );
       }
       return `<tr>
@@ -705,14 +765,76 @@ function renderExchange(data, root) {
     })
     .join("");
 
+  const hybridGuidance = (hybrid.guidance || [])
+    .map((g) => `<li>${escapeHtml(g)}</li>`)
+    .join("");
+  const teamsGuidance = (teams.guidance || [])
+    .map((g) => `<li>${escapeHtml(g)}</li>`)
+    .join("");
+  const hybridRefs = (hybrid.refs || [])
+    .map(
+      (r) =>
+        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+          r.title || r.url
+        )}</a></li>`
+    )
+    .join("");
+  const teamsRefs = (teams.refs || [])
+    .map(
+      (r) =>
+        `<li><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+          r.title || r.url
+        )}</a></li>`
+    )
+    .join("");
+
   root.appendChild(
     el(`<div class="stack exchange-report">
       <div class="summary">
         <span class="pill score-pill">Score ${escapeHtml(String(summary.score ?? "—"))} · ${escapeHtml(summary.grade || "")} · ${escapeHtml(summary.label || "")}</span>
         <span class="pill">${escapeHtml(String(counts.reachable || 0))} ${escapeHtml(t("Reachable"))}</span>
         <span class="pill">${escapeHtml(String(counts.ntlm || 0))} ${escapeHtml(t("NTLM"))}</span>
-        <span class="pill">${escapeHtml(String(counts.oauth || 0))} ${escapeHtml(t("OAuth"))}</span>
+        <span class="pill">${escapeHtml(String(counts.oauth || 0))} ${escapeHtml(t("OAuth 2.0"))}</span>
+        <span class="pill">${escapeHtml(String(counts.basic || 0))} ${escapeHtml(t("Basic"))}</span>
         <span class="pill">${escapeHtml(String(counts.healthcheck_open || 0))} ${escapeHtml(t("Healthcheck open"))}</span>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Authentication audit"))}</h3>
+        <p class="muted"><strong>${escapeHtml(t("How we checked"))}:</strong> ${escapeHtml(audit.method || "")}</p>
+        <p class="muted">Endpoints probed for auth challenges: <strong>${escapeHtml(String(audit.endpoints_probed ?? 0))}</strong></p>
+        <div class="auth-audit-grid">
+          ${renderAuthAuditCard("NTLM / Negotiate", audit.ntlm)}
+          ${renderAuthAuditCard(t("OAuth 2.0") + " / Bearer", audit.oauth2)}
+          ${renderAuthAuditCard(t("Basic"), audit.basic)}
+        </div>
+        ${
+          audit.no_www_authenticate
+            ? `<p class="muted tiny">${escapeHtml(audit.no_www_authenticate.note || "")}</p>`
+            : ""
+        }
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Hybrid & Teams guidance"))}</h3>
+        <div class="posture-grid">
+          <div class="posture-card">
+            <h4>Hybrid Exchange</h4>
+            <p>${escapeHtml(hybrid.summary || "")}</p>
+            ${hybridGuidance ? `<ul class="guide-list">${hybridGuidance}</ul>` : ""}
+            ${hybridRefs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${hybridRefs}</ul>` : ""}
+          </div>
+          <div class="posture-card">
+            <h4>Microsoft Teams</h4>
+            <p>${escapeHtml(teams.summary || "")}</p>
+            <p class="muted tiny">${escapeHtml(teams.ews_status || "")}
+              ${teams.ntlm_on_ews ? " · NTLM on EWS: yes" : ""}
+              ${teams.oauth_on_ews ? " · OAuth on EWS: yes" : ""}
+            </p>
+            ${teamsGuidance ? `<ul class="guide-list">${teamsGuidance}</ul>` : ""}
+            ${teamsRefs ? `<div class="tiny muted">${escapeHtml(t("Microsoft references"))}</div><ul class="finding-eps">${teamsRefs}</ul>` : ""}
+          </div>
+        </div>
       </div>
 
       <div class="block">

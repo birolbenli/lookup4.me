@@ -196,8 +196,8 @@ TOOLS = [
     },
     {
         "slug": "exchange",
-        "name": "Exchange VD Check",
-        "desc": "Probe OWA/ECP/EWS/Autodiscover exposure, NTLM vs OAuth, healthchecks and TLS.",
+        "name": "Microsoft Exchange Server HC",
+        "desc": "External Exchange health check: VDirs, NTLM vs OAuth 2.0, hybrid/Teams guidance, TLS.",
         "field": "host",
         "placeholder": "mail.example.com",
         "example": "outlook.office365.com",
