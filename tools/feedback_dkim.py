@@ -22,7 +22,9 @@ def ensure_dkim_keys() -> tuple[bytes, bytes] | None:
     except Exception:  # noqa: BLE001
         return None
 
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    # 1024-bit keeps the DKIM TXT under common 255-char DNS panel limits.
+    # (2048-bit SPKI often truncates and breaks Gmail DKIM checks.)
+    key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
     priv = key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
