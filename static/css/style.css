@@ -1304,6 +1304,13 @@ code.inline,
   border-radius: 10px;
 }
 
+.mailtest-report-url {
+  font-size: 0.92rem;
+  font-weight: 600;
+  word-break: break-all;
+  max-width: min(100%, 36rem);
+}
+
 .progress-dot {
   width: 10px;
   height: 10px;

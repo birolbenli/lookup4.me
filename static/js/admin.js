@@ -410,13 +410,22 @@
     tb.innerHTML = (data.items || [])
       .map((r) => {
         const from = r.envelope_from || r.from_header || "—";
+        const path = r.report_path || (r.id ? `/tools/mailtest/${r.id}` : "");
+        const reportCell =
+          r.status === "received" && path
+            ? `<a href="${esc(path)}" target="_blank" rel="noopener">Open</a>`
+            : path
+              ? `<a class="muted" href="${esc(path)}" target="_blank" rel="noopener">Page</a>`
+              : "—";
         return `<tr>
           <td class="tiny">${esc((r.created_at || "").replace("T", " ").slice(0, 19))}</td>
           <td class="mono tiny">${esc(r.address)}</td>
           <td><span class="pill">${esc(r.status)}</span></td>
+          <td class="tiny">${esc((r.expires_at || "").replace("T", " ").slice(0, 19) || "—")}</td>
           <td class="mono">${esc(r.peer_ip || "—")}</td>
           <td class="tiny truncate" title="${esc(from)}">${esc(from)}<div class="muted">${esc(r.subject || "")}</div></td>
           <td>${r.score != null ? esc(r.score) : "—"}</td>
+          <td>${reportCell}</td>
         </tr>`;
       })
       .join("");

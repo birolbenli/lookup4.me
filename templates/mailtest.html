@@ -27,7 +27,17 @@
       <button class="btn btn-secondary" type="button" id="mailtest-copy">{{ _('Copy') }}</button>
     </div>
     <p class="hint" id="mailtest-status">{{ _('Waiting for your message…') }}</p>
+    <p class="hint" id="mailtest-expiry"></p>
     <div class="progress-dot" aria-hidden="true"></div>
+  </div>
+
+  <div id="mailtest-share" class="mailtest-box hidden">
+    <p class="muted">{{ _('Report link (kept for 7 days):') }}</p>
+    <div class="mailtest-address-row">
+      <code id="mailtest-report-url" class="mailtest-address mailtest-report-url"></code>
+      <button class="btn btn-secondary" type="button" id="mailtest-copy-report">{{ _('Copy link') }}</button>
+    </div>
+    <p class="hint" id="mailtest-report-expiry"></p>
   </div>
 
   <div class="examples">

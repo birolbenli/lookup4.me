@@ -11,6 +11,8 @@ services:
       - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
       - LINKEDIN_URL=${LINKEDIN_URL:-https://tr.linkedin.com/in/birolbenli}
       - MAILTEST_DOMAIN=${MAILTEST_DOMAIN:-tools.birolbenli.com}
+      - MAILTEST_INBOX_HOURS=${MAILTEST_INBOX_HOURS:-24}
+      - MAILTEST_REPORT_DAYS=${MAILTEST_REPORT_DAYS:-7}
       - MAILTEST_SMTP_ENABLED=1
       - MAILTEST_SMTP_HOST=0.0.0.0
       - MAILTEST_SMTP_PORT=2525

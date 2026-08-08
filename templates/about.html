@@ -30,6 +30,7 @@ curl {{ request.host_url.rstrip('/') }}/ua</pre>
 
   <h2 class="subhead">{{ _('Mail Tester DNS') }}</h2>
   <p class="muted">{{ _('For Mail Tester delivery, point MX for {domain} to this server IP and keep port 25 open.', domain=mailtest_domain) }}</p>
+  <p class="muted">{{ _('Mail Tester inboxes accept mail for 24 hours; scored reports stay available for 7 days via the report link.') }}</p>
 
   <h2 class="subhead">{{ _('Rate limits') }}</h2>
   <p class="muted">{{ _('Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared). Limits reset at UTC midnight.', mail=rate_limit_mailtest, tools=rate_limit_tools) }}</p>

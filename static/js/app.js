@@ -1056,6 +1056,74 @@ function submitTool(panel) {
 
 let mailtestTimer = null;
 
+function mailtestAbsoluteUrl(path) {
+  if (!path) return "";
+  try {
+    return new URL(path, window.location.origin).href;
+  } catch (_) {
+    return path;
+  }
+}
+
+function formatMailtestWhen(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso).replace("T", " ").slice(0, 19);
+  try {
+    return d.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (_) {
+    return d.toISOString().replace("T", " ").slice(0, 16);
+  }
+}
+
+function showMailtestShare(testId, meta = {}) {
+  const share = document.getElementById("mailtest-share");
+  const urlEl = document.getElementById("mailtest-report-url");
+  const expiryEl = document.getElementById("mailtest-report-expiry");
+  if (!share || !urlEl) return;
+  const path = meta.report_path || (testId ? `/tools/mailtest/${testId}` : "");
+  const url = mailtestAbsoluteUrl(path);
+  if (!url) {
+    share.classList.add("hidden");
+    return;
+  }
+  urlEl.textContent = url;
+  share.classList.remove("hidden");
+  if (expiryEl) {
+    const when = formatMailtestWhen(meta.expires_at);
+    const days = meta.report_days || 7;
+    if (meta.status === "received" && when) {
+      expiryEl.textContent = t("Available until {when}.", { when });
+    } else if (meta.status === "waiting") {
+      expiryEl.textContent = t("After the message arrives, this report link stays available for {days} days.", {
+        days,
+      });
+    } else {
+      expiryEl.textContent = "";
+    }
+  }
+}
+
+function showMailtestInboxExpiry(meta = {}) {
+  const el = document.getElementById("mailtest-expiry");
+  if (!el) return;
+  const when = formatMailtestWhen(meta.expires_at);
+  const hours = meta.inbox_hours || 24;
+  if (meta.status === "waiting" && when) {
+    el.textContent = t("Inbox open for {hours} hours (until {when}).", { hours, when });
+  } else if (meta.status === "waiting") {
+    el.textContent = t("Inbox open for {hours} hours.", { hours });
+  } else {
+    el.textContent = "";
+  }
+}
+
 async function startMailTest(panel, existingId) {
   const waiting = document.getElementById("mailtest-waiting");
   const addressEl = document.getElementById("mailtest-address");
@@ -1065,6 +1133,7 @@ async function startMailTest(panel, existingId) {
 
   let testId = existingId;
   let address = "";
+  let meta = {};
 
   if (!testId) {
     statusEl.textContent = t("Creating test address…");
@@ -1082,6 +1151,7 @@ async function startMailTest(panel, existingId) {
     }
     testId = data.id;
     address = data.address;
+    meta = data;
     history.replaceState({}, "", `/tools/mailtest/${testId}`);
   } else {
     const res = await fetch(`/api/mailtest/${testId}`);
@@ -1091,10 +1161,20 @@ async function startMailTest(panel, existingId) {
       return;
     }
     address = data.address;
+    meta = data;
     if (data.status === "received" && data.analysis) {
       waiting.classList.add("hidden");
+      showMailtestShare(testId, data);
       results.innerHTML = "";
       renderEmailReport(data.analysis, results);
+      return;
+    }
+    if (data.status === "expired") {
+      waiting.classList.remove("hidden");
+      addressEl.textContent = address;
+      statusEl.textContent = t("This test expired. Create a new address.");
+      showMailtestInboxExpiry(data);
+      document.getElementById("mailtest-share")?.classList.add("hidden");
       return;
     }
   }
@@ -1102,6 +1182,8 @@ async function startMailTest(panel, existingId) {
   addressEl.textContent = address;
   waiting.classList.remove("hidden");
   statusEl.textContent = t("Waiting for your message…");
+  showMailtestInboxExpiry(meta);
+  showMailtestShare(testId, meta);
   results.innerHTML = "";
 
   if (mailtestTimer) clearInterval(mailtestTimer);
@@ -1115,12 +1197,15 @@ async function startMailTest(panel, existingId) {
         mailtestTimer = null;
         statusEl.textContent = t("Message received — analyzing…");
         waiting.classList.add("hidden");
+        showMailtestShare(testId, data);
         results.innerHTML = "";
         renderEmailReport(data.analysis, results);
       } else if (data.status === "expired") {
         clearInterval(mailtestTimer);
         mailtestTimer = null;
         statusEl.textContent = t("This test expired. Create a new address.");
+        showMailtestInboxExpiry(data);
+        document.getElementById("mailtest-share")?.classList.add("hidden");
       }
     } catch (_) {
       /* ignore transient poll errors */
@@ -1419,6 +1504,31 @@ document.addEventListener("DOMContentLoaded", () => {
         if (statusEl) {
           statusEl.textContent = t("Copy blocked — address selected, press Ctrl+C / Cmd+C.");
         }
+      }
+    });
+    document.getElementById("mailtest-copy-report")?.addEventListener("click", async () => {
+      const text = (document.getElementById("mailtest-report-url")?.textContent || "").trim();
+      const btn = document.getElementById("mailtest-copy-report");
+      const hint = document.getElementById("mailtest-report-expiry");
+      if (!text) return;
+      try {
+        await copyText(text);
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = t("Copied");
+          setTimeout(() => {
+            btn.textContent = prev || t("Copy link");
+          }, 1500);
+        }
+        if (hint && !hint.dataset.keep) {
+          const prev = hint.textContent;
+          hint.textContent = t("Report link copied.");
+          setTimeout(() => {
+            hint.textContent = prev;
+          }, 1600);
+        }
+      } catch (_) {
+        if (hint) hint.textContent = t("Copy blocked — address selected, press Ctrl+C / Cmd+C.");
       }
     });
     const existing = (panel.dataset.testId || "").trim();

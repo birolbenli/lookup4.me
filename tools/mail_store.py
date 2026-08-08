@@ -19,12 +19,35 @@ _DB_PATH = os.path.join(
 )
 
 
+def inbox_ttl_hours() -> int:
+    try:
+        return max(1, int(os.environ.get("MAILTEST_INBOX_HOURS", "24")))
+    except ValueError:
+        return 24
+
+
+def report_retention_days() -> int:
+    try:
+        return max(1, int(os.environ.get("MAILTEST_REPORT_DAYS", "7")))
+    except ValueError:
+        return 7
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
 def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat()
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 @contextmanager
@@ -64,10 +87,13 @@ def _token(length: int = 10) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def create_test(domain: str, ttl_hours: int = 24) -> dict:
+def create_test(domain: str, ttl_hours: int | None = None) -> dict:
     init_mail_store()
+    cleanup_expired()
     domain = domain.strip().lower().rstrip(".")
     now = _now()
+    hours = inbox_ttl_hours() if ttl_hours is None else max(1, int(ttl_hours))
+    inbox_until = now + timedelta(hours=hours)
     test_id = secrets.token_hex(8)
     token = _token()
     address = f"{token}@{domain}"
@@ -87,7 +113,7 @@ def create_test(domain: str, ttl_hours: int = 24) -> dict:
                 INSERT INTO mail_tests (id, token, address, created_at, expires_at, status)
                 VALUES (?, ?, ?, ?, ?, 'waiting')
                 """,
-                (test_id, token, address, _iso(now), _iso(now + timedelta(hours=ttl_hours))),
+                (test_id, token, address, _iso(now), _iso(inbox_until)),
             )
     return {
         "ok": True,
@@ -96,7 +122,10 @@ def create_test(domain: str, ttl_hours: int = 24) -> dict:
         "address": address,
         "domain": domain,
         "status": "waiting",
-        "expires_at": _iso(now + timedelta(hours=ttl_hours)),
+        "expires_at": _iso(inbox_until),
+        "inbox_hours": hours,
+        "report_days": report_retention_days(),
+        "report_path": f"/tools/mailtest/{test_id}",
     }
 
 
@@ -126,12 +155,8 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
             analysis = json.loads(row["analysis_json"])
         except json.JSONDecodeError:
             analysis = None
-    expired = False
-    try:
-        expires = datetime.fromisoformat(row["expires_at"])
-        expired = _now() > expires
-    except Exception:  # noqa: BLE001
-        pass
+    expires = _parse_iso(row["expires_at"])
+    expired = bool(expires and _now() > expires)
     status = row["status"]
     if expired and status == "waiting":
         status = "expired"
@@ -147,6 +172,9 @@ def _row_to_dict(row: sqlite3.Row) -> dict:
         "envelope_from": row["envelope_from"],
         "has_message": bool(row["raw_message"]),
         "analysis": analysis,
+        "inbox_hours": inbox_ttl_hours(),
+        "report_days": report_retention_days(),
+        "report_path": f"/tools/mailtest/{row['id']}",
     }
 
 
@@ -176,6 +204,8 @@ def store_message(
     analysis: dict,
 ) -> bool:
     init_mail_store()
+    # Keep the scored report available after the inbox wait window ends.
+    report_until = _iso(_now() + timedelta(days=report_retention_days()))
     with _LOCK:
         with _conn() as conn:
             cur = conn.execute(
@@ -185,7 +215,8 @@ def store_message(
                     peer_ip = ?,
                     envelope_from = ?,
                     raw_message = ?,
-                    analysis_json = ?
+                    analysis_json = ?,
+                    expires_at = ?
                 WHERE token = ? AND status = 'waiting'
                 """,
                 (
@@ -193,6 +224,7 @@ def store_message(
                     envelope_from,
                     raw_message,
                     json.dumps(analysis),
+                    report_until,
                     token.lower(),
                 ),
             )
@@ -240,16 +272,49 @@ def list_tests(limit: int = 100, status: str | None = None) -> list[dict]:
 
 
 def cleanup_expired(limit: int = 200) -> int:
+    """Delete expired waiting inboxes and reports past retention.
+
+    Waiting: expires_at = inbox accept window (default 24h).
+    Received: expires_at is extended to receive_time + report_days on store;
+    cleanup also drops received rows by created_at as a safety net.
+    """
     init_mail_store()
-    cutoff = _iso(_now())
+    now = _now()
+    cutoff = _iso(now)
+    report_cutoff = _iso(now - timedelta(days=report_retention_days()))
+    days = report_retention_days()
     with _LOCK:
         with _conn() as conn:
+            # Heal legacy received rows that still use the short inbox expiry.
+            rows = conn.execute(
+                """
+                SELECT id, created_at FROM mail_tests
+                WHERE status = 'received' AND created_at >= ?
+                """,
+                (report_cutoff,),
+            ).fetchall()
+            for row in rows:
+                created = _parse_iso(row["created_at"])
+                if not created:
+                    continue
+                keep_until = created + timedelta(days=days)
+                if keep_until <= now:
+                    continue
+                conn.execute(
+                    """
+                    UPDATE mail_tests
+                    SET expires_at = ?
+                    WHERE id = ? AND expires_at < ?
+                    """,
+                    (_iso(keep_until), row["id"], _iso(keep_until)),
+                )
             cur = conn.execute(
                 """
                 DELETE FROM mail_tests
-                WHERE expires_at < ?
-                   OR (status = 'received' AND created_at < ?)
+                WHERE (status != 'received' AND expires_at < ?)
+                   OR (status = 'received' AND (expires_at < ? OR created_at < ?))
                 """,
-                (cutoff, _iso(_now() - timedelta(days=7))),
+                (cutoff, cutoff, report_cutoff),
             )
+            _ = limit  # API compat; delete is unbounded for correctness
             return cur.rowcount
