@@ -4,7 +4,8 @@ services:
     container_name: lookup4me
     ports:
       - "8080:8080"
-      - "25:2525"
+      # Bind public IP only — host exim often holds 127.0.0.1:25
+      - "104.247.164.215:25:2525"
     environment:
       - FLASK_ENV=production
       - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
