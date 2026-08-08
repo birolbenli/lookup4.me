@@ -6,7 +6,7 @@ services:
       - "8080:8080"
     environment:
       - FLASK_ENV=production
-      - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://www.buymeacoffee.com/}
+      - BUYMEACOFFEE_URL=${BUYMEACOFFEE_URL:-https://buymeacoffee.com/birolbenli}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]

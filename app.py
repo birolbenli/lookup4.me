@@ -16,7 +16,7 @@ from tools.ssl_check import check_bulk
 
 app = Flask(__name__)
 app.config["BUYMEACOFFEE_URL"] = os.environ.get(
-    "BUYMEACOFFEE_URL", "https://www.buymeacoffee.com/"
+    "BUYMEACOFFEE_URL", "https://buymeacoffee.com/birolbenli"
 )
 
 TOOLS = [
