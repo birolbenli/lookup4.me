@@ -1,0 +1,983 @@
+# Turkish translations for lookup4.me.
+# Copyright (C) 2026 Birol Benli
+# This file is distributed under the same license as the lookup4.me project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: lookup4.me 1.0\n"
+"Report-Msgid-Bugs-To: birolbenli@gmail.com\n"
+"POT-Creation-Date: 2026-08-09 07:47+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: tr\n"
+"Language-Team: tr <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.16.0\n"
+
+msgid "Tools"
+msgstr "Araçlar"
+
+msgid "Report"
+msgstr "Bildir"
+
+msgid "About"
+msgstr "Hakkında"
+
+msgid "Privacy"
+msgstr "Gizlilik"
+
+msgid "My IP"
+msgstr "IP’m"
+
+msgid "Open menu"
+msgstr "Menüyü aç"
+
+msgid "Close menu"
+msgstr "Menüyü kapat"
+
+msgid "Language"
+msgstr "Dil"
+
+msgid "Buy me a coffee"
+msgstr "Bir kahve ısmarla"
+
+msgid "Your IP"
+msgstr "IP adresiniz"
+
+msgid "IP Lookup"
+msgstr "IP Sorgula"
+
+msgid "queries"
+msgstr "sorgular"
+
+msgid "Total successful tool queries"
+msgstr "Başarılı toplam sorgu sayısı"
+
+msgid "Open visitor map"
+msgstr "Ziyaretçi haritasını aç"
+
+msgid "Visitors around the world"
+msgstr "Dünyadan ziyaretçiler"
+
+msgid "Unique visitors by country (approx.)"
+msgstr "Ülkelere göre yaklaşık benzersiz ziyaretçiler"
+
+msgid ""
+"Thank you for using our tools. If you find them useful, you can buy me a coffee — it keeps the "
+"lights on."
+msgstr ""
+"Araçlarımızı kullandığınız için teşekkür ederiz. Faydalı bulduysanız bana bir kahve "
+"ısmarlayabilirsiniz — bu sayede hizmeti ayakta tutuyoruz."
+
+msgid "Buy me a coffee →"
+msgstr "Bir kahve ısmarla →"
+
+msgid "Contact"
+msgstr "İletişim"
+
+msgid "Close"
+msgstr "Kapat"
+
+msgid "Loading map…"
+msgstr "Harita yükleniyor…"
+
+msgid "No visitor data yet."
+msgstr "Henüz ziyaretçi verisi yok."
+
+msgid "visitors"
+msgstr "ziyaretçi"
+
+msgid "countries"
+msgstr "ülke"
+
+msgid "Top countries"
+msgstr "Öne çıkan ülkeler"
+
+msgid "Free DNS, email authentication, IP and SSL lookup tools."
+msgstr "Ücretsiz DNS, e-posta kimlik doğrulama, IP ve SSL sorgu araçları."
+
+msgid "DNS, email & network tools"
+msgstr "DNS, e-posta ve ağ araçları"
+
+msgid "Pick a tool and run a lookup. Shareable URLs start instantly — for example:"
+msgstr "Bir araç seçip sorgulayın. Paylaşılabilir adresler anında çalışır — örneğin:"
+
+msgid "Email Header Analyzer"
+msgstr "E-posta Başlık Analizi"
+
+msgid "Lookup"
+msgstr "Sorgula"
+
+msgid "Switch tool"
+msgstr "Araç değiştir"
+
+msgid "DNS type"
+msgstr "DNS türü"
+
+msgid "Direct URL:"
+msgstr "Doğrudan adres:"
+
+msgid "Try {example}"
+msgstr "{example} dene"
+
+msgid "Page not found"
+msgstr "Sayfa bulunamadı"
+
+msgid "That page does not exist."
+msgstr "Bu sayfa mevcut değil."
+
+msgid "Back to tools"
+msgstr "Araçlara dön"
+
+msgid ""
+"{site} is a small collection of practical DNS, email authentication, IP and SSL tools. Open a "
+"tool, enter a value, or paste a direct URL and get a clear result."
+msgstr ""
+"{site} pratik DNS, e-posta kimlik doğrulama, IP ve SSL araçlarından oluşan küçük bir "
+"koleksiyondur. Bir araç açın, değer girin veya doğrudan bir adres yapıştırın; net sonuç alın."
+
+msgid "Built by"
+msgstr "Geliştiren"
+
+msgid "Direct URLs"
+msgstr "Doğrudan adresler"
+
+msgid "Every tool accepts {pattern} and runs immediately."
+msgstr "Her araç {pattern} biçimini kabul eder ve hemen çalışır."
+
+msgid "IP / curl"
+msgstr "IP / curl"
+
+msgid "Mail Tester DNS"
+msgstr "Mail Tester DNS"
+
+msgid "For Mail Tester delivery, point MX for {domain} to this server IP and keep port 25 open."
+msgstr ""
+"Mail Tester teslimatı için {domain} alanının MX kaydını bu sunucu IP’sine yönlendirin ve 25 "
+"numaralı portu açık tutun."
+
+msgid "Usage"
+msgstr "Kullanım"
+
+msgid "Quiet counter of lookups performed on this instance."
+msgstr "Bu kurulumda yapılan sorguların sakin sayacı."
+
+msgid "Tool"
+msgstr "Araç"
+
+msgid "Queries"
+msgstr "Sorgular"
+
+msgid "Issue & feature request"
+msgstr "Sorun ve özellik isteği"
+
+msgid "Found a bug or have an idea? Send it here — reports go to {email}."
+msgstr "Hata buldunuz veya bir fikriniz mi var? Buradan gönderin — bildirimler {email} adresine gider."
+
+msgid "Privacy:"
+msgstr "Gizlilik:"
+
+msgid "Do not include passwords, tokens, or confidential message content."
+msgstr "Parola, token veya gizli ileti içeriği eklemeyin."
+
+msgid "Redaction guide →"
+msgstr "Sansür rehberi →"
+
+msgid "Type"
+msgstr "Tür"
+
+msgid "Bug report"
+msgstr "Hata bildirimi"
+
+msgid "Issue"
+msgstr "Sorun"
+
+msgid "Feature request"
+msgstr "Özellik isteği"
+
+msgid "Your email (optional)"
+msgstr "E-posta (isteğe bağlı)"
+
+msgid "Title"
+msgstr "Başlık"
+
+msgid "Short summary"
+msgstr "Kısa özet"
+
+msgid "Details"
+msgstr "Ayrıntılar"
+
+msgid "What happened, what you expected, or the feature you want…"
+msgstr "Ne oldu, ne bekliyordunuz veya istediğiniz özellik…"
+
+msgid "Related page URL (optional)"
+msgstr "İlgili sayfa adresi (isteğe bağlı)"
+
+msgid "Send report"
+msgstr "Bildirimi gönder"
+
+msgid "Report an issue / Feature request"
+msgstr "Sorun bildir / Özellik iste"
+
+msgid "Privacy & redaction guide"
+msgstr "Gizlilik ve sansür rehberi"
+
+msgid ""
+"{site} tools are meant for technical debugging. Do not paste secrets, customer data, or anything "
+"you would not want stored or logged by mistake. You are responsible for every value you submit."
+msgstr ""
+"{site} araçları teknik hata ayıklama içindir. Gizli bilgi, müşteri verisi veya yanlışlıkla "
+"saklanmasını/istemediğiniz hiçbir şeyi yapıştırmayın. Gönderdiğiniz her değerden siz "
+"sorumlusunuz."
+
+msgid "Important:"
+msgstr "Önemli:"
+
+msgid ""
+"Email headers and full message sources can contain personal names, addresses, internal hostnames,"
+" tracking IDs, authentication tokens, and business content. Redact before pasting whenever "
+"possible."
+msgstr ""
+"E-posta başlıkları ve tam ileti kaynakları kişisel adlar, adresler, iç sunucu adları, izleme "
+"kimlikleri, kimlik doğrulama token’ları ve iş içeriği içerebilir. Mümkün olduğunda yapıştırmadan "
+"önce sansürleyin."
+
+msgid "What to remove or mask"
+msgstr "Kaldırılacak veya maskelenecekler"
+
+msgid "Quick redaction method"
+msgstr "Hızlı sansür yöntemi"
+
+msgid "Example"
+msgstr "Örnek"
+
+msgid "What we store"
+msgstr "Ne saklıyoruz"
+
+msgid "Report titles and messages you submit via the feedback form (and optional contact email)."
+msgstr "Geri bildirim formuyla gönderdiğiniz başlık ve mesajlar (ve isteğe bağlı iletişim e-postası)."
+
+msgid "Aggregate query counters (tool name → count), not the query contents."
+msgstr "Toplu sorgu sayaçları (araç adı → sayı); sorgu içeriği değil."
+
+msgid "Per-IP daily usage counters for rate limiting (IP + count; resets each UTC day)."
+msgstr "Hız sınırlaması için IP başına günlük kullanım sayaçları (IP + sayı; her UTC günü sıfırlanır)."
+
+msgid "Mail Tester messages only for the lifetime of that temporary inbox."
+msgstr "Mail Tester iletileri gelen kutusu açıkken alınır; puanlı raporlar 7 gün saklanır."
+
+msgid ""
+"Mail Tester inboxes accept mail for 24 hours; scored reports stay available for 7 days via the "
+"report link."
+msgstr ""
+"Mail Tester gelen kutuları 24 saat posta kabul eder; puanlı raporlar rapor bağlantısıyla 7 gün "
+"erişilebilir kalır."
+
+msgid "Report link (kept for 7 days):"
+msgstr "Rapor bağlantısı (7 gün saklanır):"
+
+msgid "Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight."
+msgstr ""
+"Günlük Mail Tester hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar "
+"deneyin."
+
+msgid "Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight."
+msgstr "Günlük araç hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar deneyin."
+
+msgid "Rate limits"
+msgstr "Kullanım limitleri"
+
+msgid ""
+"Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared). Limits reset at UTC "
+"midnight."
+msgstr ""
+"Mail Tester: IP başına günde {mail}. Diğer araçlar: IP başına günde {tools} (ortak). Limitler UTC"
+" gece yarısında sıfırlanır."
+
+msgid "Prefer headers-only analysis when you can."
+msgstr "Mümkünse yalnızca başlık analizi tercih edin."
+
+msgid "Paste the full source (“Show original”) for the richest report."
+msgstr "En zengin rapor için tam kaynağı (“Özgününü göster”) yapıştırın."
+
+msgid "Security & privacy:"
+msgstr "Güvenlik ve gizlilik:"
+
+msgid ""
+"Do not paste passwords, tokens, customer data, or confidential message content. You are "
+"responsible for anything you submit."
+msgstr ""
+"Parola, token, müşteri verisi veya gizli ileti içeriği yapıştırmayın. Gönderdiğiniz her şeyden "
+"siz sorumlusunuz."
+
+msgid "How to redact sensitive details before pasting →"
+msgstr "Yapıştırmadan önce hassas ayrıntıları nasıl sansürlersiniz →"
+
+msgid "Analyze headers"
+msgstr "Başlıkları analiz et"
+
+msgid "Paste"
+msgstr "Yapıştır"
+
+msgid "Clear"
+msgstr "Temizle"
+
+msgid "Raw email source / headers"
+msgstr "Ham e-posta kaynağı / başlıklar"
+
+msgid "Tip:"
+msgstr "İpucu:"
+
+msgid "Prefer headers-only. Redact names, subjects, and personal addresses first —"
+msgstr "Mümkünse yalnızca başlık kullanın. Önce adları, konuları ve kişisel adresleri sansürleyin —"
+
+msgid "redaction guide"
+msgstr "sansür rehberi"
+
+msgid "Best on HTTPS:"
+msgstr "En iyisi HTTPS’te:"
+
+msgid "Like mail-tester.com — send one message to your unique address and get a score with fixes."
+msgstr "mail-tester.com benzeri — benzersiz adresinize bir ileti gönderin; puan ve düzeltmeler alın."
+
+msgid ""
+"Do not send confidential or production emails here. Temporary inboxes can receive full message "
+"content. You are responsible for what you send."
+msgstr ""
+"Buraya gizli veya üretim e-postaları göndermeyin. Geçici gelen kutuları tam ileti içeriğini "
+"alabilir. Gönderdiğinizden siz sorumlusunuz."
+
+msgid "Privacy & redaction guide →"
+msgstr "Gizlilik ve sansür rehberi →"
+
+msgid "Create test address"
+msgstr "Test adresi oluştur"
+
+msgid "Send an email to this address, then keep this page open:"
+msgstr "Bu adrese bir e-posta gönderin ve bu sayfayı açık tutun:"
+
+msgid "Copy"
+msgstr "Kopyala"
+
+msgid "Copy link"
+msgstr "Bağlantıyı kopyala"
+
+msgid "Waiting for your message…"
+msgstr "İletiniz bekleniyor…"
+
+msgid "Inbox domain:"
+msgstr "Gelen kutusu alanı:"
+
+msgid "MX for this domain must point to this server’s IP for delivery to work."
+msgstr "Teslimatın çalışması için bu alanın MX kaydı bu sunucunun IP’sine bakmalıdır."
+
+msgid "Email addresses of people (keep only domains if needed)"
+msgstr "Kişilerin e-posta adresleri (gerekirse yalnızca alan adını bırakın)"
+
+msgid "Names in From / To / Cc display names"
+msgstr "From / To / Cc görünen adlarındaki isimler"
+
+msgid "Subjects that reveal private topics — replace with [REDACTED]"
+msgstr "Özel konuları açığa çıkaran konular — [REDACTED] ile değiştirin"
+
+msgid "Message bodies — prefer headers-only unless body analysis is required"
+msgstr "İleti gövdeleri — gövde analizi gerekmiyorsa yalnızca başlık kullanın"
+
+msgid "Cookies / tokens / API keys in custom headers"
+msgstr "Özel başlıklardaki çerez / token / API anahtarları"
+
+msgid "Internal IPs / hostnames if they are sensitive in your environment"
+msgstr "Ortamınızda hassassa iç IP / sunucu adları"
+
+msgid "DKIM / ARC signatures are usually fine to keep for auth checks; body content is not"
+msgstr "DKIM / ARC imzaları kimlik doğrulama için genelde kalabilir; gövde içeriği kalmamalı"
+
+msgid "Open the message source (“Show original”)."
+msgstr "İleti kaynağını açın (“Özgününü göster”)."
+
+msgid "Copy into a local editor (Notepad, VS Code, etc.)."
+msgstr "Yerel bir editöre kopyalayın (Notepad, VS Code vb.)."
+
+msgid "Search and replace personal emails, names, and subject text with placeholders."
+msgstr "Kişisel e-postaları, adları ve konu metnini yer tutucularla değiştirin."
+
+msgid "Delete everything after the first blank line if you only need headers."
+msgstr "Yalnızca başlık gerekiyorsa ilk boş satırdan sonrasını silin."
+
+msgid "Paste the cleaned text into the Header Analyzer."
+msgstr "Temiz metni Başlık Analizörü’ne yapıştırın."
+
+msgid "Looking up…"
+msgstr "Sorgulanıyor…"
+
+msgid "Scanning Exchange endpoints…"
+msgstr "Exchange uç noktaları taranıyor…"
+
+msgid "External health report"
+msgstr "Dışarıdan sağlık raporu"
+
+msgid "Virtual directories"
+msgstr "Sanal dizinler"
+
+msgid "Findings"
+msgstr "Bulgular"
+
+msgid "TLS certificate"
+msgstr "TLS sertifikası"
+
+msgid "Related hosts"
+msgstr "İlgili sunucu adları"
+
+msgid "NTLM"
+msgstr "NTLM"
+
+msgid "OAuth"
+msgstr "OAuth"
+
+msgid "OAuth 2.0"
+msgstr "OAuth 2.0"
+
+msgid "Basic"
+msgstr "Basic"
+
+msgid "Healthcheck open"
+msgstr "Healthcheck açık"
+
+msgid "Reachable"
+msgstr "Erişilebilir"
+
+msgid "closed"
+msgstr "kapalı"
+
+msgid "open"
+msgstr "açık"
+
+msgid "auth_required"
+msgstr "kimlik ister"
+
+msgid "redirect"
+msgstr "yönlendirme"
+
+msgid "error"
+msgstr "hata"
+
+msgid "Recommend closing healthchecks to the public internet."
+msgstr "Healthcheck URL’lerini internete kapatın."
+
+msgid "Authentication audit"
+msgstr "Kimlik doğrulama"
+
+msgid "Authentication"
+msgstr "Kimlik doğrulama"
+
+msgid "Hybrid & Teams guidance"
+msgstr "Hybrid ve Teams"
+
+msgid "Hybrid & Teams"
+msgstr "Hybrid ve Teams"
+
+msgid "Microsoft references"
+msgstr "Microsoft kaynakları"
+
+msgid "Checked"
+msgstr "Kontrol edildi"
+
+msgid "Detected"
+msgstr "Var"
+
+msgid "Not detected"
+msgstr "Yok"
+
+msgid "Guidance"
+msgstr "Öneri"
+
+msgid "Fix"
+msgstr "Çözüm"
+
+msgid "Pass"
+msgstr "Geçti"
+
+msgid "Fail"
+msgstr "Hata"
+
+msgid "Warn"
+msgstr "Uyarı"
+
+msgid "Why it matters"
+msgstr "Neden önemli"
+
+msgid "How to improve"
+msgstr "Nasıl iyileştirilir"
+
+msgid "Priority improvements"
+msgstr "Öncelikli iyileştirmeler"
+
+msgid "No urgent improvements detected from this source."
+msgstr "Bu kaynaktan acil iyileştirme çıkmadı."
+
+msgid "Raw Received headers"
+msgstr "Ham Received header’ları"
+
+msgid "No subject"
+msgstr "Konu yok"
+
+msgid "How we checked"
+msgstr "Nasıl kontrol ettik"
+
+msgid "HTTP headers"
+msgstr "HTTP header’lar"
+
+msgid "Sensitive headers"
+msgstr "Hassas header’lar"
+
+msgid "Header leaks"
+msgstr "Header sızıntısı"
+
+msgid "Server name, version, or internal IP in headers is risky."
+msgstr "Header’da sunucu adı, sürüm veya iç IP risklidir."
+
+msgid "No sensitive headers found"
+msgstr "Hassas header yok"
+
+msgid "Same frontend IP"
+msgstr "Aynı frontend IP"
+
+msgid "Score"
+msgstr "Skor"
+
+msgid "Org domain"
+msgstr "Kurum alanı"
+
+msgid "No critical issues"
+msgstr "Kritik bulgu yok"
+
+msgid "Notes"
+msgstr "Notlar"
+
+msgid "Passed checks"
+msgstr "Geçen kontroller"
+
+msgid "Primary"
+msgstr "Ana"
+
+msgid "DNS OK"
+msgstr "DNS OK"
+
+msgid "no DNS"
+msgstr "DNS yok"
+
+msgid "Role"
+msgstr "Rol"
+
+msgid "Host"
+msgstr "Host"
+
+msgid "VD"
+msgstr "VD"
+
+msgid "Risk"
+msgstr "Risk"
+
+msgid "Header"
+msgstr "Header"
+
+msgid "Value"
+msgstr "Değer"
+
+msgid "Seen on"
+msgstr "Görüldüğü host"
+
+msgid "Status"
+msgstr "Durum"
+
+msgid "Days left"
+msgstr "Kalan gün"
+
+msgid "Expires"
+msgstr "Bitiş"
+
+msgid "Issuer"
+msgstr "İmzalayan"
+
+msgid "endpoint(s)"
+msgstr "uç nokta"
+
+msgid "One row per VD — columns are related hostnames."
+msgstr "Her satır bir VD; sütunlar ilgili host adları."
+
+msgid "Legend: NTLM/OAuth/Basic = auth challenge; HC = public healthcheck."
+msgstr "Gösterge: NTLM/OAuth/Basic = kimlik yöntemi; HC = herkese açık healthcheck."
+
+msgid "NTLM on EWS"
+msgstr "EWS üzerinde NTLM"
+
+msgid "OAuth on EWS"
+msgstr "EWS üzerinde OAuth"
+
+msgid "Critical"
+msgstr "Kritik"
+
+msgid "Warning"
+msgstr "Uyarı"
+
+msgid "Info"
+msgstr "Bilgi"
+
+msgid "OK"
+msgstr "Tamam"
+
+msgid "Error"
+msgstr "Hata"
+
+msgid "Valid"
+msgstr "Geçerli"
+
+msgid "Expired"
+msgstr "Süresi dolmuş"
+
+msgid "Good"
+msgstr "İyi"
+
+msgid "Fair"
+msgstr "Orta"
+
+msgid "Needs work"
+msgstr "İyileştirilmeli"
+
+msgid "High risk"
+msgstr "Yüksek risk"
+
+msgid "NTLM / Negotiate exposed on the internet"
+msgstr "İnternete açık NTLM / Negotiate"
+
+msgid "NTLM / Negotiate not detected"
+msgstr "NTLM / Negotiate yok"
+
+msgid "OAuth 2.0 / Bearer detected"
+msgstr "OAuth 2.0 / Bearer var"
+
+msgid "OAuth 2.0 / Bearer not detected"
+msgstr "OAuth 2.0 / Bearer yok"
+
+msgid "HTTP Basic auth advertised"
+msgstr "HTTP Basic kimlik doğrulama açık"
+
+msgid "Exchange healthcheck URLs are publicly reachable"
+msgstr "Exchange healthcheck URL’leri herkese açık"
+
+msgid "Admin surfaces (ECP / PowerShell) reachable"
+msgstr "Yönetim yüzeyleri (ECP / PowerShell) erişilebilir"
+
+msgid "OWA reachable externally"
+msgstr "OWA dışarıdan erişilebilir"
+
+msgid "Sensitive data in HTTP headers"
+msgstr "HTTP header’larda hassas veri"
+
+msgid "TLS certificate expired"
+msgstr "TLS sertifikasının süresi dolmuş"
+
+msgid "TLS certificate expires soon"
+msgstr "TLS sertifikası yakında bitiyor"
+
+msgid "TLS certificate valid"
+msgstr "TLS sertifikası geçerli"
+
+msgid "Some related hostnames did not resolve"
+msgstr "Bazı ilgili host adları çözülemedi"
+
+msgid "Block legacy auth (HMA + Authentication Policies)."
+msgstr "Legacy auth’u kapatın (HMA + Authentication Policies)."
+
+msgid "Still prefer Authentication Policies for hybrid users."
+msgstr "Hybrid kullanıcılar için Authentication Policies kullanın."
+
+msgid "Enable HMA, then block legacy auth."
+msgstr "Önce HMA açın, sonra legacy auth’u kapatın."
+
+msgid "Disable Basic on VDirs where possible."
+msgstr "Mümkünse VDir’lerde Basic’i kapatın."
+
+msgid "Allow only LB/monitoring IPs."
+msgstr "Yalnızca LB/izleme IP’lerine izin verin."
+
+msgid "Publish only OWA/EWS/Autodiscover/MAPI as needed."
+msgstr "Gerekiyorsa yalnızca OWA/EWS/Autodiscover/MAPI yayınlayın."
+
+msgid "Prefer HMA + Conditional Access."
+msgstr "HMA + Conditional Access tercih edin."
+
+msgid "Strip X-FEServer/version at proxy; hide private IPs."
+msgstr "Proxy’de X-FEServer/sürüm header’larını temizleyin; iç IP gizleyin."
+
+msgid "Renew immediately."
+msgstr "Hemen yenileyin."
+
+msgid "Renew before expiry."
+msgstr "Süre dolmadan yenileyin."
+
+msgid "Keep auto-renewal."
+msgstr "Otomatik yenilemeyi açık tutun."
+
+msgid "Match Autodiscover to your design."
+msgstr "Autodiscover adını tasarımınıza göre ayarlayın."
+
+msgid "Looks like internet-facing Exchange (on-prem or hybrid)."
+msgstr "İnternete açık Exchange görünüyor (on-prem veya hybrid)."
+
+msgid "Hybrid vs cloud not clear from this probe alone."
+msgstr "Bu tarama hybrid/cloud ayrımını net göstermiyor."
+
+msgid "Teams needs Exchange (often EWS/Autodiscover). Keep them available, but not with public NTLM."
+msgstr ""
+"Teams için Exchange gerekir (çoğunlukla EWS/Autodiscover). Erişilebilir olsun; internete açık "
+"NTLM olmasın."
+
+msgid "Enable HMA (Entra OAuth) for hybrid clients."
+msgstr "Hybrid istemciler için HMA (Entra OAuth) açın."
+
+msgid "Then BlockLegacyAuth* via Authentication Policies (Ex2019 CU2+)."
+msgstr "Sonra Authentication Policies ile BlockLegacyAuth* uygulayın (Ex2019 CU2+)."
+
+msgid "Keep ECP / remote PowerShell off the public internet."
+msgstr "ECP / remote PowerShell’i internete açmayın."
+
+msgid "Do not blindly disable EWS if Teams calendar is required."
+msgstr "Teams takvimi gerekiyorsa EWS’i körü körüne kapatmayın."
+
+msgid "Remove internet NTLM on EWS; prefer HMA / Modern Auth."
+msgstr "EWS’te internet NTLM’ini kaldırın; HMA / Modern Auth kullanın."
+
+msgid "Keep ECP/PowerShell internal; use MFA / Conditional Access."
+msgstr "ECP/PowerShell içerde kalsın; MFA / Conditional Access kullanın."
+
+msgid "EWS reachable."
+msgstr "EWS erişilebilir."
+
+msgid "EWS not reachable externally."
+msgstr "EWS dışarıdan erişilemiyor."
+
+msgid "Public healthchecks fingerprint Exchange."
+msgstr "Herkese açık healthcheck Exchange’i ifşa eder."
+
+msgid "ECP/PowerShell should stay internal."
+msgstr "ECP/PowerShell iç ağda kalmalı."
+
+msgid "Common — use Modern Auth / MFA."
+msgstr "Yaygın — Modern Auth / MFA kullanın."
+
+msgid "OK if unused (e.g. download.*)."
+msgstr "Kullanılmıyorsa sorun değil (ör. download.*)."
+
+msgid "No OAuth 2.0 Bearer challenge on probed VDs. Hybrid usually needs HMA."
+msgstr "Taranan VD’lerde OAuth 2.0 Bearer yok. Hybrid genelde HMA ister."
+
+msgid "Request failed"
+msgstr "İstek başarısız"
+
+msgid "Lookup failed"
+msgstr "Sorgu başarısız"
+
+msgid "No record"
+msgstr "Kayıt yok"
+
+msgid "Geolocation unavailable"
+msgstr "Konum bilgisi yok"
+
+msgid "Sending server"
+msgstr "Gönderen sunucu"
+
+msgid "Could not create test"
+msgstr "Test oluşturulamadı"
+
+msgid "Test not found"
+msgstr "Test bulunamadı"
+
+msgid "Sending…"
+msgstr "Gönderiliyor…"
+
+msgid "Could not send report."
+msgstr "Bildirim gönderilemedi."
+
+msgid "Network error — please try again."
+msgstr "Ağ hatası — lütfen tekrar deneyin."
+
+msgid "Thanks — your report was sent."
+msgstr "Teşekkürler — bildiriminiz gönderildi."
+
+msgid "Pasted from clipboard."
+msgstr "Panodan yapıştırıldı."
+
+msgid "Clipboard permission denied. Allow clipboard access for this site, then try Paste again."
+msgstr "Pano izni reddedildi. Bu site için panoya izin verin, sonra Yapıştır’ı tekrar deneyin."
+
+msgid "One-click paste needs HTTPS. Open {url}"
+msgstr "Tek tıkla yapıştırma HTTPS ister. Açın: {url}"
+
+msgid "Address copied. Send your test email now…"
+msgstr "Adres kopyalandı. Test e-postanızı şimdi gönderin…"
+
+msgid "Copied"
+msgstr "Kopyalandı"
+
+msgid "Message received — analyzing…"
+msgstr "İleti alındı — analiz ediliyor…"
+
+msgid "Nothing to copy"
+msgstr "Kopyalanacak bir şey yok"
+
+msgid "Clipboard paste needs HTTPS or Ctrl+V"
+msgstr "Pano yapıştırma HTTPS veya Ctrl+V ister"
+
+msgid "Clipboard is empty."
+msgstr "Pano boş."
+
+msgid "Creating test address…"
+msgstr "Test adresi oluşturuluyor…"
+
+msgid "This test expired. Create a new address."
+msgstr "Bu testin süresi doldu. Yeni bir adres oluşturun."
+
+msgid "Report link copied."
+msgstr "Rapor bağlantısı kopyalandı."
+
+msgid "Available until {when}."
+msgstr "Şu zamana kadar erişilebilir: {when}."
+
+msgid "After the message arrives, this report link stays available for {days} days."
+msgstr "İleti geldikten sonra bu rapor bağlantısı {days} gün erişilebilir kalır."
+
+msgid "Inbox open for {hours} hours (until {when})."
+msgstr "Gelen kutusu {hours} saat açık (son: {when})."
+
+msgid "Inbox open for {hours} hours."
+msgstr "Gelen kutusu {hours} saat açık."
+
+msgid "No address to copy yet."
+msgstr "Henüz kopyalanacak adres yok."
+
+msgid "Copy blocked — address selected, press Ctrl+C / Cmd+C."
+msgstr "Kopyalama engellendi — adres seçildi, Ctrl+C / Cmd+C kullanın."
+
+msgid "Sent. Thank you!"
+msgstr "Gönderildi. Teşekkürler!"
+
+msgid "Could not load visitor map."
+msgstr "Ziyaretçi haritası yüklenemedi."
+
+msgid "MX Lookup"
+msgstr "MX Sorgusu"
+
+msgid "Find mail exchangers and resolve their IPs."
+msgstr "Posta sunucularını bulun ve IP’lerini çözümleyin."
+
+msgid "SPF Lookup"
+msgstr "SPF Sorgusu"
+
+msgid "Inspect SPF records and included policies."
+msgstr "SPF kayıtlarını ve dahil edilen politikaları inceleyin."
+
+msgid "DKIM Lookup"
+msgstr "DKIM Sorgusu"
+
+msgid "Detect common DKIM selectors and follow host chains."
+msgstr "Yaygın DKIM seçicilerini bulun ve zincirleri izleyin."
+
+msgid "DMARC Lookup"
+msgstr "DMARC Sorgusu"
+
+msgid "Check DMARC policy, rua/ruf and alignment tags."
+msgstr "DMARC politikasını, rua/ruf ve hizalama etiketlerini kontrol edin."
+
+msgid "Paste raw headers/source and get a clear, educational report."
+msgstr "Ham başlık/kaynak yapıştırın; anlaşılır, eğitici bir rapor alın."
+
+msgid "Paste full email source or headers here…"
+msgstr "Tam e-posta kaynağını veya başlıkları buraya yapıştırın…"
+
+msgid "Mail Tester"
+msgstr "Mail Tester"
+
+msgid "Get a random inbox, send a message, and see a deliverability score."
+msgstr "Rastgele bir gelen kutusu alın, ileti gönderin, teslimat puanını görün."
+
+msgid "DNS Lookup"
+msgstr "DNS Sorgusu"
+
+msgid "Query A, AAAA, CNAME, NS, TXT, SOA, CAA, MX and SRV."
+msgstr "A, AAAA, CNAME, NS, TXT, SOA, CAA, MX ve SRV sorgulayın."
+
+msgid "NS Lookup"
+msgstr "NS Sorgusu"
+
+msgid "List authoritative nameservers for a domain."
+msgstr "Bir alanın yetkili ad sunucularını listeleyin."
+
+msgid "CAA Lookup"
+msgstr "CAA Sorgusu"
+
+msgid "See which CAs are allowed to issue certificates."
+msgstr "Hangi CA’ların sertifika verebileceğini görün."
+
+msgid "WHOIS"
+msgstr "WHOIS"
+
+msgid "Query domain or IP registration data."
+msgstr "Alan veya IP kayıt verilerini sorgulayın."
+
+msgid "SSL Checker"
+msgstr "SSL Kontrolü"
+
+msgid "Check up to 10 certificates at once in a table."
+msgstr "Bir kerede en fazla 10 sertifikayı tabloda kontrol edin."
+
+msgid "HTTP Headers"
+msgstr "HTTP Başlıkları"
+
+msgid "Fetch status code and response headers."
+msgstr "Durum kodunu ve yanıt başlıklarını alın."
+
+msgid "Port Check"
+msgstr "Port Kontrolü"
+
+msgid "Test if a TCP port is open on a host."
+msgstr "Bir sunucuda TCP portunun açık olup olmadığını test edin."
+
+msgid "Reverse DNS"
+msgstr "Ters DNS"
+
+msgid "Resolve PTR records for an IP address."
+msgstr "Bir IP için PTR kayıtlarını çözümleyin."
+
+msgid "Blacklist Check"
+msgstr "Kara Liste Kontrolü"
+
+msgid "Check an IP against common DNSBL / RBL lists."
+msgstr "Bir IP’yi yaygın DNSBL / RBL listelerinde kontrol edin."
+
+msgid "SMTP Test"
+msgstr "SMTP Testi"
+
+msgid "Test SMTP banner, EHLO and STARTTLS on port 25."
+msgstr "25. portta SMTP banner, EHLO ve STARTTLS test edin."
+
+msgid "Microsoft Exchange Server HC"
+msgstr "Microsoft Exchange Server HC"
+
+msgid "External Exchange health check: VDirs, NTLM vs OAuth 2.0, hybrid/Teams guidance, TLS."
+msgstr "Dışarıdan Exchange sağlık kontrolü: VD’ler, NTLM vs OAuth 2.0, hybrid/Teams rehberi, TLS."
+
+msgid "mail.example.com"
+msgstr "mail.ornek.com"
+
+msgid "See your public IP (curl-friendly) or inspect another IP."
+msgstr "Herkese açık IP’nizi görün (curl uyumlu) veya başka bir IP inceleyin."
+
+msgid "leave empty for your IP"
+msgstr "kendi IP’niz için boş bırakın"
+
