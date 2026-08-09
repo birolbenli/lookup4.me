@@ -86,6 +86,7 @@
     <div class="admin-shell">
       <nav class="admin-nav" id="admin-nav">
         <button type="button" data-tab="overview" class="nav-item active">Overview</button>
+        <button type="button" data-tab="inbox" class="nav-item">Inbox <span class="nav-badge hidden" id="nav-inbox-badge">0</span></button>
         <button type="button" data-tab="ips" class="nav-item">Top IPs</button>
         <button type="button" data-tab="lists" class="nav-item">Allow / Block</button>
         <button type="button" data-tab="queries" class="nav-item">Query logs</button>
@@ -97,16 +98,79 @@
 
       <main class="admin-main">
         <section class="tab active" id="tab-overview">
-          <h2>Overview</h2>
+          <div class="page-head">
+            <div>
+              <h2>Overview</h2>
+              <p class="muted">Traffic snapshot and server health.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh-system">Refresh system</button>
+          </div>
           <div class="stat-grid" id="overview-stats"></div>
+          <div class="panel-card system-panel">
+            <div class="panel-card-head">
+              <h3>Server resources</h3>
+              <span class="tiny muted" id="system-host">—</span>
+            </div>
+            <div class="gauge-grid">
+              <div class="gauge-card">
+                <canvas id="chart-cpu" height="140"></canvas>
+                <div class="gauge-meta"><strong id="sys-cpu">—</strong><span>CPU</span></div>
+              </div>
+              <div class="gauge-card">
+                <canvas id="chart-mem" height="140"></canvas>
+                <div class="gauge-meta"><strong id="sys-mem">—</strong><span>Memory</span></div>
+              </div>
+              <div class="gauge-card">
+                <canvas id="chart-disk" height="140"></canvas>
+                <div class="gauge-meta"><strong id="sys-disk">—</strong><span>Disk (/app)</span></div>
+              </div>
+            </div>
+            <p class="tiny muted" id="system-detail"></p>
+          </div>
+        </section>
+
+        <section class="tab" id="tab-inbox">
+          <div class="page-head">
+            <div>
+              <h2>Inbox</h2>
+              <p class="muted">Contact / feedback form submissions.</p>
+            </div>
+            <label class="check-inline"><input type="checkbox" id="inbox-unread-only"> Unread only</label>
+          </div>
+          <div class="inbox-layout">
+            <div class="table-scroll inbox-list-wrap">
+              <table class="admin-table sortable" id="table-inbox">
+                <thead><tr>
+                  <th data-sort="date" data-col="0">When</th>
+                  <th data-sort="string" data-col="1">Type</th>
+                  <th data-sort="string" data-col="2">Title</th>
+                  <th data-sort="string" data-col="3">From / IP</th>
+                  <th></th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <article class="panel-card inbox-detail" id="inbox-detail">
+              <p class="muted">Select a message.</p>
+            </article>
+          </div>
         </section>
 
         <section class="tab" id="tab-ips">
-          <h2>Top IPs</h2>
-          <p class="muted">Last 7 days — quick allow / block.</p>
-          <div class="table-scroll"><table class="admin-table" id="table-top-ips">
+          <div class="page-head">
+            <div>
+              <h2>Top IPs</h2>
+              <p class="muted">Last 7 days — click column headers to sort.</p>
+            </div>
+          </div>
+          <div class="table-scroll"><table class="admin-table sortable" id="table-top-ips">
             <thead><tr>
-              <th>IP</th><th>Hits</th><th>Tools</th><th>Last</th><th>Geo / UA</th><th></th>
+              <th data-sort="string" data-col="0">IP</th>
+              <th data-sort="number" data-col="1">Hits</th>
+              <th data-sort="string" data-col="2">Tools</th>
+              <th data-sort="date" data-col="3">Last</th>
+              <th data-sort="string" data-col="4">Geo / UA</th>
+              <th></th>
             </tr></thead>
             <tbody></tbody>
           </table></div>
@@ -142,50 +206,91 @@
             <input id="filter-ip" placeholder="IP" class="mono">
             <button type="button" class="btn btn-ghost" id="btn-reload-queries">Filter</button>
           </div>
-          <div class="table-scroll"><table class="admin-table" id="table-queries">
+          <div class="table-scroll"><table class="admin-table sortable" id="table-queries">
             <thead><tr>
-              <th>When</th><th>IP</th><th>Tool</th><th>Query</th><th>UA</th>
+              <th data-sort="date" data-col="0">When</th>
+              <th data-sort="string" data-col="1">IP</th>
+              <th data-sort="string" data-col="2">Tool</th>
+              <th data-sort="string" data-col="3">Query</th>
+              <th data-sort="string" data-col="4">UA</th>
             </tr></thead>
             <tbody></tbody>
           </table></div>
         </section>
 
         <section class="tab" id="tab-tools">
-          <h2>Tools & charts</h2>
-          <div class="chart-wrap"><canvas id="chart-tools" height="160"></canvas></div>
-          <div class="chart-wrap"><canvas id="chart-days" height="180"></canvas></div>
-          <div class="table-scroll"><table class="admin-table" id="table-tool-counts">
-            <thead><tr><th>Tool</th><th>Count (14d)</th></tr></thead>
+          <div class="page-head">
+            <div>
+              <h2>Tools & charts</h2>
+              <p class="muted">Usage over the last 14 days.</p>
+            </div>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-wrap"><canvas id="chart-tools" height="160"></canvas></div>
+            <div class="chart-wrap"><canvas id="chart-days" height="160"></canvas></div>
+          </div>
+          <div class="table-scroll"><table class="admin-table sortable" id="table-tool-counts">
+            <thead><tr>
+              <th data-sort="string" data-col="0">Tool</th>
+              <th data-sort="number" data-col="1">Count (14d)</th>
+            </tr></thead>
             <tbody></tbody>
           </table></div>
         </section>
 
         <section class="tab" id="tab-mail">
-          <h2>Mail Tester</h2>
-          <p class="muted">Inboxes wait up to 24h; scored reports stay 7 days. Open a report via the link.</p>
-          <div class="table-scroll"><table class="admin-table" id="table-mail">
+          <div class="page-head">
+            <div>
+              <h2>Mail Tester</h2>
+              <p class="muted">Inboxes wait up to 24h; scored reports stay 7 days.</p>
+            </div>
+          </div>
+          <div class="table-scroll"><table class="admin-table sortable" id="table-mail">
             <thead><tr>
-              <th>Created</th><th>Address</th><th>Status</th><th>Expires</th><th>Peer IP</th><th>Envelope / From</th><th>Score</th><th>Report</th>
+              <th data-sort="date" data-col="0">Created</th>
+              <th data-sort="string" data-col="1">Address</th>
+              <th data-sort="string" data-col="2">Status</th>
+              <th data-sort="date" data-col="3">Expires</th>
+              <th data-sort="string" data-col="4">Peer IP</th>
+              <th data-sort="string" data-col="5">Envelope / From</th>
+              <th data-sort="number" data-col="6">Score</th>
+              <th></th>
             </tr></thead>
             <tbody></tbody>
           </table></div>
         </section>
 
         <section class="tab" id="tab-visitors">
-          <h2>Visitors</h2>
+          <div class="page-head">
+            <div>
+              <h2>Visitors</h2>
+              <p class="muted">Map, top IPs, and recent hits.</p>
+            </div>
+          </div>
           <div id="admin-map" class="admin-map"></div>
           <div class="stat-grid" id="visitor-countries"></div>
           <h3>Top visitor IPs</h3>
-          <div class="table-scroll"><table class="admin-table" id="table-visitors">
+          <div class="table-scroll"><table class="admin-table sortable" id="table-visitors">
             <thead><tr>
-              <th>IP</th><th>Hits</th><th>Country</th><th>City / ISP</th><th>OS / Browser</th><th>Last</th><th></th>
+              <th data-sort="string" data-col="0">IP</th>
+              <th data-sort="number" data-col="1">Hits</th>
+              <th data-sort="string" data-col="2">Country</th>
+              <th data-sort="string" data-col="3">City / ISP</th>
+              <th data-sort="string" data-col="4">OS / Browser</th>
+              <th data-sort="date" data-col="5">Last</th>
+              <th></th>
             </tr></thead>
             <tbody></tbody>
           </table></div>
           <h3>Recent page hits</h3>
-          <div class="table-scroll"><table class="admin-table" id="table-visits">
+          <div class="table-scroll"><table class="admin-table sortable" id="table-visits">
             <thead><tr>
-              <th>When</th><th>IP</th><th>Path</th><th>OS</th><th>Browser</th><th>Geo</th>
+              <th data-sort="date" data-col="0">When</th>
+              <th data-sort="string" data-col="1">IP</th>
+              <th data-sort="string" data-col="2">Path</th>
+              <th data-sort="string" data-col="3">OS</th>
+              <th data-sort="string" data-col="4">Browser</th>
+              <th data-sort="string" data-col="5">Geo</th>
             </tr></thead>
             <tbody></tbody>
           </table></div>

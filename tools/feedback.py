@@ -56,10 +56,19 @@ def init_feedback() -> None:
                 user_agent TEXT,
                 emailed INTEGER NOT NULL DEFAULT 0,
                 mail_error TEXT,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                is_read INTEGER NOT NULL DEFAULT 0
             )
             """
         )
+        cols = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(feedback)").fetchall()
+        }
+        if "is_read" not in cols:
+            conn.execute(
+                "ALTER TABLE feedback ADD COLUMN is_read INTEGER NOT NULL DEFAULT 0"
+            )
 
 
 def _rate_ok(ip: str, limit: int = 5, window: int = 3600) -> bool:
@@ -195,28 +204,37 @@ def submit_feedback(
     if not _rate_ok(ip):
         return {"ok": False, "error": "Too many submissions from this IP. Please try again later."}
 
+    # Optional email (off by default — admin Inbox is the primary destination).
     emailed = 0
     mail_error = None
-    try:
-        send_feedback_email(
-            kind=kind,
-            title=title,
-            message=message,
-            contact_email=contact_email,
-            page_url=page_url,
-            ip=ip,
-            user_agent=user_agent,
-        )
-        emailed = 1
-    except Exception as exc:  # noqa: BLE001
-        mail_error = str(exc)[:500]
+    send_mail = os.environ.get("FEEDBACK_EMAIL", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if send_mail:
+        try:
+            send_feedback_email(
+                kind=kind,
+                title=title,
+                message=message,
+                contact_email=contact_email,
+                page_url=page_url,
+                ip=ip,
+                user_agent=user_agent,
+            )
+            emailed = 1
+        except Exception as exc:  # noqa: BLE001
+            mail_error = str(exc)[:500]
 
     with _conn() as conn:
         cur = conn.execute(
             """
             INSERT INTO feedback
-            (kind, title, message, contact_email, page_url, ip, user_agent, emailed, mail_error, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (kind, title, message, contact_email, page_url, ip, user_agent,
+             emailed, mail_error, created_at, is_read)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             """,
             (
                 kind,
@@ -233,16 +251,89 @@ def submit_feedback(
         )
         row_id = cur.lastrowid
 
-    if not emailed:
-        return {
-            "ok": False,
-            "error": "Could not send the email right now. Please try again later or email birolbenli@gmail.com directly.",
-            "id": row_id,
-            "detail": mail_error,
-        }
-
     return {
         "ok": True,
         "id": row_id,
-        "message": "Thanks — your report was sent to birolbenli@gmail.com.",
+        "message": "Thanks — your report was received.",
     }
+
+
+def _row_to_item(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "kind": row["kind"],
+        "title": row["title"],
+        "message": row["message"],
+        "contact_email": row["contact_email"] or "",
+        "page_url": row["page_url"] or "",
+        "ip": row["ip"] or "",
+        "user_agent": row["user_agent"] or "",
+        "emailed": bool(row["emailed"]),
+        "created_at": row["created_at"],
+        "is_read": bool(row["is_read"]),
+    }
+
+
+def list_feedback(limit: int = 100, unread_only: bool = False) -> list[dict]:
+    init_feedback()
+    limit = max(1, min(int(limit), 500))
+    with _conn() as conn:
+        if unread_only:
+            rows = conn.execute(
+                """
+                SELECT * FROM feedback
+                WHERE is_read = 0
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM feedback
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+    return [_row_to_item(r) for r in rows]
+
+
+def feedback_unread_count() -> int:
+    init_feedback()
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM feedback WHERE is_read = 0"
+        ).fetchone()
+    return int(row["c"] if row else 0)
+
+
+def get_feedback(item_id: int) -> dict | None:
+    init_feedback()
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM feedback WHERE id = ?", (int(item_id),)
+        ).fetchone()
+    return _row_to_item(row) if row else None
+
+
+def mark_feedback_read(item_id: int, is_read: bool = True) -> bool:
+    init_feedback()
+    with _LOCK:
+        with _conn() as conn:
+            cur = conn.execute(
+                "UPDATE feedback SET is_read = ? WHERE id = ?",
+                (1 if is_read else 0, int(item_id)),
+            )
+            return cur.rowcount > 0
+
+
+def delete_feedback(item_id: int) -> bool:
+    init_feedback()
+    with _LOCK:
+        with _conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM feedback WHERE id = ?", (int(item_id),)
+            )
+            return cur.rowcount > 0

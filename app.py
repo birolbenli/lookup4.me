@@ -51,7 +51,16 @@ from tools.dmarc import lookup_dmarc
 from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
 from tools.email_analyze import analyze_email
 from tools.exchange_check import check_exchange
-from tools.feedback import init_feedback, submit_feedback
+from tools.feedback import (
+    delete_feedback,
+    feedback_unread_count,
+    get_feedback,
+    init_feedback,
+    list_feedback,
+    mark_feedback_read,
+    submit_feedback,
+)
+from tools.system_stats import system_snapshot
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
 from tools.mail_store import create_test, get_test, init_mail_store, list_tests
@@ -881,7 +890,72 @@ def admin_overview():
         cleanup_old_logs()
     except Exception:  # noqa: BLE001
         pass
-    return jsonify({"ok": True, "stats": overview_stats()})
+    stats = overview_stats()
+    try:
+        stats["inbox_unread"] = feedback_unread_count()
+    except Exception:  # noqa: BLE001
+        stats["inbox_unread"] = 0
+    return jsonify({"ok": True, "stats": stats})
+
+
+@app.get("/admin/api/system")
+def admin_system():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify(system_snapshot())
+
+
+@app.get("/admin/api/inbox")
+def admin_inbox_list():
+    denied = _require_admin()
+    if denied:
+        return denied
+    unread = (request.args.get("unread") or "").strip() in {"1", "true", "yes"}
+    items = list_feedback(150, unread_only=unread)
+    return jsonify(
+        {
+            "ok": True,
+            "items": items,
+            "unread": feedback_unread_count(),
+        }
+    )
+
+
+@app.get("/admin/api/inbox/<int:item_id>")
+def admin_inbox_get(item_id: int):
+    denied = _require_admin()
+    if denied:
+        return denied
+    item = get_feedback(item_id)
+    if not item:
+        return jsonify({"ok": False, "error": "Not found"}), 404
+    if not item.get("is_read"):
+        mark_feedback_read(item_id, True)
+        item["is_read"] = True
+    return jsonify({"ok": True, "item": item, "unread": feedback_unread_count()})
+
+
+@app.post("/admin/api/inbox/<int:item_id>/read")
+def admin_inbox_read(item_id: int):
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    is_read = data.get("is_read", True)
+    if not mark_feedback_read(item_id, bool(is_read)):
+        return jsonify({"ok": False, "error": "Not found"}), 404
+    return jsonify({"ok": True, "unread": feedback_unread_count()})
+
+
+@app.delete("/admin/api/inbox/<int:item_id>")
+def admin_inbox_delete(item_id: int):
+    denied = _require_admin()
+    if denied:
+        return denied
+    if not delete_feedback(item_id):
+        return jsonify({"ok": False, "error": "Not found"}), 404
+    return jsonify({"ok": True, "unread": feedback_unread_count()})
 
 
 @app.get("/admin/api/top-ips")

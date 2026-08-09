@@ -32,6 +32,95 @@
     return data;
   }
 
+  function cellSortValue(td, type) {
+    const raw = (td?.dataset?.sortValue ?? td?.textContent ?? "").trim();
+    if (type === "number") {
+      const n = parseFloat(String(raw).replace(/[^\d.-]/g, ""));
+      return Number.isFinite(n) ? n : 0;
+    }
+    if (type === "date") {
+      const t = Date.parse(raw.replace(" ", "T"));
+      return Number.isFinite(t) ? t : 0;
+    }
+    return raw.toLowerCase();
+  }
+
+  function sortTable(table, col, type, dir) {
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    const rows = [...tbody.querySelectorAll("tr")];
+    rows.sort((a, b) => {
+      const av = cellSortValue(a.children[col], type);
+      const bv = cellSortValue(b.children[col], type);
+      if (av < bv) return dir === "asc" ? -1 : 1;
+      if (av > bv) return dir === "asc" ? 1 : -1;
+      return 0;
+    });
+    rows.forEach((r) => tbody.appendChild(r));
+  }
+
+  function bindSortableTables(root = document) {
+    root.querySelectorAll("table.sortable").forEach((table) => {
+      if (table.dataset.sortBound === "1") return;
+      table.dataset.sortBound = "1";
+      table.querySelectorAll("th[data-sort]").forEach((th) => {
+        th.addEventListener("click", () => {
+          const col = Number(th.dataset.col || 0);
+          const type = th.dataset.sort || "string";
+          const next =
+            th.classList.contains("sort-asc")
+              ? "desc"
+              : th.classList.contains("sort-desc")
+                ? "asc"
+                : type === "number" || type === "date"
+                  ? "desc"
+                  : "asc";
+          table.querySelectorAll("th").forEach((h) => {
+            h.classList.remove("sort-asc", "sort-desc");
+          });
+          th.classList.add(next === "asc" ? "sort-asc" : "sort-desc");
+          sortTable(table, col, type, next);
+        });
+      });
+    });
+  }
+
+  function setInboxBadge(n) {
+    const badge = $("#nav-inbox-badge");
+    if (!badge) return;
+    const count = Number(n) || 0;
+    badge.textContent = String(count);
+    badge.classList.toggle("hidden", count <= 0);
+  }
+
+  function gaugeColor(pct) {
+    if (pct >= 85) return "#b42318";
+    if (pct >= 65) return "#b86a00";
+    return "#0c5c45";
+  }
+
+  function makeGauge(canvas, pct) {
+    if (!canvas || !window.Chart) return null;
+    const value = Math.max(0, Math.min(100, Number(pct) || 0));
+    return new Chart(canvas, {
+      type: "doughnut",
+      data: {
+        datasets: [
+          {
+            data: [value, 100 - value],
+            backgroundColor: [gaugeColor(value), "#e4ebe6"],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        cutout: "72%",
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      },
+    });
+  }
+
   function showAuth() {
     $("#auth-screen").classList.remove("hidden");
     $("#app-screen").classList.add("hidden");
@@ -190,11 +279,17 @@
       $(`#tab-${btn.dataset.tab}`)?.classList.add("active");
       $("#admin-nav")?.classList.remove("open");
       if (btn.dataset.tab === "account") loadAccount();
+      if (btn.dataset.tab === "inbox") loadInbox();
+      if (btn.dataset.tab === "overview") {
+        loadOverview();
+        loadSystem();
+      }
     });
   });
   $("#nav-toggle")?.addEventListener("click", () => {
     $("#admin-nav")?.classList.toggle("open");
   });
+  bindSortableTables();
 
   function setAccountMsg(ok, err) {
     const okEl = $("#account-ok");
@@ -369,10 +464,12 @@
   async function loadOverview() {
     const data = await api("/overview");
     const s = data.stats || {};
+    setInboxBadge(s.inbox_unread);
     $("#overview-stats").innerHTML = [
       ["Queries today", s.queries_today],
       ["Visits today", s.visits_today],
       ["Unique IPs today", s.unique_ips_today],
+      ["Inbox unread", s.inbox_unread],
       ["Queries total", s.queries_total],
       ["Visits total", s.visits_total],
       ["Whitelist", s.whitelist],
@@ -385,6 +482,118 @@
       .join("");
   }
 
+  let chartCpu;
+  let chartMem;
+  let chartDisk;
+
+  async function loadSystem() {
+    const data = await api("/system");
+    const cpu = data.cpu_percent ?? 0;
+    const mem = data.memory || {};
+    const disk = data.disk || {};
+    $("#system-host").textContent = data.hostname || "—";
+    $("#sys-cpu").textContent = `${cpu}%`;
+    $("#sys-mem").textContent = `${mem.percent ?? 0}%`;
+    $("#sys-disk").textContent = `${disk.percent ?? 0}%`;
+    $("#system-detail").textContent =
+      `Load ${((data.loadavg || []).join(" / ")) || "—"} · ` +
+      `RAM ${mem.used_human || "—"} / ${mem.total_human || "—"} (${mem.source || "—"}) · ` +
+      `Disk ${disk.used_human || "—"} / ${disk.total_human || "—"} free ${disk.free_human || "—"}`;
+
+    chartCpu?.destroy();
+    chartMem?.destroy();
+    chartDisk?.destroy();
+    chartCpu = makeGauge($("#chart-cpu"), cpu);
+    chartMem = makeGauge($("#chart-mem"), mem.percent);
+    chartDisk = makeGauge($("#chart-disk"), disk.percent);
+  }
+  $("#btn-refresh-system")?.addEventListener("click", () => loadSystem());
+
+  let inboxItems = [];
+
+  function kindPill(kind) {
+    return `<span class="pill ${esc(kind || "")}">${esc(kind || "—")}</span>`;
+  }
+
+  async function openInboxItem(id) {
+    const data = await api(`/inbox/${id}`);
+    const item = data.item || {};
+    setInboxBadge(data.unread);
+    const box = $("#inbox-detail");
+    box.innerHTML = `
+      <div class="panel-card-head">
+        <h3>${esc(item.title || "Untitled")}</h3>
+        ${kindPill(item.kind)}
+      </div>
+      <p class="tiny muted">${esc((item.created_at || "").replace("T", " ").slice(0, 19))} UTC</p>
+      <p class="tiny"><span class="muted">Contact:</span> ${esc(item.contact_email || "—")}</p>
+      <p class="tiny"><span class="muted">IP:</span> <span class="mono">${esc(item.ip || "—")}</span></p>
+      <p class="tiny"><span class="muted">Page:</span> ${
+        item.page_url
+          ? `<a href="${esc(item.page_url)}" target="_blank" rel="noopener">${esc(item.page_url)}</a>`
+          : "—"
+      }</p>
+      <div class="msg-body">${esc(item.message || "")}</div>
+      <div class="inbox-actions">
+        <button type="button" class="btn btn-sm btn-ghost" id="btn-inbox-unread">Mark unread</button>
+        <button type="button" class="btn btn-sm btn-danger" id="btn-inbox-delete">Delete</button>
+      </div>`;
+    $("#btn-inbox-unread")?.addEventListener("click", async () => {
+      const res = await api(`/inbox/${id}/read`, {
+        method: "POST",
+        body: JSON.stringify({ is_read: false }),
+      });
+      setInboxBadge(res.unread);
+      await loadInbox(false);
+    });
+    $("#btn-inbox-delete")?.addEventListener("click", async () => {
+      if (!confirm("Delete this message?")) return;
+      const res = await api(`/inbox/${id}`, { method: "DELETE" });
+      setInboxBadge(res.unread);
+      $("#inbox-detail").innerHTML = `<p class="muted">Select a message.</p>`;
+      await loadInbox(false);
+    });
+    // refresh list read state
+    await loadInbox(false, id);
+  }
+
+  async function loadInbox(resetDetail = true, keepId = null) {
+    const unreadOnly = !!$("#inbox-unread-only")?.checked;
+    const qs = unreadOnly ? "?unread=1" : "";
+    const data = await api(`/inbox${qs}`);
+    inboxItems = data.items || [];
+    setInboxBadge(data.unread);
+    const tb = $("#table-inbox tbody");
+    tb.innerHTML = inboxItems.length
+      ? inboxItems
+          .map((r) => {
+            const when = (r.created_at || "").replace("T", " ").slice(0, 19);
+            const from = r.contact_email || r.ip || "—";
+            return `<tr class="${r.is_read ? "" : "unread"}" data-id="${esc(r.id)}">
+              <td class="tiny" data-sort-value="${esc(r.created_at || "")}">${esc(when)}</td>
+              <td>${kindPill(r.kind)}</td>
+              <td>${esc(r.title)}</td>
+              <td class="tiny truncate" title="${esc(from)}">${esc(from)}</td>
+              <td><button type="button" class="btn btn-sm btn-ghost" data-open="${esc(r.id)}">Open</button></td>
+            </tr>`;
+          })
+          .join("")
+      : `<tr><td colspan="5" class="muted">No messages yet.</td></tr>`;
+    tb.querySelectorAll("[data-open]").forEach((btn) => {
+      btn.addEventListener("click", () => openInboxItem(btn.dataset.open));
+    });
+    tb.querySelectorAll("tr[data-id]").forEach((tr) => {
+      tr.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        openInboxItem(tr.dataset.id);
+      });
+    });
+    if (resetDetail && !keepId) {
+      $("#inbox-detail").innerHTML = `<p class="muted">Select a message.</p>`;
+    }
+  }
+  $("#inbox-unread-only")?.addEventListener("change", () => loadInbox());
+
   async function loadTopIps() {
     const data = await api("/top-ips");
     const tb = $("#table-top-ips tbody");
@@ -393,11 +602,12 @@
         const tools = (r.tool_breakdown || [])
           .map((t) => `${esc(t.tool)}:${t.count}`)
           .join(" · ");
+        const last = (r.last_seen || "").replace("T", " ").slice(0, 19);
         return `<tr>
-          <td class="mono">${esc(r.ip)} ${listBadge(r.listed)}</td>
-          <td>${esc(r.hits)}</td>
+          <td class="mono" data-sort-value="${esc(r.ip)}">${esc(r.ip)} ${listBadge(r.listed)}</td>
+          <td data-sort-value="${esc(r.hits)}">${esc(r.hits)}</td>
           <td class="tiny">${esc(tools) || "—"}</td>
-          <td class="tiny">${esc((r.last_seen || "").replace("T", " ").slice(0, 19))}</td>
+          <td class="tiny" data-sort-value="${esc(r.last_seen || "")}">${esc(last)}</td>
           <td class="tiny">${esc(r.country_code || "—")} · ${esc(r.os || "")} / ${esc(r.browser || "")}</td>
           <td>${ipActions(r.ip, r.listed)}</td>
         </tr>`;
@@ -547,13 +757,13 @@
               ? `<a class="muted" href="${esc(path)}" target="_blank" rel="noopener">Page</a>`
               : "—";
         return `<tr>
-          <td class="tiny">${esc((r.created_at || "").replace("T", " ").slice(0, 19))}</td>
+          <td class="tiny" data-sort-value="${esc(r.created_at || "")}">${esc((r.created_at || "").replace("T", " ").slice(0, 19))}</td>
           <td class="mono tiny">${esc(r.address)}</td>
           <td><span class="pill">${esc(r.status)}</span></td>
-          <td class="tiny">${esc((r.expires_at || "").replace("T", " ").slice(0, 19) || "—")}</td>
+          <td class="tiny" data-sort-value="${esc(r.expires_at || "")}">${esc((r.expires_at || "").replace("T", " ").slice(0, 19) || "—")}</td>
           <td class="mono">${esc(r.peer_ip || "—")}</td>
           <td class="tiny truncate" title="${esc(from)}">${esc(from)}<div class="muted">${esc(r.subject || "")}</div></td>
-          <td>${r.score != null ? esc(r.score) : "—"}</td>
+          <td data-sort-value="${esc(r.score ?? "")}">${r.score != null ? esc(r.score) : "—"}</td>
           <td>${reportCell}</td>
         </tr>`;
       })
@@ -604,11 +814,11 @@
       .map((r) => {
         return `<tr>
           <td class="mono">${esc(r.ip)}</td>
-          <td>${esc(r.hits)}</td>
+          <td data-sort-value="${esc(r.hits)}">${esc(r.hits)}</td>
           <td>${esc(r.country_code || "—")}</td>
           <td class="tiny">${esc(r.city || "—")}<div class="muted">${esc(r.isp || "")}</div></td>
           <td class="tiny">${esc(r.os || "")} / ${esc(r.browser || "")}<div class="muted">${esc(r.device || "")}</div></td>
-          <td class="tiny">${esc((r.last_seen || "").replace("T", " ").slice(0, 19))}</td>
+          <td class="tiny" data-sort-value="${esc(r.last_seen || "")}">${esc((r.last_seen || "").replace("T", " ").slice(0, 19))}</td>
           <td>${ipActions(r.ip, null)}</td>
         </tr>`;
       })
@@ -619,7 +829,7 @@
     vt.innerHTML = (data.recent || [])
       .map(
         (r) => `<tr>
-        <td class="tiny">${esc((r.ts || "").replace("T", " ").slice(0, 19))}</td>
+        <td class="tiny" data-sort-value="${esc(r.ts || "")}">${esc((r.ts || "").replace("T", " ").slice(0, 19))}</td>
         <td class="mono">${esc(r.ip)}</td>
         <td class="mono tiny truncate">${esc(r.path || "/")}</td>
         <td class="tiny">${esc(r.os || "")}</td>
@@ -633,6 +843,8 @@
   async function loadAll() {
     await Promise.all([
       loadOverview(),
+      loadSystem(),
+      loadInbox(false),
       loadTopIps(),
       loadLists(),
       loadQueries(),
