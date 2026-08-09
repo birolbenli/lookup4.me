@@ -113,6 +113,7 @@ def _add(catalog: Catalog, msgid: str, msgstr: str) -> None:
 
 
 def build_from_legacy() -> Catalog:
+    from email_report_messages import EMAIL_REPORT_TR
     from scripts.legacy_i18n_snapshot import JS_TR, TOOLS_TR, TR
 
     catalog = Catalog(
@@ -128,6 +129,8 @@ def build_from_legacy() -> Catalog:
         _add(catalog, msgid, msgstr)
     for msgid, msgstr in JS_TR.items():
         _add(catalog, msgid, msgstr)
+    for msgid, msgstr in EMAIL_REPORT_TR.items():
+        _add(catalog, msgid, msgstr)
     for slug, tr_fields in TOOLS_TR.items():
         en_fields = TOOL_MSGIDS.get(slug) or {}
         for key, tr_val in tr_fields.items():
@@ -137,19 +140,34 @@ def build_from_legacy() -> Catalog:
     return catalog
 
 
+def merge_catalog(base: Catalog, extra: Catalog) -> None:
+    for message in extra:
+        if not message.id:
+            continue
+        if message.id not in base:
+            base.add(message.id, message.string)
+        elif message.string and not (base[message.id].string or "").strip():
+            base[message.id].string = message.string
+
+
 def main() -> int:
     TR_PO.parent.mkdir(parents=True, exist_ok=True)
+    legacy = build_from_legacy()
 
     if TR_PO.is_file():
         with TR_PO.open("rb") as fh:
             catalog = read_po(fh)
-        # Merge any legacy strings that are still missing
-        legacy = build_from_legacy()
-        for message in legacy:
-            if message.id and message.id not in catalog:
-                catalog.add(message.id, message.string)
+        merge_catalog(catalog, legacy)
+        # Prefer email-report TR overrides when both exist
+        from email_report_messages import EMAIL_REPORT_TR
+
+        for msgid, msgstr in EMAIL_REPORT_TR.items():
+            if msgid in catalog:
+                catalog[msgid].string = msgstr
+            else:
+                catalog.add(msgid, msgstr)
     else:
-        catalog = build_from_legacy()
+        catalog = legacy
 
     with TR_PO.open("wb") as fh:
         write_po(fh, catalog, width=100)

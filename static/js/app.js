@@ -511,21 +511,32 @@ curl ${escapeHtml(location.origin)}/ua</pre>
 
 function renderDeliveryFlow(flow) {
   if (!flow || !(flow.nodes || []).length) {
-    return `<div class="flow-empty muted">No Received headers found — delivery path unavailable.</div>`;
+    return `<div class="flow-empty muted">${escapeHtml(
+      t("No Received headers found — delivery path unavailable.")
+    )}</div>`;
   }
 
   const roleLabel = (role) => {
-    if (role === "origin") return "From";
-    if (role === "destination") return "To";
+    if (role === "origin") return t("From");
+    if (role === "destination") return t("To");
     if (role === "origin-mta") return t("Sending server");
-    if (role === "inbox-mta") return "Receiving server";
-    return "Relay";
+    if (role === "inbox-mta") return t("Receiving server");
+    return t("Relay");
+  };
+
+  const trNodeText = (value) => {
+    if (!value) return "—";
+    // Known static labels (Sender / Recipient / mail server); leave hostnames/IPs as-is.
+    const translated = t(value);
+    return translated;
   };
 
   const nodes = flow.nodes
     .map((node) => {
       const role = escapeHtml(node.role || "relay");
       const kind = escapeHtml(node.kind || "server");
+      const title = trNodeText(node.title || "");
+      const subtitle = trNodeText(node.subtitle || "");
       return `<div class="flow-item role-${role}">
         <div class="flow-rail" aria-hidden="true">
           <span class="flow-dot"></span>
@@ -533,12 +544,8 @@ function renderDeliveryFlow(flow) {
         </div>
         <div class="flow-node kind-${kind} role-${role}">
           <div class="flow-role">${escapeHtml(roleLabel(node.role))}</div>
-          <div class="flow-title" title="${escapeHtml(node.title || "")}">${escapeHtml(
-            node.title || "—"
-          )}</div>
-          <div class="flow-sub" title="${escapeHtml(node.subtitle || "")}">${escapeHtml(
-            node.subtitle || ""
-          )}</div>
+          <div class="flow-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+          <div class="flow-sub" title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</div>
           ${
             node.detail
               ? `<div class="flow-time">${escapeHtml(node.detail)}</div>`
@@ -549,13 +556,14 @@ function renderDeliveryFlow(flow) {
     })
     .join("");
 
+  const hops = Number(flow.hop_count || 0);
   return `<section class="delivery-flow">
     <div class="flow-head">
       <div>
-        <h2>Delivery path</h2>
-        <p class="muted">Top to bottom: sender → servers → recipient</p>
+        <h2>${escapeHtml(t("Delivery path"))}</h2>
+        <p class="muted">${escapeHtml(t("Top to bottom: sender → servers → recipient"))}</p>
       </div>
-      <span class="pill">${escapeHtml(String(flow.hop_count || 0))} hop(s)</span>
+      <span class="pill">${escapeHtml(t("{n} hop(s)", { n: hops }))}</span>
     </div>
     <div class="flow-track">${nodes}</div>
   </section>`;
@@ -572,6 +580,11 @@ function mailStatusLabel(status) {
   return map[status] || status || "";
 }
 
+function trReportText(value) {
+  if (value == null || value === "") return "";
+  return t(String(value));
+}
+
 function renderEmailReport(data, root) {
   if (!data.ok) return renderError(data, root);
   const score = data.score ?? "—";
@@ -581,15 +594,21 @@ function renderEmailReport(data, root) {
       return `<article class="mt-finding mt-${escapeHtml(st)}">
         <div class="mt-finding-top">
           <span class="mt-badge mt-badge-${escapeHtml(st)}">${escapeHtml(mailStatusLabel(st))}</span>
-          <h3>${escapeHtml(f.title)}</h3>
+          <h3>${escapeHtml(trReportText(f.title))}</h3>
         </div>
-        <p class="mt-finding-summary">${escapeHtml(f.summary)}</p>
+        <p class="mt-finding-summary">${escapeHtml(trReportText(f.summary))}</p>
         ${f.detail ? `<pre class="mt-finding-detail">${escapeHtml(f.detail)}</pre>` : ""}
-        ${f.edu ? `<p class="mt-finding-edu"><strong>${escapeHtml(t("Why it matters"))}:</strong> ${escapeHtml(f.edu)}</p>` : ""}
+        ${
+          f.edu
+            ? `<p class="mt-finding-edu"><strong>${escapeHtml(t("Why it matters"))}:</strong> ${escapeHtml(
+                trReportText(f.edu)
+              )}</p>`
+            : ""
+        }
         ${
           f.recommendation
             ? `<p class="mt-finding-fix"><strong>${escapeHtml(t("How to improve"))}:</strong> ${escapeHtml(
-                f.recommendation
+                trReportText(f.recommendation)
               )}</p>`
             : ""
         }
@@ -598,7 +617,7 @@ function renderEmailReport(data, root) {
     .join("");
 
   const recs = (data.recommendations || [])
-    .map((r, i) => `<li><span class="rec-num">${i + 1}</span>${escapeHtml(r)}</li>`)
+    .map((r, i) => `<li><span class="rec-num">${i + 1}</span>${escapeHtml(trReportText(r))}</li>`)
     .join("");
 
   const chain = (data.received_chain || [])
@@ -607,6 +626,7 @@ function renderEmailReport(data, root) {
 
   const meta = data.meta || {};
   const counts = data.counts || {};
+  const scoreLabel = trReportText(data.score_label || "");
 
   root.appendChild(
     el(`<div class="email-report">
@@ -615,7 +635,7 @@ function renderEmailReport(data, root) {
       <div class="score-hero score-${escapeHtml(String(data.score_label || "").toLowerCase())}">
         <div class="score-number">${escapeHtml(score)}<span>/10</span></div>
         <div>
-          <div class="score-label">${escapeHtml(data.score_label || "")}</div>
+          <div class="score-label">${escapeHtml(scoreLabel)}</div>
           <p class="muted">${escapeHtml(meta.subject || t("No subject"))} · ${escapeHtml(
             meta.from || ""
           )}</p>

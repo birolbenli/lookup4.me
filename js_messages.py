@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from email_report_messages import EMAIL_REPORT_TR
+
 # Keep in sync with t("...") calls in static/js/app.js.
 # pybabel extract picks these up via babel.cfg.
-JS_MESSAGES: tuple[str, ...] = (
+_BASE_JS_MESSAGES: tuple[str, ...] = (
     "Looking up…",
     "Scanning Exchange endpoints…",
     "External health report",
@@ -169,6 +171,11 @@ JS_MESSAGES: tuple[str, ...] = (
     "countries",
     "Top countries",
     "queries",
+)
+
+# Mail report strings (titles, edu, chrome) for client-side t()
+JS_MESSAGES: tuple[str, ...] = tuple(
+    dict.fromkeys([*_BASE_JS_MESSAGES, *EMAIL_REPORT_TR.keys()])
 )
 
 
