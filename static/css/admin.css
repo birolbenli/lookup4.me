@@ -242,12 +242,57 @@ body.admin-body {
   gap: 0.75rem;
   margin-top: 0.9rem;
 }
+.overview-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 0.85rem;
+}
 .stat-card {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 0.95rem;
+  padding: 0.95rem 1rem;
   box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--brand);
+}
+.stat-card.tone-brand::before { background: var(--brand); }
+.stat-card.tone-info::before { background: var(--info); }
+.stat-card.tone-teal::before { background: #1a8a72; }
+.stat-card.tone-warn::before { background: var(--warn); }
+.stat-card.tone-ok::before { background: var(--ok); }
+.stat-card.tone-danger::before { background: var(--danger); }
+.stat-card.tone-ink::before { background: #2a3a34; }
+.stat-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.stat-value {
+  display: block;
+  font-size: 1.85rem;
+  margin-top: 0.35rem;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-hint {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 .stat-card strong {
   display: block;
@@ -398,13 +443,54 @@ body.admin-body {
   box-shadow: var(--shadow);
 }
 .chart-grid .chart-wrap { margin: 0; }
+.admin-map-wrap {
+  margin-top: 0.75rem;
+}
 .admin-map {
-  height: 300px;
-  background: #fff;
+  height: 340px;
+  width: 100%;
+  background: linear-gradient(180deg, #f7fbf8 0%, #eef5f1 100%);
   border: 1px solid var(--line);
   border-radius: 14px;
-  margin-top: 0.75rem;
   box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.admin-map .jvm-container,
+.admin-map svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+#admin-map-status {
+  margin: 0.4rem 0 0;
+}
+.cacti-block {
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--line);
+}
+.cacti-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+.cacti-head h3 { margin: 0; }
+.cacti-chart-wrap {
+  position: relative;
+  height: 240px;
+  background:
+    linear-gradient(180deg, rgba(12, 92, 69, 0.04), transparent 40%),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 47px,
+      rgba(15, 40, 30, 0.05) 48px
+    ),
+    #fbfdfb;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem 0.4rem;
 }
 .row-actions { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 

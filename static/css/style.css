@@ -1773,11 +1773,53 @@ code.inline,
 }
 
 .about {
-  max-width: 42rem;
+  max-width: 44rem;
 }
 
 .about p {
   color: var(--muted);
+}
+
+.about-lead {
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--ink) !important;
+}
+
+.about-author {
+  margin: 1.4rem 0 1.6rem;
+  padding: 1rem 1.1rem;
+  border-left: 3px solid var(--brand);
+  background: linear-gradient(90deg, rgba(12, 92, 69, 0.06), transparent 70%);
+  border-radius: 0 12px 12px 0;
+}
+
+.about-author .subhead {
+  margin-top: 0;
+}
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.about-list {
+  margin: 0.4rem 0 1.2rem;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.about-list.numbered {
+  list-style: decimal;
+}
+
+.about-list li {
+  line-height: 1.45;
 }
 
 .chain {

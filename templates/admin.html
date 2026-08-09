@@ -8,11 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/css/jsvectormap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsvectormap/1.5.3/css/jsvectormap.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/js/jsvectormap.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.5.3/dist/maps/world.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsvectormap/1.5.3/js/jsvectormap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsvectormap/1.5.3/maps/world.js" defer></script>
   <script src="{{ url_for('static', filename='js/admin.js') }}" defer></script>
 </head>
 <body
@@ -79,6 +79,7 @@
         <strong>Admin</strong>
         <span class="muted tiny">{{ site_name }}</span>
       </div>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('index') }}" id="btn-back-site">← Site</a>
       <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
       <button type="button" class="btn btn-ghost" id="btn-logout">Log out</button>
     </header>
@@ -105,7 +106,7 @@
             </div>
             <button type="button" class="btn btn-ghost btn-sm" id="btn-refresh-system">Refresh system</button>
           </div>
-          <div class="stat-grid" id="overview-stats"></div>
+          <div class="stat-grid overview-tiles" id="overview-stats"></div>
           <div class="panel-card system-panel">
             <div class="panel-card-head">
               <h3>Server resources</h3>
@@ -114,11 +115,11 @@
             <div class="gauge-grid">
               <div class="gauge-card">
                 <canvas id="chart-cpu" height="140"></canvas>
-                <div class="gauge-meta"><strong id="sys-cpu">—</strong><span>CPU</span></div>
+                <div class="gauge-meta"><strong id="sys-cpu">—</strong><span>CPU now</span></div>
               </div>
               <div class="gauge-card">
                 <canvas id="chart-mem" height="140"></canvas>
-                <div class="gauge-meta"><strong id="sys-mem">—</strong><span>Memory</span></div>
+                <div class="gauge-meta"><strong id="sys-mem">—</strong><span>Memory now</span></div>
               </div>
               <div class="gauge-card">
                 <canvas id="chart-disk" height="140"></canvas>
@@ -126,6 +127,15 @@
               </div>
             </div>
             <p class="tiny muted" id="system-detail"></p>
+            <div class="cacti-block">
+              <div class="cacti-head">
+                <h3>Last 24 hours</h3>
+                <span class="tiny muted">Sampled about every minute</span>
+              </div>
+              <div class="cacti-chart-wrap">
+                <canvas id="chart-history" height="220"></canvas>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -267,7 +277,10 @@
               <p class="muted">Map, top IPs, and recent hits.</p>
             </div>
           </div>
-          <div id="admin-map" class="admin-map"></div>
+          <div class="admin-map-wrap">
+            <div id="admin-map" class="admin-map"></div>
+            <p class="tiny muted" id="admin-map-status"></p>
+          </div>
           <div class="stat-grid" id="visitor-countries"></div>
           <h3>Top visitor IPs</h3>
           <div class="table-scroll"><table class="admin-table sortable" id="table-visitors">

@@ -3,17 +3,47 @@
 {% block content %}
 <section class="about">
   <h1 class="page-title">{{ _('About') }}</h1>
-  <p>
-    {{ _('{site} is a small collection of practical DNS, email authentication, IP and SSL tools. Open a tool, enter a value, or paste a direct URL and get a clear result.', site=site_name) }}
+  <p class="about-lead">
+    {{ _('{site} is a free toolkit for DNS, email authentication, IP, SSL and deliverability checks — built for sysadmins, mail admins and developers who want clear answers without signing up.', site=site_name) }}
   </p>
-  <p>
-    {{ _('Built by') }}
-    <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">Birol Benli</a>
-    ·
-    <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-    ·
-    <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee') }}</a>.
-  </p>
+
+  <div class="about-author">
+    <h2 class="subhead">{{ _('Who built this') }}</h2>
+    <p>
+      {{ _('I am Birol Benli — a systems and mail-focused engineer. I run this site as a practical toolbox alongside my writing.') }}
+    </p>
+    <p>
+      {{ _('My blog lives at') }}
+      <a href="https://birolbenli.com" target="_blank" rel="noopener noreferrer">birolbenli.com</a>
+      {{ _('— notes on infrastructure, mail, DNS and day-to-day ops.') }}
+    </p>
+    <p class="about-links">
+      <a href="https://birolbenli.com" target="_blank" rel="noopener noreferrer">{{ _('Blog') }}</a>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      <span aria-hidden="true">·</span>
+      <a href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee') }}</a>
+    </p>
+  </div>
+
+  <h2 class="subhead">{{ _('Highlights') }}</h2>
+  <ul class="about-list">
+    <li>{{ _('DNS suite: MX, SPF, DKIM, DMARC, NS, CAA, WHOIS, reverse DNS and a multi-type lookup.') }}</li>
+    <li>{{ _('Mail Tester: temporary inbox, SMTP receive, deliverability score and a shareable report.') }}</li>
+    <li>{{ _('Email Header Analyzer for pasted sources — hop path, auth results and plain-language findings.') }}</li>
+    <li>{{ _('SSL Checker for up to 10 hosts, HTTP headers, port check, and My IP / User-Agent helpers.') }}</li>
+    <li>{{ _('Direct deep links and curl-friendly endpoints so you can bookmark or script common checks.') }}</li>
+  </ul>
+
+  <h2 class="subhead">{{ _('How to use') }}</h2>
+  <ol class="about-list numbered">
+    <li>{{ _('Open a tool from the home page, or paste a direct URL with the query already in the path.') }}</li>
+    <li>{{ _('For Mail Tester, create an address, send mail from your server or provider, then open the report when it arrives.') }}</li>
+    <li>{{ _('Use Language in the menu for English or Turkish UI; tool results stay technical and concise.') }}</li>
+    <li>{{ _('Share feedback via Report if something looks wrong or you want a feature.') }}</li>
+  </ol>
 
   <h2 class="subhead">{{ _('Direct URLs') }}</h2>
   <p class="muted">{{ _('Every tool accepts {pattern} and runs immediately.', pattern='/tools/<name>/<query>') }}</p>
@@ -32,11 +62,16 @@ curl {{ request.host_url.rstrip('/') }}/ua</pre>
   <p class="muted">{{ _('For Mail Tester delivery, point MX for {domain} to this server IP and keep port 25 open.', domain=mailtest_domain) }}</p>
   <p class="muted">{{ _('Mail Tester inboxes accept mail for 24 hours; scored reports stay available for 7 days via the report link.') }}</p>
 
-  <h2 class="subhead">{{ _('Rate limits') }}</h2>
-  <p class="muted">{{ _('Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared). Limits reset at UTC midnight.', mail=rate_limit_mailtest, tools=rate_limit_tools) }}</p>
+  <h2 class="subhead">{{ _('Limits & retention') }}</h2>
+  <ul class="about-list">
+    <li>{{ _('Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared bucket). Counters reset at UTC midnight.', mail=rate_limit_mailtest, tools=rate_limit_tools) }}</li>
+    <li>{{ _('Mail Tester inboxes last about 24 hours; scored reports are kept for 7 days.') }}</li>
+    <li>{{ _('No accounts required for public tools. Abuse protection may temporarily block noisy IPs.') }}</li>
+    <li>{{ _('This is a personal project — availability is best-effort, not a paid SLA.') }}</li>
+  </ul>
 
   {% if counts %}
-  <h2 class="subhead subtle">{{ _('Usage') }}</h2>
+  <h2 class="subhead subtle">{{ _('Usage on this instance') }}</h2>
   <p class="muted tiny">{{ _('Quiet counter of lookups performed on this instance.') }}</p>
   <div class="table-wrap quiet-table">
     <table>

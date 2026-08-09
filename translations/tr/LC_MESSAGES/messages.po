@@ -141,6 +141,73 @@ msgstr ""
 "{site} pratik DNS, e-posta kimlik doğrulama, IP ve SSL araçlarından oluşan küçük bir "
 "koleksiyondur. Bir araç açın, değer girin veya doğrudan bir adres yapıştırın; net sonuç alın."
 
+msgid ""
+"{site} is a free toolkit for DNS, email authentication, IP, SSL and deliverability checks — built "
+"for sysadmins, mail admins and developers who want clear answers without signing up."
+msgstr ""
+"{site} DNS, e-posta kimlik doğrulama, IP, SSL ve teslim edilebilirlik kontrolleri için ücretsiz "
+"bir araç setidir — kayıt olmadan net cevap isteyen sistem, posta yöneticileri ve geliştiriciler "
+"için."
+
+msgid "Who built this"
+msgstr "Kim yaptı"
+
+msgid ""
+"I am Birol Benli — a systems and mail-focused engineer. I run this site as a practical toolbox "
+"alongside my writing."
+msgstr ""
+"Ben Birol Benli — sistem ve e-posta odaklı bir mühendisim. Bu siteyi yazılarımın yanında pratik "
+"bir araç kutusu olarak işletiyorum."
+
+msgid "My blog lives at"
+msgstr "Blogum şurada:"
+
+msgid "— notes on infrastructure, mail, DNS and day-to-day ops."
+msgstr "— altyapı, posta, DNS ve günlük operasyon notları."
+
+msgid "Blog"
+msgstr "Blog"
+
+msgid "Highlights"
+msgstr "Öne çıkanlar"
+
+msgid "DNS suite: MX, SPF, DKIM, DMARC, NS, CAA, WHOIS, reverse DNS and a multi-type lookup."
+msgstr "DNS paketi: MX, SPF, DKIM, DMARC, NS, CAA, WHOIS, ters DNS ve çoklu tip sorgu."
+
+msgid "Mail Tester: temporary inbox, SMTP receive, deliverability score and a shareable report."
+msgstr "Mail Tester: geçici gelen kutusu, SMTP alma, teslim skoru ve paylaşılabilir rapor."
+
+msgid ""
+"Email Header Analyzer for pasted sources — hop path, auth results and plain-language findings."
+msgstr ""
+"Yapıştırılan kaynaklar için E-posta Başlık Analizi — hop yolu, kimlik doğrulama sonuçları ve sade "
+"dil bulgular."
+
+msgid "SSL Checker for up to 10 hosts, HTTP headers, port check, and My IP / User-Agent helpers."
+msgstr "10 hosta kadar SSL Kontrolü, HTTP başlıkları, port kontrolü ve IP’m / User-Agent yardımcıları."
+
+msgid "Direct deep links and curl-friendly endpoints so you can bookmark or script common checks."
+msgstr "Sık kontrolleri yer imi veya betik haline getirmek için doğrudan bağlantılar ve curl uçları."
+
+msgid "How to use"
+msgstr "Nasıl kullanılır"
+
+msgid "Open a tool from the home page, or paste a direct URL with the query already in the path."
+msgstr "Ana sayfadan bir araç açın veya sorguyu yolda içeren doğrudan bir adres yapıştırın."
+
+msgid ""
+"For Mail Tester, create an address, send mail from your server or provider, then open the report "
+"when it arrives."
+msgstr ""
+"Mail Tester için bir adres oluşturun, sunucunuzdan veya sağlayıcınızdan posta gönderin, gelince "
+"raporu açın."
+
+msgid "Use Language in the menu for English or Turkish UI; tool results stay technical and concise."
+msgstr "Menüdeki Dil ile İngilizce veya Türkçe arayüz seçin; araç sonuçları teknik ve kısa kalır."
+
+msgid "Share feedback via Report if something looks wrong or you want a feature."
+msgstr "Bir şey yanlış görünüyorsa veya özellik istiyorsanız Bildir üzerinden geri bildirim gönderin."
+
 msgid "Built by"
 msgstr "Geliştiren"
 
@@ -292,12 +359,34 @@ msgstr "Günlük araç hakkınız doldu (IP başına {limit}/gün). UTC gece yar
 msgid "Rate limits"
 msgstr "Kullanım limitleri"
 
+msgid "Limits & retention"
+msgstr "Limitler ve saklama"
+
 msgid ""
 "Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared). Limits reset at UTC "
 "midnight."
 msgstr ""
 "Mail Tester: IP başına günde {mail}. Diğer araçlar: IP başına günde {tools} (ortak). Limitler UTC"
 " gece yarısında sıfırlanır."
+
+msgid ""
+"Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared bucket). Counters reset at "
+"UTC midnight."
+msgstr ""
+"Mail Tester: IP başına günde {mail}. Diğer araçlar: IP başına günde {tools} (ortak kova). "
+"Sayaçlar UTC gece yarısında sıfırlanır."
+
+msgid "Mail Tester inboxes last about 24 hours; scored reports are kept for 7 days."
+msgstr "Mail Tester gelen kutuları yaklaşık 24 saat; puanlı raporlar 7 gün saklanır."
+
+msgid "No accounts required for public tools. Abuse protection may temporarily block noisy IPs."
+msgstr "Herkese açık araçlar için hesap gerekmez. Kötüye kullanım koruması gürültülü IP’leri geçici engelleyebilir."
+
+msgid "This is a personal project — availability is best-effort, not a paid SLA."
+msgstr "Bu kişisel bir proje — erişilebilirlik en iyi çaba ile; ücretli SLA değildir."
+
+msgid "Usage on this instance"
+msgstr "Bu kurulumdaki kullanım"
 
 msgid "Prefer headers-only analysis when you can."
 msgstr "Mümkünse yalnızca başlık analizi tercih edin."

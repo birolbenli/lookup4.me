@@ -60,7 +60,7 @@ from tools.feedback import (
     mark_feedback_read,
     submit_feedback,
 )
-from tools.system_stats import system_snapshot
+from tools.system_stats import start_metrics_sampler, system_snapshot
 from tools.http_check import check_http
 from tools.ip_info import client_ip_from_request, lookup_ip_info
 from tools.mail_store import create_test, get_test, init_mail_store, list_tests
@@ -903,7 +903,7 @@ def admin_system():
     denied = _require_admin()
     if denied:
         return denied
-    return jsonify(system_snapshot())
+    return jsonify(system_snapshot(with_history=True))
 
 
 @app.get("/admin/api/inbox")
@@ -1051,6 +1051,7 @@ def not_found(_err):
 
 # Start SMTP sink once per process (gunicorn workers=1)
 start_smtp_receiver()
+start_metrics_sampler()
 
 
 if __name__ == "__main__":

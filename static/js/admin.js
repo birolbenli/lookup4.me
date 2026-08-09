@@ -284,6 +284,9 @@
         loadOverview();
         loadSystem();
       }
+      if (btn.dataset.tab === "visitors") {
+        loadVisitors({ ensureMap: true });
+      }
     });
   });
   $("#nav-toggle")?.addEventListener("click", () => {
@@ -461,23 +464,32 @@
     );
   }
 
+  function fmtCount(n) {
+    const v = Number(n) || 0;
+    return v.toLocaleString("en-US");
+  }
+
   async function loadOverview() {
     const data = await api("/overview");
     const s = data.stats || {};
     setInboxBadge(s.inbox_unread);
-    $("#overview-stats").innerHTML = [
-      ["Queries today", s.queries_today],
-      ["Visits today", s.visits_today],
-      ["Unique IPs today", s.unique_ips_today],
-      ["Inbox unread", s.inbox_unread],
-      ["Queries total", s.queries_total],
-      ["Visits total", s.visits_total],
-      ["Whitelist", s.whitelist],
-      ["Blacklist", s.blacklist],
-    ]
+    const tiles = [
+      { label: "Queries today", val: s.queries_today, tone: "brand", hint: "Tool runs since UTC midnight" },
+      { label: "Visits today", val: s.visits_today, tone: "info", hint: "Page hits tracked today" },
+      { label: "Unique IPs", val: s.unique_ips_today, tone: "teal", hint: "Distinct visitors today" },
+      { label: "Inbox unread", val: s.inbox_unread, tone: "warn", hint: "Contact messages waiting" },
+      { label: "Queries total", val: s.queries_total, tone: "ink", hint: "All-time tool usage" },
+      { label: "Visits total", val: s.visits_total, tone: "ink", hint: "All-time page hits" },
+      { label: "Whitelist", val: s.whitelist, tone: "ok", hint: "IPs bypassing limits" },
+      { label: "Blacklist", val: s.blacklist, tone: "danger", hint: "Blocked client IPs" },
+    ];
+    $("#overview-stats").innerHTML = tiles
       .map(
-        ([label, val]) =>
-          `<div class="stat-card"><span class="muted">${esc(label)}</span><strong>${esc(val ?? 0)}</strong></div>`
+        (t) => `<div class="stat-card tone-${esc(t.tone)}">
+          <span class="stat-label">${esc(t.label)}</span>
+          <strong class="stat-value">${esc(fmtCount(t.val))}</strong>
+          <span class="stat-hint">${esc(t.hint)}</span>
+        </div>`
       )
       .join("");
   }
@@ -485,6 +497,84 @@
   let chartCpu;
   let chartMem;
   let chartDisk;
+  let chartHistory;
+
+  function makeHistoryChart(canvas, rows) {
+    if (!canvas || !window.Chart) return null;
+    const labels = rows.map((r) => {
+      const d = new Date(r.ts);
+      if (Number.isNaN(d.getTime())) return "";
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    });
+    const common = {
+      borderWidth: 1.5,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      tension: 0.15,
+      fill: true,
+    };
+    return new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            ...common,
+            label: "CPU %",
+            data: rows.map((r) => r.cpu ?? 0),
+            borderColor: "#0c5c45",
+            backgroundColor: "rgba(12, 92, 69, 0.22)",
+            fill: true,
+          },
+          {
+            ...common,
+            label: "Memory %",
+            data: rows.map((r) => r.mem ?? 0),
+            borderColor: "#1d6f9a",
+            backgroundColor: "rgba(29, 111, 154, 0.14)",
+            fill: true,
+          },
+          {
+            ...common,
+            label: "Disk %",
+            data: rows.map((r) => r.disk ?? 0),
+            borderColor: "#b86a00",
+            backgroundColor: "rgba(184, 106, 0, 0.10)",
+            fill: true,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          x: {
+            ticks: { maxTicksLimit: 12, color: "#6b7c74", font: { size: 10 } },
+            grid: { color: "rgba(15, 40, 30, 0.06)" },
+          },
+          y: {
+            min: 0,
+            max: 100,
+            ticks: { stepSize: 25, color: "#6b7c74", font: { size: 10 }, callback: (v) => `${v}%` },
+            grid: { color: "rgba(15, 40, 30, 0.08)" },
+          },
+        },
+        plugins: {
+          legend: {
+            position: "top",
+            align: "end",
+            labels: { boxWidth: 10, boxHeight: 10, font: { size: 11 } },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.parsed.y).toFixed(1)}%`,
+            },
+          },
+        },
+      },
+    });
+  }
 
   async function loadSystem() {
     const data = await api("/system");
@@ -506,6 +596,20 @@
     chartCpu = makeGauge($("#chart-cpu"), cpu);
     chartMem = makeGauge($("#chart-mem"), mem.percent);
     chartDisk = makeGauge($("#chart-disk"), disk.percent);
+
+    const rows = Array.isArray(data.history) ? data.history : [];
+    chartHistory?.destroy();
+    const canvas = $("#chart-history");
+    if (canvas) {
+      if (rows.length < 2) {
+        chartHistory = makeHistoryChart(canvas, [
+          { ts: data.sampled_at || new Date().toISOString(), cpu, mem: mem.percent, disk: disk.percent },
+          { ts: data.sampled_at || new Date().toISOString(), cpu, mem: mem.percent, disk: disk.percent },
+        ]);
+      } else {
+        chartHistory = makeHistoryChart(canvas, rows);
+      }
+    }
   }
   $("#btn-refresh-system")?.addEventListener("click", () => loadSystem());
 
@@ -771,42 +875,102 @@
   }
 
   let mapInstance;
+  let pendingMapValues = null;
 
-  async function loadVisitors() {
+  function visitorsTabVisible() {
+    const tab = $("#tab-visitors");
+    return !!(tab && tab.classList.contains("active"));
+  }
+
+  function renderVisitorMap(values) {
+    const el = $("#admin-map");
+    const status = $("#admin-map-status");
+    if (!el) return;
+    pendingMapValues = values || {};
+    if (!visitorsTabVisible()) {
+      if (status) status.textContent = "Open this tab to load the map.";
+      return;
+    }
+    if (!window.jsVectorMap) {
+      if (status) status.textContent = "Map library failed to load.";
+      return;
+    }
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (w < 40 || h < 40) {
+      requestAnimationFrame(() => renderVisitorMap(pendingMapValues));
+      return;
+    }
+    try {
+      mapInstance?.destroy?.();
+    } catch (_) {
+      /* ignore */
+    }
+    el.innerHTML = "";
+    try {
+      mapInstance = new jsVectorMap({
+        selector: "#admin-map",
+        map: "world",
+        backgroundColor: "transparent",
+        regionStyle: {
+          initial: { fill: "#dce8e2", stroke: "#fff", strokeWidth: 0.4 },
+          hover: { fill: "#0c5c45" },
+        },
+        series: {
+          regions: [
+            {
+              attribute: "fill",
+              values: pendingMapValues,
+              scale: ["#cfe3d9", "#0f6a4f"],
+              normalizeFunction: "polynomial",
+            },
+          ],
+        },
+        onLoaded() {
+          try {
+            this.updateSize?.();
+          } catch (_) {
+            /* ignore */
+          }
+        },
+      });
+      if (status) {
+        const n = Object.keys(pendingMapValues || {}).length;
+        status.textContent = n
+          ? `${n} countries with visits (darker = more hits).`
+          : "No country data yet — map will fill as visits arrive.";
+      }
+      setTimeout(() => {
+        try {
+          mapInstance?.updateSize?.();
+        } catch (_) {
+          /* ignore */
+        }
+      }, 80);
+    } catch (err) {
+      if (status) status.textContent = `Map error: ${err.message || err}`;
+    }
+  }
+
+  async function loadVisitors(opts = {}) {
     const data = await api("/visitors");
     const countries = data.countries || [];
     $("#visitor-countries").innerHTML = countries
       .slice(0, 8)
       .map(
         (c) =>
-          `<div class="stat-card"><span class="muted">${esc(c.name || c.code)}</span><strong>${esc(c.count)}</strong><div class="tiny muted">${esc(c.ips)} IPs</div></div>`
+          `<div class="stat-card tone-teal"><span class="stat-label">${esc(c.name || c.code)}</span><strong class="stat-value">${esc(fmtCount(c.count))}</strong><span class="stat-hint">${esc(c.ips)} unique IPs</span></div>`
       )
       .join("");
 
     const values = {};
     countries.forEach((c) => {
-      if (c.code) values[c.code] = c.count;
+      if (c.code) values[String(c.code).toUpperCase()] = c.count;
     });
-    if (window.jsVectorMap) {
-      try {
-        mapInstance?.destroy?.();
-      } catch (_) {
-        /* ignore */
-      }
-      $("#admin-map").innerHTML = "";
-      mapInstance = new jsVectorMap({
-        selector: "#admin-map",
-        map: "world",
-        series: {
-          regions: [
-            {
-              attribute: "fill",
-              values,
-              scale: ["#d7e8df", "#0f6a4f"],
-            },
-          ],
-        },
-      });
+    if (opts.ensureMap || visitorsTabVisible()) {
+      renderVisitorMap(values);
+    } else {
+      pendingMapValues = values;
     }
 
     const tb = $("#table-visitors tbody");
@@ -839,6 +1003,16 @@
       )
       .join("");
   }
+
+  window.addEventListener("resize", () => {
+    if (visitorsTabVisible() && mapInstance) {
+      try {
+        mapInstance.updateSize?.();
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  });
 
   async function loadAll() {
     await Promise.all([
