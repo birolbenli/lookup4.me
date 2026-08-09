@@ -10,7 +10,8 @@ from urllib.parse import unquote
 from flask import Flask, Response, g, jsonify, redirect, render_template, request
 
 from i18n import COOKIE as LANG_COOKIE
-from i18n import _, detect_lang, get_lang, js_bundle, localize_tools
+from i18n import SUPPORTED as LANG_SUPPORTED
+from i18n import _, get_lang, init_babel, js_bundle, localize_tools
 from tools.admin_auth import (
     begin_setup,
     change_password,
@@ -89,6 +90,7 @@ app.config["LINKEDIN_URL"] = os.environ.get(
 app.config["MAILTEST_DOMAIN"] = os.environ.get(
     "MAILTEST_DOMAIN", "tools.birolbenli.com"
 )
+init_babel(app)
 
 TOOLS = [
     {
@@ -279,8 +281,7 @@ def _blacklist_redirect():
 
 @app.before_request
 def _ensure_runtime():
-    g.lang = detect_lang()
-    g.set_lang_cookie = request.args.get("lang") in {"en", "tr"}
+    g.set_lang_cookie = (request.args.get("lang") or "").lower() in LANG_SUPPORTED
     init_stats()
     init_mail_store()
     init_feedback()

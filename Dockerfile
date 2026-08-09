@@ -12,6 +12,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Compile gettext catalogs (English source; Turkish in translations/tr)
+RUN python scripts/build_translations.py
+
 RUN mkdir -p /app/instance && chmod 777 /app/instance \
     && chmod +x /app/entrypoint.sh
 

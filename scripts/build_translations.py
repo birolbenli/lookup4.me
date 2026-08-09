@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+"""Build Turkish gettext catalog from the legacy snapshot (one-time) or refresh .mo.
+
+Usage:
+  python scripts/build_translations.py
+"""
+
+from __future__ import annotations
+
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from babel.messages.catalog import Catalog
+from babel.messages.mofile import write_mo
+from babel.messages.pofile import read_po, write_po
+
+TR_PO = ROOT / "translations" / "tr" / "LC_MESSAGES" / "messages.po"
+TR_MO = ROOT / "translations" / "tr" / "LC_MESSAGES" / "messages.mo"
+
+# English tool strings (msgids) → legacy Turkish values keyed by slug field
+TOOL_MSGIDS = {
+    "mx": {
+        "name": "MX Lookup",
+        "desc": "Find mail exchangers and resolve their IPs.",
+    },
+    "spf": {
+        "name": "SPF Lookup",
+        "desc": "Inspect SPF records and included policies.",
+    },
+    "dkim": {
+        "name": "DKIM Lookup",
+        "desc": "Detect common DKIM selectors and follow host chains.",
+    },
+    "dmarc": {
+        "name": "DMARC Lookup",
+        "desc": "Check DMARC policy, rua/ruf and alignment tags.",
+    },
+    "headers": {
+        "name": "Email Header Analyzer",
+        "desc": "Paste raw headers/source and get a clear, educational report.",
+        "placeholder": "Paste full email source or headers here…",
+    },
+    "mailtest": {
+        "name": "Mail Tester",
+        "desc": "Get a random inbox, send a message, and see a deliverability score.",
+    },
+    "dns": {
+        "name": "DNS Lookup",
+        "desc": "Query A, AAAA, CNAME, NS, TXT, SOA, CAA, MX and SRV.",
+    },
+    "ns": {
+        "name": "NS Lookup",
+        "desc": "List authoritative nameservers for a domain.",
+    },
+    "caa": {
+        "name": "CAA Lookup",
+        "desc": "See which CAs are allowed to issue certificates.",
+    },
+    "whois": {
+        "name": "WHOIS",
+        "desc": "Query domain or IP registration data.",
+    },
+    "ssl": {
+        "name": "SSL Checker",
+        "desc": "Check up to 10 certificates at once in a table.",
+    },
+    "http": {
+        "name": "HTTP Headers",
+        "desc": "Fetch status code and response headers.",
+    },
+    "port": {
+        "name": "Port Check",
+        "desc": "Test if a TCP port is open on a host.",
+    },
+    "rdns": {
+        "name": "Reverse DNS",
+        "desc": "Resolve PTR records for an IP address.",
+    },
+    "blacklist": {
+        "name": "Blacklist Check",
+        "desc": "Check an IP against common DNSBL / RBL lists.",
+    },
+    "smtp": {
+        "name": "SMTP Test",
+        "desc": "Test SMTP banner, EHLO and STARTTLS on port 25.",
+    },
+    "exchange": {
+        "name": "Microsoft Exchange Server HC",
+        "desc": "External Exchange health check: VDirs, NTLM vs OAuth 2.0, hybrid/Teams guidance, TLS.",
+        "placeholder": "mail.example.com",
+    },
+    "ip": {
+        "name": "IP Lookup",
+        "desc": "See your public IP (curl-friendly) or inspect another IP.",
+        "placeholder": "leave empty for your IP",
+    },
+}
+
+
+def _add(catalog: Catalog, msgid: str, msgstr: str) -> None:
+    if not msgid:
+        return
+    if msgid in catalog:
+        # Prefer non-empty translation if we see the string again
+        existing = catalog[msgid]
+        if existing.string or not msgstr:
+            return
+    catalog.add(msgid, msgstr or None)
+
+
+def build_from_legacy() -> Catalog:
+    from scripts.legacy_i18n_snapshot import JS_TR, TOOLS_TR, TR
+
+    catalog = Catalog(
+        locale="tr",
+        project="lookup4.me",
+        version="1.0",
+        copyright_holder="Birol Benli",
+        msgid_bugs_address="birolbenli@gmail.com",
+        creation_date=datetime.now(timezone.utc),
+        charset="utf-8",
+    )
+    for msgid, msgstr in TR.items():
+        _add(catalog, msgid, msgstr)
+    for msgid, msgstr in JS_TR.items():
+        _add(catalog, msgid, msgstr)
+    for slug, tr_fields in TOOLS_TR.items():
+        en_fields = TOOL_MSGIDS.get(slug) or {}
+        for key, tr_val in tr_fields.items():
+            en_val = en_fields.get(key)
+            if en_val:
+                _add(catalog, en_val, tr_val)
+    return catalog
+
+
+def main() -> int:
+    TR_PO.parent.mkdir(parents=True, exist_ok=True)
+
+    if TR_PO.is_file():
+        with TR_PO.open("rb") as fh:
+            catalog = read_po(fh)
+        # Merge any legacy strings that are still missing
+        legacy = build_from_legacy()
+        for message in legacy:
+            if message.id and message.id not in catalog:
+                catalog.add(message.id, message.string)
+    else:
+        catalog = build_from_legacy()
+
+    with TR_PO.open("wb") as fh:
+        write_po(fh, catalog, width=100)
+    with TR_MO.open("wb") as fh:
+        write_mo(fh, catalog)
+
+    print(f"Wrote {TR_PO.relative_to(ROOT)} ({len(catalog)} messages)")
+    print(f"Wrote {TR_MO.relative_to(ROOT)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

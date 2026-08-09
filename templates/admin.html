@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -23,50 +23,50 @@
   <div id="auth-screen" class="auth-screen">
     <div class="auth-card">
       <h1>Admin</h1>
-      <p class="muted" id="auth-lead">1) Kullanıcı adı ve şifre ile giriş yapın.</p>
+      <p class="muted" id="auth-lead">1) Sign in with username and password.</p>
 
       {% if not password_configured %}
-      <p class="error-text">Sunucuda ADMIN_PASSWORD tanımlı değil. .env dosyasına ekleyin.</p>
+      <p class="error-text">ADMIN_PASSWORD is not set on the server. Add it to the .env file.</p>
       {% endif %}
 
       <!-- Step 1: username / password -->
       <div id="password-panel">
         <label class="field">
-          <span>Kullanıcı adı</span>
+          <span>Username</span>
           <input id="login-user" type="text" autocomplete="username" value="admin">
         </label>
         <label class="field">
-          <span>Şifre</span>
+          <span>Password</span>
           <input id="login-pass" type="password" autocomplete="current-password">
         </label>
-        <button type="button" class="btn" id="btn-password-login">Giriş</button>
+        <button type="button" class="btn" id="btn-password-login">Sign in</button>
       </div>
 
       <!-- Step 2a: first-time authenticator setup -->
       <div id="setup-panel" class="hidden">
         <ol class="setup-steps">
-          <li>Telefonunuzda <strong>Google Authenticator</strong> veya <strong>Authy</strong> açın.</li>
-          <li>Aşağıdaki QR kodu tarayın (veya gizli anahtarı elle girin).</li>
-          <li>Uygulamadaki 6 haneli kodu yazıp onaylayın.</li>
+          <li>Open <strong>Google Authenticator</strong> or <strong>Authy</strong> on your phone.</li>
+          <li>Scan the QR code below (or enter the secret manually).</li>
+          <li>Enter the 6-digit code from the app and confirm.</li>
         </ol>
         <div id="qr-box" class="qr-box"></div>
-        <p class="tiny muted">Elle giriş için gizli anahtar:</p>
+        <p class="tiny muted">Manual entry secret:</p>
         <p class="mono tiny select-all" id="setup-secret"></p>
         <label class="field">
-          <span>Authenticator’daki 6 haneli kod</span>
+          <span>Authenticator 6-digit code</span>
           <input id="setup-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code" placeholder="123456">
         </label>
-        <button type="button" class="btn" id="btn-confirm-setup">Authenticator’ı etkinleştir</button>
+        <button type="button" class="btn" id="btn-confirm-setup">Enable authenticator</button>
       </div>
 
       <!-- Step 2b: OTP each login -->
       <div id="otp-panel" class="hidden">
-        <p class="muted">Authenticator uygulamanızdaki 6 haneli kodu girin.</p>
+        <p class="muted">Enter the 6-digit code from your authenticator app.</p>
         <label class="field">
-          <span>Authenticator kodu</span>
+          <span>Authenticator code</span>
           <input id="login-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="one-time-code" placeholder="123456">
         </label>
-        <button type="button" class="btn" id="btn-otp-login">Panele gir</button>
+        <button type="button" class="btn" id="btn-otp-login">Enter panel</button>
       </div>
 
       <p class="error-text" id="auth-error" hidden></p>
@@ -80,7 +80,7 @@
         <span class="muted tiny">{{ site_name }}</span>
       </div>
       <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu">☰</button>
-      <button type="button" class="btn btn-ghost" id="btn-logout">Çıkış</button>
+      <button type="button" class="btn btn-ghost" id="btn-logout">Log out</button>
     </header>
 
     <div class="admin-shell">

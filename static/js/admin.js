@@ -74,13 +74,13 @@
         setup.otpauth_url
       )}" width="220" height="220" alt="QR code">`;
     } else {
-      box.innerHTML = "<p class='muted'>QR üretilemedi — gizli anahtarı elle girin.</p>";
+      box.innerHTML = "<p class='muted'>Could not generate QR — enter the secret manually.</p>";
     }
   }
 
   async function initAuth() {
     showPanel("password-panel");
-    $("#auth-lead").textContent = "1) Kullanıcı adı ve şifre ile giriş yapın.";
+    $("#auth-lead").textContent = "1) Sign in with username and password.";
     try {
       await api("/overview");
       showApp();
@@ -102,7 +102,7 @@
         }),
       });
       if (data.need_setup) {
-        $("#auth-lead").textContent = "2) Authenticator kurulumunu tamamlayın.";
+        $("#auth-lead").textContent = "2) Finish authenticator setup.";
         showPanel("setup-panel");
         renderSetupQr(data.setup || {});
         // Refresh QR from server (preauth cookie now set)
@@ -116,7 +116,7 @@
         return;
       }
       if (data.need_otp) {
-        $("#auth-lead").textContent = "2) Authenticator kodunu girin.";
+        $("#auth-lead").textContent = "2) Enter your authenticator code.";
         showPanel("otp-panel");
         $("#login-otp")?.focus();
         return;
@@ -175,7 +175,7 @@
     }
     showAuth();
     showPanel("password-panel");
-    $("#auth-lead").textContent = "1) Kullanıcı adı ve şifre ile giriş yapın.";
+    $("#auth-lead").textContent = "1) Sign in with username and password.";
     $("#login-pass").value = "";
     $("#login-otp").value = "";
     $("#setup-code").value = "";
@@ -223,7 +223,7 @@
         setup.otpauth_url
       )}" width="220" height="220" alt="QR code">`;
     } else {
-      box.innerHTML = "<p class='muted'>QR üretilemedi — gizli anahtarı elle girin.</p>";
+      box.innerHTML = "<p class='muted'>Could not generate QR — enter the secret manually.</p>";
     }
   }
 

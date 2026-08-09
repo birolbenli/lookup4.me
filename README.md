@@ -58,8 +58,23 @@ docker compose up --build -d
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python scripts/build_translations.py
 python app.py
 ```
+
+## Translations (Flask-Babel)
+
+The site source language is **English**. Turkish UI strings live in gettext catalogs under `translations/tr/LC_MESSAGES/` (not in Python dicts).
+
+```bash
+# After adding new English UI strings in templates / js_messages.py:
+pybabel extract -F babel.cfg -o translations/messages.pot .
+pybabel update -i translations/messages.pot -d translations -l tr
+# edit translations/tr/LC_MESSAGES/messages.po (Poedit / Weblate)
+python scripts/build_translations.py   # compile .mo (also merges legacy snapshot if needed)
+```
+
+Language switcher: `?lang=en` / `?lang=tr` (cookie). Default is English.
 
 ## VPS deploy
 
