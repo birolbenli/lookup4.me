@@ -981,3 +981,331 @@ msgstr "Herkese açık IP’nizi görün (curl uyumlu) veya başka bir IP incele
 msgid "leave empty for your IP"
 msgstr "kendi IP’niz için boş bırakın"
 
+msgid "Excellent"
+msgstr "Mükemmel"
+
+msgid "Poor"
+msgstr "Zayıf"
+
+msgid "Delivery path"
+msgstr "Teslimat yolu"
+
+msgid "Top to bottom: sender → servers → recipient"
+msgstr "Yukarıdan aşağı: gönderen → sunucular → alıcı"
+
+msgid "hop(s)"
+msgstr "atlama"
+
+msgid "{n} hop(s)"
+msgstr "{n} atlama"
+
+msgid "No Received headers found — delivery path unavailable."
+msgstr "Received başlığı yok — teslimat yolu gösterilemiyor."
+
+msgid "From"
+msgstr "Kimden"
+
+msgid "To"
+msgstr "Kime"
+
+msgid "Receiving server"
+msgstr "Alan sunucu"
+
+msgid "Relay"
+msgstr "Relay"
+
+msgid "Sender"
+msgstr "Gönderen"
+
+msgid "Recipient"
+msgstr "Alıcı"
+
+msgid "mail server"
+msgstr "posta sunucusu"
+
+msgid "Message identity"
+msgstr "İleti kimliği"
+
+msgid "Return-Path alignment"
+msgstr "Return-Path hizalaması"
+
+msgid "Return-Path"
+msgstr "Return-Path"
+
+msgid "Reply-To mismatch"
+msgstr "Reply-To uyuşmazlığı"
+
+msgid "Authentication-Results"
+msgstr "Authentication-Results"
+
+msgid "Authentication-Results · SPF"
+msgstr "Authentication-Results · SPF"
+
+msgid "Authentication-Results · DKIM"
+msgstr "Authentication-Results · DKIM"
+
+msgid "Authentication-Results · DMARC"
+msgstr "Authentication-Results · DMARC"
+
+msgid "DKIM signature"
+msgstr "DKIM imzası"
+
+msgid "SPF record (From domain)"
+msgstr "SPF kaydı (From alanı)"
+
+msgid "DMARC policy"
+msgstr "DMARC politikası"
+
+msgid "Sending IP reverse DNS"
+msgstr "Gönderen IP ters DNS"
+
+msgid "Blacklist reputation"
+msgstr "Kara liste itibarı"
+
+msgid "Sending IP"
+msgstr "Gönderen IP"
+
+msgid "Message-ID"
+msgstr "Message-ID"
+
+msgid "Date header"
+msgstr "Date başlığı"
+
+msgid "List-Unsubscribe"
+msgstr "List-Unsubscribe"
+
+msgid "Plain-text alternative"
+msgstr "Düz metin alternatifi"
+
+msgid "Link volume"
+msgstr "Bağlantı yoğunluğu"
+
+msgid "Attachments"
+msgstr "Ekler"
+
+msgid "Mailer fingerprint"
+msgstr "Mailer parmak izi"
+
+msgid "Envelope sender domain matches From domain."
+msgstr "Zarf gönderen alanı From alanı ile eşleşiyor."
+
+msgid "Envelope sender domain differs from From domain."
+msgstr "Zarf gönderen alanı From alanından farklı."
+
+msgid "No Return-Path / envelope sender found in the source."
+msgstr "Kaynakta Return-Path / zarf göndereni yok."
+
+msgid "Reply-To domain differs from From domain."
+msgstr "Reply-To alanı From alanından farklı."
+
+msgid "No Authentication-Results header present in this source."
+msgstr "Bu kaynakta Authentication-Results başlığı yok."
+
+msgid "DKIM signature present and verified."
+msgstr "DKIM imzası var ve doğrulandı."
+
+msgid "DKIM signature present (local crypto verify skipped)."
+msgstr "DKIM imzası var (yerel kripto doğrulama atlandı)."
+
+msgid "DKIM signature present but verification failed."
+msgstr "DKIM imzası var ancak doğrulama başarısız."
+
+msgid "No DKIM-Signature header found."
+msgstr "DKIM-Signature başlığı bulunamadı."
+
+msgid "IP is clean on checked DNSBLs."
+msgstr "IP, kontrol edilen DNSBL’lerde temiz."
+
+msgid "Could not confidently detect the sending IP from headers alone."
+msgstr "Yalnızca başlıklardan gönderen IP güvenle tespit edilemedi."
+
+msgid "Message-ID looks well-formed."
+msgstr "Message-ID düzgün görünüyor."
+
+msgid "Message-ID missing or unusual."
+msgstr "Message-ID yok veya olağandışı."
+
+msgid "Date header parsed successfully."
+msgstr "Date başlığı başarıyla ayrıştırıldı."
+
+msgid "Date header could not be parsed."
+msgstr "Date başlığı ayrıştırılamadı."
+
+msgid "List-Unsubscribe header present."
+msgstr "List-Unsubscribe başlığı mevcut."
+
+msgid "Many links found but no List-Unsubscribe header."
+msgstr "Çok bağlantı var ama List-Unsubscribe başlığı yok."
+
+msgid "HTML body found without a text/plain alternative."
+msgstr "HTML gövde var, text/plain alternatifi yok."
+
+msgid "Both text and HTML parts are present."
+msgstr "Hem metin hem HTML parçaları mevcut."
+
+msgid ""
+"These fields are what recipients and filters see first. A clear From name and stable Message-ID "
+"help trust and threading."
+msgstr ""
+"Alıcılar ve filtreler önce bu alanlara bakar. Net From adı ve kararlı Message-ID güven ve konu "
+"zinciri için yardımcı olur."
+
+msgid ""
+"Return-Path is where bounces go. Large differences from the From domain can look like spoofing, "
+"even when forwarding is legitimate."
+msgstr ""
+"Return-Path geri dönenlerin gittiği yerdir. From alanından büyük sapmalar, yönlendirme meşru olsa"
+" bile sahteciliğe benzeyebilir."
+
+msgid ""
+"SMTP envelope sender (MAIL FROM) becomes Return-Path. Missing values make bounce handling and SPF"
+" evaluation harder to reason about."
+msgstr ""
+"SMTP zarf göndereni (MAIL FROM) Return-Path olur. Eksik değerler bounce ve SPF değerlendirmesini "
+"zorlaştırır."
+
+msgid ""
+"Reply-To pointing elsewhere is common for ticket systems, but spammers also abuse it to harvest "
+"replies."
+msgstr ""
+"Reply-To’nun başka yere gitmesi destek sistemlerinde yaygındır; spamcılar da yanıt toplamak için "
+"kötüye kullanır."
+
+msgid "SPF lists which servers may send mail for a domain."
+msgstr "SPF, bir alan adına hangi sunucuların posta gönderebileceğini listeler."
+
+msgid "DKIM cryptographically signs the message so it cannot be altered unnoticed."
+msgstr "DKIM iletiyi kriptografik imzalar; fark edilmeden değiştirilemez."
+
+msgid "DMARC ties SPF/DKIM to the From domain and tells receivers what to do on failure."
+msgstr "DMARC, SPF/DKIM’i From alanına bağlar ve başarısızlıkta alıcıya ne yapacağını söyler."
+
+msgid ""
+"This header is usually added by the receiving mail system (Gmail, Outlook, your MX). If you "
+"pasted only outgoing headers, it may be absent."
+msgstr ""
+"Bu başlığı genelde alan posta sistemi ekler (Gmail, Outlook, MX). Yalnızca giden başlık "
+"yapıştırdıysanız olmayabilir."
+
+msgid "A valid DKIM signature strongly improves deliverability and is required for solid DMARC alignment."
+msgstr "Geçerli DKIM imzası teslimatı güçlendirir ve sağlam DMARC hizalaması için gerekir."
+
+msgid "Without DKIM, many filters trust the message less and DMARC often cannot pass via DKIM alignment."
+msgstr "DKIM olmadan birçok filtre iletiye daha az güvenir; DMARC çoğu zaman DKIM hizalamasıyla geçemez."
+
+msgid "SPF alone is not enough, but a correct SPF record is a baseline for mailbox providers."
+msgstr "Yalnızca SPF yetmez; doğru SPF kaydı posta kutusu sağlayıcıları için temeldir."
+
+msgid "Domains without SPF are easier to spoof and often score worse in spam filters."
+msgstr "SPF’siz alanlar daha kolay taklit edilir ve spam filtrelerinde genelde daha kötü puan alır."
+
+msgid "p=none monitors only. p=quarantine or p=reject actively protect the domain from spoofing."
+msgstr "p=none yalnızca izler. p=quarantine veya p=reject alanı sahteciliğe karşı aktif korur."
+
+msgid "DMARC tells receivers how to handle unauthenticated mail using your domain in From."
+msgstr "DMARC, From’da alanınızı kullanan kimlik doğrulanmamış postada alıcıya ne yapacağını söyler."
+
+msgid "Mailbox providers expect sending IPs to have valid reverse DNS that looks like a mail host."
+msgstr ""
+"Posta kutusu sağlayıcıları, gönderen IP’lerin posta sunucusuna benzeyen geçerli ters DNS’e sahip "
+"olmasını bekler."
+
+msgid "DNSBL listings are a common reason for spam-folder or reject decisions."
+msgstr "DNSBL kayıtları spam klasörü veya red kararlarının yaygın nedenidir."
+
+msgid ""
+"Received headers vary by server. For full IP reputation checks, use Mail Tester with a live "
+"delivery."
+msgstr ""
+"Received başlıkları sunucuya göre değişir. Tam IP itibarı için canlı teslimatlı Mail Tester "
+"kullanın."
+
+msgid "A unique Message-ID helps clients thread conversations and avoid duplicate detection quirks."
+msgstr ""
+"Benzersiz Message-ID, istemcilerin konuşmaları zincirlemesine ve yinelenen algılama sorunlarından"
+" kaçınmasına yardım eder."
+
+msgid "Missing Message-IDs are uncommon for healthy mail streams."
+msgstr "Sağlıklı posta akışlarında Message-ID eksikliği nadirdir."
+
+msgid "Invalid dates can look automated or malformed to filters and clients."
+msgstr "Geçersiz tarihler filtre ve istemcilere otomatik veya bozuk görünebilir."
+
+msgid "Bulk/marketing mail should include one-click unsubscribe headers for better inbox placement."
+msgstr ""
+"Toplu/pazarlama postasında daha iyi gelen kutusu için tek tıkla abonelikten çıkma başlıkları "
+"olmalıdır."
+
+msgid "Providers increasingly expect unsubscribe headers on campaign mail."
+msgstr "Sağlayıcılar kampanya postasında abonelikten çıkma başlıklarını giderek daha çok bekliyor."
+
+msgid "Multipart messages with both text and HTML are more accessible and look less spammy."
+msgstr "Hem metin hem HTML içeren multipart iletiler daha erişilebilir ve daha az spam görünür."
+
+msgid "Good MIME structure helps deliverability and accessibility."
+msgstr "İyi MIME yapısı teslimat ve erişilebilirliğe yardımcı olur."
+
+msgid "Very link-heavy messages, especially with short/redirect URLs, often score worse."
+msgstr "Çok bağlantılı iletiler, özellikle kısa/yönlendirme URL’leriyle, genelde daha kötü puan alır."
+
+msgid "Executable or nested archive attachments are major spam/malware signals."
+msgstr "Çalıştırılabilir veya iç içe arşiv ekleri önemli spam/kötü amaçlı yazılım sinyalleridir."
+
+msgid "Not bad by itself — just useful context when debugging a stream."
+msgstr "Tek başına kötü değil — akışı ayıklarken yararlı bağlamdır."
+
+msgid ""
+"Each Received header is a stamp added by a mail server. Reading them bottom-to-top shows the "
+"journey from the sending server to the inbox."
+msgstr ""
+"Her Received başlığı bir posta sunucusunun damgasıdır. Aşağıdan yukarı okumak, gönderen sunucudan"
+" gelen kutusuna yolculuğu gösterir."
+
+msgid ""
+"Use a From domain that aligns with your bounce/envelope domain, or authenticate with DKIM/DMARC "
+"properly for the From domain."
+msgstr "Bounce/zarf alanıyla hizalı bir From alanı kullanın veya From alanı için DKIM/DMARC’ı doğru kurun."
+
+msgid "Ensure your mail server sets a valid envelope sender."
+msgstr "Posta sunucunuzun geçerli bir zarf göndereni ayarladığından emin olun."
+
+msgid "If intentional, keep branding clear in the message body. If not, remove Reply-To."
+msgstr "Kasıtlıysa gövdede markayı net tutun. Değilse Reply-To’yu kaldırın."
+
+msgid ""
+"Check selector DNS record, private key config, and that middleboxes are not rewriting signed "
+"headers/body."
+msgstr ""
+"Seçici DNS kaydını, özel anahtar yapılandırmasını ve ara kutuların imzalı başlık/gövdeyi yeniden "
+"yazmadığını kontrol edin."
+
+msgid "Enable DKIM signing on your MTA or ESP, then publish the selector TXT record."
+msgstr "MTA veya ESP’nizde DKIM imzalamayı açın, ardından seçici TXT kaydını yayınlayın."
+
+msgid "After monitoring reports, raise DMARC policy to quarantine, then reject."
+msgstr "Raporları izledikten sonra DMARC politikasını quarantine, sonra reject yapın."
+
+msgid "Ask your provider to set a PTR such as mail.yourdomain.com for this IP."
+msgstr "Sağlayıcınızdan bu IP için mail.alanadiniz.com gibi bir PTR isteyin."
+
+msgid "Request delisting after fixing the root cause (compromise, open relay, bad content)."
+msgstr "Kök nedeni düzelttikten sonra (ele geçirme, açık relay, kötü içerik) listeden çıkarma isteyin."
+
+msgid "Configure your MTA/app to generate RFC-compliant Message-ID values."
+msgstr "MTA/uygulamanızın RFC uyumlu Message-ID üretmesini sağlayın."
+
+msgid "Use RFC 5322 date formatting from your mail library."
+msgstr "Posta kitaplığınızdan RFC 5322 tarih biçimini kullanın."
+
+msgid "Add List-Unsubscribe and List-Unsubscribe-Post headers for marketing messages."
+msgstr "Pazarlama iletileri için List-Unsubscribe ve List-Unsubscribe-Post başlıklarını ekleyin."
+
+msgid "Send multipart/alternative with both text/plain and text/html parts."
+msgstr "Hem text/plain hem text/html parçalarıyla multipart/alternative gönderin."
+
+msgid "Reduce tracking redirects and keep a smaller set of clear destination links."
+msgstr "İzleme yönlendirmelerini azaltın; net hedef bağlantı sayısını düşürün."
+
+msgid "Avoid executable attachments; host files on HTTPS instead."
+msgstr "Çalıştırılabilir eklerden kaçının; dosyaları HTTPS’te barındırın."
+
