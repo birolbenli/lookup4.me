@@ -465,28 +465,30 @@ HOMEPAGE_GROUPS = [
         "featured": False,
         "title": "Domain security",
         "blurb": "Public security.txt and related domain-facing checks.",
+        # Featured tools are listed once above; omit them from later groups.
         "slugs": ["securitytxt", "whois"],
     },
     {
         "id": "email-auth",
         "featured": False,
         "title": "Email authentication",
-        "blurb": "SPF, DKIM, DMARC, MTA-STS, TLS-RPT, BIMI, and DANE/TLSA.",
-        "slugs": ["mx", "spf", "dkim", "dmarc", "mtasts", "tlsrpt", "bimi", "dane"],
+        "blurb": "SPF, DKIM, DMARC, TLS-RPT, BIMI, and DANE/TLSA.",
+        "slugs": ["mx", "spf", "dkim", "dmarc", "tlsrpt", "bimi", "dane"],
     },
     {
         "id": "smtp-mail",
         "featured": False,
         "title": "SMTP & mail server",
-        "blurb": "Live SMTP probes, blacklist checks, and Mail Tester.",
-        "slugs": ["smtp", "blacklist", "mailtest", "headers"],
+        "blurb": "Live SMTP probes and blacklist checks.",
+        "slugs": ["smtp", "blacklist"],
     },
     {
         "id": "exchange",
         "featured": False,
         "title": "Microsoft Exchange",
         "blurb": "External-only Exchange health, endpoints, TLS, and hybrid signals.",
-        "slugs": ["exchange"],
+        # exchange is featured — keep section only when more Exchange tools ship
+        "slugs": [],
     },
     {
         "id": "dns",
@@ -499,15 +501,15 @@ HOMEPAGE_GROUPS = [
         "id": "ssl-tls",
         "featured": False,
         "title": "SSL / TLS",
-        "blurb": "Certificate tables and HSTS inspection.",
-        "slugs": ["ssl", "hsts"],
+        "blurb": "HSTS and related TLS surface checks.",
+        "slugs": ["hsts"],
     },
     {
         "id": "web-security",
         "featured": False,
         "title": "Web security",
-        "blurb": "Security headers, redirects, robots.txt, and raw HTTP headers.",
-        "slugs": ["secheaders", "redirect", "robots", "http", "securitytxt"],
+        "blurb": "Redirects, robots.txt, and raw HTTP headers.",
+        "slugs": ["redirect", "robots", "http"],
     },
     {
         "id": "network",
@@ -533,6 +535,8 @@ def homepage_tool_groups(tools_list: list[dict]) -> list[dict]:
     for g in HOMEPAGE_GROUPS:
         items = []
         for slug in g["slugs"]:
+            if slug in used:
+                continue
             tool = by_slug.get(slug)
             if not tool:
                 continue

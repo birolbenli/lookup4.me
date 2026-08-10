@@ -1918,3 +1918,15 @@ msgstr "security.txt Oluşturucu"
 msgid "Suggested RFC 9116 security.txt contents."
 msgstr "Önerilen RFC 9116 security.txt içeriği."
 
+msgid "SPF, DKIM, DMARC, TLS-RPT, BIMI, and DANE/TLSA."
+msgstr "SPF, DKIM, DMARC, TLS-RPT, BIMI ve DANE/TLSA."
+
+msgid "Live SMTP probes and blacklist checks."
+msgstr "Canlı SMTP testleri ve kara liste kontrolleri."
+
+msgid "HSTS and related TLS surface checks."
+msgstr "HSTS ve ilgili TLS yüzey kontrolleri."
+
+msgid "Redirects, robots.txt, and raw HTTP headers."
+msgstr "Yönlendirmeler, robots.txt ve ham HTTP başlıkları."
+
