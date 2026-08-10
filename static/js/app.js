@@ -293,19 +293,35 @@ function renderSsl(data, root) {
   if (!data.ok) return renderError(data, root);
   const s = data.summary || {};
   const rows = (data.results || [])
-    .map(
-      (r) => `<tr>
-        <td class="mono">${escapeHtml(r.domain)}</td>
-        <td>${escapeHtml(r.port)}</td>
+    .map((r) => {
+      const sans = Array.isArray(r.san) ? r.san : [];
+      const sanPreview = sans.slice(0, 4).join(", ");
+      const sanMore = sans.length > 4 ? ` (+${sans.length - 4})` : "";
+      const sanCell = sans.length
+        ? `<span class="mono tiny" title="${escapeHtml(sans.join(", "))}">${escapeHtml(
+            sanPreview + sanMore
+          )}</span>`
+        : `<span class="muted">—</span>`;
+      let matchHtml = "—";
+      if (r.hostname_match === true) {
+        matchHtml = `<span class="status ok">${escapeHtml(t("Match"))}</span>`;
+      } else if (r.hostname_match === false) {
+        matchHtml = `<span class="status warn">${escapeHtml(t("Mismatch"))}</span>`;
+      }
+      return `<tr>
+        <td class="mono">${escapeHtml(r.domain)}<div class="tiny muted">${escapeHtml(r.subject || "")}</div></td>
+        <td>${escapeHtml(String(r.port))}</td>
         <td class="mono">${escapeHtml(r.ip || "—")}</td>
-        <td>${escapeHtml(r.issuer || "—")}</td>
+        <td class="tiny truncate" title="${escapeHtml(r.issuer || "")}">${escapeHtml(r.issuer || "—")}</td>
+        <td>${sanCell}</td>
+        <td>${matchHtml}</td>
         <td>${escapeHtml(r.expiry_date || "—")}</td>
         <td>${r.days_left ?? "—"}</td>
         <td><span class="status ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span>${
           r.message ? `<div class="muted">${escapeHtml(r.message)}</div>` : ""
         }</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
   root.appendChild(
     el(`<div>
@@ -317,7 +333,15 @@ function renderSsl(data, root) {
       </div>
       <div class="table-wrap"><table>
         <thead><tr>
-          <th>Domain</th><th>Port</th><th>IP</th><th>Issuer</th><th>Expiry</th><th>Days</th><th>Status</th>
+          <th>${escapeHtml(t("Domain"))} / CN</th>
+          <th>${escapeHtml(t("Port"))}</th>
+          <th>IP</th>
+          <th>${escapeHtml(t("Issuer"))}</th>
+          <th>SAN</th>
+          <th>${escapeHtml(t("Name match"))}</th>
+          <th>${escapeHtml(t("Expiry"))}</th>
+          <th>${escapeHtml(t("Days"))}</th>
+          <th>${escapeHtml(t("Status"))}</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>

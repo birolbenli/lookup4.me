@@ -1,0 +1,45 @@
+{# Coverage / "what we check" bar for key tools #}
+{% macro checks_bar(slug) %}
+{% if slug == 'mailtest' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('SMTP receive path and whether the message arrives') }}</li>
+    <li>{{ _('SPF / DKIM / DMARC authentication results in the headers') }}</li>
+    <li>{{ _('Reverse DNS, HELO/EHLO consistency, and common spam signals') }}</li>
+    <li>{{ _('A deliverability score with prioritized fixes (report kept 7 days)') }}</li>
+  </ul>
+</aside>
+{% elif slug == 'exchange' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('Related hostnames (mail / Autodiscover / download) and public DNS') }}</li>
+    <li>{{ _('TLS protocols & certificate (dates, hostname, SAN, key)') }}</li>
+    <li>{{ _('Exchange virtual directories, healthchecks, and auth challenges (NTLM / Basic / Bearer)') }}</li>
+    <li>{{ _('HTTP HSTS/redirects, SMTP STARTTLS (no DATA), and org mail records (SPF/DMARC/…)') }}</li>
+    <li>{{ _('External-only — Hybrid Agent / Dedicated Hybrid App are not confirmed from outside') }}</li>
+  </ul>
+</aside>
+{% elif slug == 'headers' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('Received hop chain and delays between servers') }}</li>
+    <li>{{ _('Authentication-Results: SPF, DKIM, DMARC outcomes') }}</li>
+    <li>{{ _('From / Return-Path / Message-ID consistency') }}</li>
+    <li>{{ _('TLS on hops when advertised, plus educational findings (not a full spam filter)') }}</li>
+  </ul>
+</aside>
+{% elif slug == 'ssl' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('Certificate validity window and days remaining') }}</li>
+    <li>{{ _('Issuer / subject CN and Subject Alternative Names (SAN)') }}</li>
+    <li>{{ _('Whether the queried hostname matches CN or SAN (incl. wildcards)') }}</li>
+    <li>{{ _('Resolved IP and connection errors — up to 10 hosts per run') }}</li>
+  </ul>
+</aside>
+{% endif %}
+{% endmacro %}

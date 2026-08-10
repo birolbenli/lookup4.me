@@ -50,6 +50,26 @@ def resolve_ip(host: str) -> str | None:
     return None
 
 
+def _hostname_matches(hostname: str, subject_cn: str | None, sans: list[str]) -> bool | None:
+    """Whether the queried name is covered by CN or SAN (supports *.wildcards)."""
+    if is_ip(hostname):
+        return None
+    host = hostname.lower().rstrip(".")
+    candidates = []
+    if subject_cn and subject_cn != "Unknown":
+        candidates.append(subject_cn.lower().rstrip("."))
+    for s in sans:
+        candidates.append(s.lower().rstrip("."))
+    for c in candidates:
+        if c == host:
+            return True
+        if c.startswith("*.") and "." in host:
+            # *.example.com matches a.example.com, not example.com
+            if host.split(".", 1)[1] == c[2:]:
+                return True
+    return False if candidates else None
+
+
 def get_ssl_info(hostname: str, port: int = 443) -> dict:
     ip = resolve_ip(hostname)
     if not ip:
@@ -94,6 +114,28 @@ def get_ssl_info(hostname: str, port: int = 443) -> dict:
                     subject_cn = attr.value
                     break
 
+            sans: list[str] = []
+            try:
+                ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+                for name in ext.value:
+                    if isinstance(name, x509.DNSName):
+                        sans.append(name.value)
+                    elif isinstance(name, x509.IPAddress):
+                        sans.append(str(name.value))
+            except x509.ExtensionNotFound:
+                pass
+            # De-dupe, keep order
+            seen_san: set[str] = set()
+            san_list = []
+            for s in sans:
+                key = s.lower()
+                if key in seen_san:
+                    continue
+                seen_san.add(key)
+                san_list.append(s)
+
+            hostname_match = _hostname_matches(hostname, subject_cn, san_list)
+
             if days_left < 0:
                 status = "expired"
             elif days_left <= 30:
@@ -108,6 +150,9 @@ def get_ssl_info(hostname: str, port: int = 443) -> dict:
                 "status": status,
                 "issuer": issuer_cn,
                 "subject": subject_cn,
+                "san": san_list,
+                "san_count": len(san_list),
+                "hostname_match": hostname_match,
                 "expiry_date": expiry.strftime("%Y-%m-%d"),
                 "days_left": days_left,
                 "serial_number": format(cert.serial_number, "x"),

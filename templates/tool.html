@@ -1,8 +1,10 @@
 {% extends "base.html" %}
+{% from "macros/checks.html" import checks_bar %}
 {% block title %}{{ tool.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }}</p>
+{{ checks_bar(tool.slug) }}
 
 <section class="panel"
   data-tool="{{ tool.slug }}"

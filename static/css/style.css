@@ -104,6 +104,42 @@ a:hover {
   color: #fff !important;
 }
 
+.checks-bar {
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin: 0 0 1.1rem;
+  background: linear-gradient(135deg, rgba(15, 76, 129, 0.08), rgba(15, 76, 129, 0.02));
+  border: 1px solid rgba(15, 76, 129, 0.18);
+  color: var(--text);
+}
+
+.checks-bar-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: 0.45rem;
+  color: #0f4c81;
+}
+
+.checks-bar-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.checks-bar-list li + li {
+  margin-top: 0.2rem;
+}
+
+.table-wrap td.truncate,
+.table-wrap .truncate {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .notice {
   border-radius: 12px;
   padding: 0.85rem 1rem;

@@ -1,8 +1,10 @@
 {% extends "base.html" %}
+{% from "macros/checks.html" import checks_bar %}
 {% block title %}{{ tool.name }} — {{ site_name }}{% endblock %}
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }} {{ _('Paste the full source (“Show original”) for the richest report.') }}</p>
+{{ checks_bar('headers') }}
 
 <div class="notice notice-warn">
   <strong>{{ _('Security & privacy:') }}</strong>
