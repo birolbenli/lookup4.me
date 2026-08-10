@@ -185,6 +185,7 @@ a:hover {
 .ssl-results th:nth-child(4),
 .ssl-results td:nth-child(4) {
   width: 12%;
+  overflow: visible;
 }
 
 .ssl-results th:nth-child(5),
