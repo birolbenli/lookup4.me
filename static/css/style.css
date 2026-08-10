@@ -140,6 +140,158 @@ a:hover {
   white-space: nowrap;
 }
 
+.truncate-inline {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* Compact SSL table: no horizontal scroll; long fields via hover tip */
+.ssl-results .table-wrap {
+  overflow: visible;
+}
+
+.ssl-results table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ssl-results th,
+.ssl-results td {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.ssl-results th:nth-child(1),
+.ssl-results td:nth-child(1) {
+  width: 18%;
+}
+
+.ssl-results th:nth-child(2),
+.ssl-results td:nth-child(2),
+.ssl-results th:nth-child(8),
+.ssl-results td:nth-child(8) {
+  width: 4.5rem;
+}
+
+.ssl-results th:nth-child(3),
+.ssl-results td:nth-child(3) {
+  width: 9.5rem;
+}
+
+.ssl-results th:nth-child(4),
+.ssl-results td:nth-child(4) {
+  width: 12%;
+}
+
+.ssl-results th:nth-child(5),
+.ssl-results td:nth-child(5) {
+  width: 6.5rem;
+  overflow: visible;
+}
+
+.ssl-results th:nth-child(6),
+.ssl-results td:nth-child(6) {
+  width: 7.5rem;
+}
+
+.ssl-results th:nth-child(7),
+.ssl-results td:nth-child(7) {
+  width: 6.5rem;
+}
+
+.ssl-results th:nth-child(9),
+.ssl-results td:nth-child(9) {
+  width: 6.5rem;
+}
+
+.ssl-results .ssl-domain,
+.ssl-results .ssl-ip {
+  max-width: 100%;
+}
+
+.san-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 76, 129, 0.1);
+  border: 1px solid rgba(15, 76, 129, 0.22);
+  color: #0f4c81;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.hover-tip {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.hover-tip-trigger {
+  max-width: 100%;
+}
+
+.hover-tip-panel {
+  display: none;
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  min-width: 14rem;
+  max-width: min(22rem, 80vw);
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  border: 1px solid rgba(15, 30, 20, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 30, 20, 0.14);
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+}
+
+.hover-tip-wide .hover-tip-panel {
+  min-width: 16rem;
+}
+
+.hover-tip:hover .hover-tip-panel,
+.hover-tip:focus-within .hover-tip-panel {
+  display: block;
+}
+
+.hover-tip-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+
+.san-tip-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.san-tip-list li {
+  padding: 0.2rem 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.san-tip-list li + li {
+  border-top: 1px solid var(--line);
+}
+
 .notice {
   border-radius: 12px;
   padding: 0.85rem 1rem;

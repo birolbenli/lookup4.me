@@ -289,42 +289,65 @@ function renderWhois(data, root) {
   );
 }
 
+function tipCell(labelHtml, detailHtml, opts = {}) {
+  const tipClass = opts.wide ? "hover-tip hover-tip-wide" : "hover-tip";
+  return `<span class="${tipClass}" tabindex="0">
+    <span class="hover-tip-trigger">${labelHtml}</span>
+    <span class="hover-tip-panel" role="tooltip">${detailHtml}</span>
+  </span>`;
+}
+
 function renderSsl(data, root) {
   if (!data.ok) return renderError(data, root);
   const s = data.summary || {};
   const rows = (data.results || [])
     .map((r) => {
       const sans = Array.isArray(r.san) ? r.san : [];
-      const sanPreview = sans.slice(0, 4).join(", ");
-      const sanMore = sans.length > 4 ? ` (+${sans.length - 4})` : "";
-      const sanCell = sans.length
-        ? `<span class="mono tiny" title="${escapeHtml(sans.join(", "))}">${escapeHtml(
-            sanPreview + sanMore
-          )}</span>`
-        : `<span class="muted">—</span>`;
+      let sanCell = `<span class="muted">—</span>`;
+      if (sans.length) {
+        const list = `<ul class="san-tip-list">${sans
+          .map((name) => `<li class="mono">${escapeHtml(name)}</li>`)
+          .join("")}</ul>`;
+        const label = `<span class="san-chip">${escapeHtml(
+          t("{n} SAN", { n: String(sans.length) })
+        )}</span>`;
+        sanCell = tipCell(label, `<div class="hover-tip-title">${escapeHtml(t("SAN names"))}</div>${list}`, {
+          wide: true,
+        });
+      }
+      const issuer = r.issuer || "—";
+      const issuerCell = tipCell(
+        `<span class="tiny truncate-inline">${escapeHtml(issuer)}</span>`,
+        `<div class="hover-tip-title">${escapeHtml(t("Issuer"))}</div><div class="mono tiny">${escapeHtml(
+          issuer
+        )}</div>`
+      );
       let matchHtml = "—";
       if (r.hostname_match === true) {
         matchHtml = `<span class="status ok">${escapeHtml(t("Match"))}</span>`;
       } else if (r.hostname_match === false) {
         matchHtml = `<span class="status warn">${escapeHtml(t("Mismatch"))}</span>`;
       }
+      const statusLabel = t(r.status || "error");
       return `<tr>
-        <td class="mono">${escapeHtml(r.domain)}<div class="tiny muted">${escapeHtml(r.subject || "")}</div></td>
-        <td>${escapeHtml(String(r.port))}</td>
-        <td class="mono">${escapeHtml(r.ip || "—")}</td>
-        <td class="tiny truncate" title="${escapeHtml(r.issuer || "")}">${escapeHtml(r.issuer || "—")}</td>
+        <td class="mono ssl-domain">${escapeHtml(r.domain)}<div class="tiny muted truncate-inline" title="${escapeHtml(
+          r.subject || ""
+        )}">${escapeHtml(r.subject || "")}</div></td>
+        <td class="ssl-num">${escapeHtml(String(r.port))}</td>
+        <td class="mono ssl-ip truncate-inline" title="${escapeHtml(r.ip || "")}">${escapeHtml(r.ip || "—")}</td>
+        <td>${issuerCell}</td>
         <td>${sanCell}</td>
         <td>${matchHtml}</td>
-        <td>${escapeHtml(r.expiry_date || "—")}</td>
-        <td>${r.days_left ?? "—"}</td>
-        <td><span class="status ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span>${
-          r.message ? `<div class="muted">${escapeHtml(r.message)}</div>` : ""
+        <td class="ssl-num">${escapeHtml(r.expiry_date || "—")}</td>
+        <td class="ssl-num">${r.days_left ?? "—"}</td>
+        <td><span class="status ${escapeHtml(r.status)}">${escapeHtml(statusLabel)}</span>${
+          r.message ? `<div class="muted tiny">${escapeHtml(r.message)}</div>` : ""
         }</td>
       </tr>`;
     })
     .join("");
   root.appendChild(
-    el(`<div>
+    el(`<div class="ssl-results">
       <div class="summary">
         <span class="pill">Valid: ${s.valid || 0}</span>
         <span class="pill">Expiring soon: ${s.warning || 0}</span>

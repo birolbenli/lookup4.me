@@ -1697,3 +1697,19 @@ msgstr ""
 "Dışarıdan Exchange güvenlik değerlendirmesi: TLS, kimlik doğrulama, VD’ler, SMTP, posta alanı, "
 "hybrid sinyaller."
 
+msgid "SAN names"
+msgstr "SAN adları"
+
+#, python-brace-format
+msgid "{n} SAN"
+msgstr "{n} SAN"
+
+msgid "valid"
+msgstr "geçerli"
+
+msgid "warning"
+msgstr "uyarı"
+
+msgid "expired"
+msgstr "süresi dolmuş"
+
