@@ -4,19 +4,30 @@
 {% block content %}
 <section class="hero">
   <h1>{{ _('DNS, email & network tools') }}</h1>
-  <p>{{ _('Pick a tool and run a lookup. Shareable URLs start instantly — for example:') }} <code class="inline">/tools/smtp/mx1.example.com</code></p>
+  <p>{{ _('Practical lookups for mail admins and sysadmins. Deep-link any check — for example:') }} <code class="inline">/tools/smtp/mx1.example.com</code></p>
 </section>
 
-<section class="tool-grid" aria-label="{{ _('Tools') }}">
-  {% for tool in tools %}
-  <a class="tool-card" href="{{ url_for('tool_page', slug=tool.slug) }}" data-tool="{{ tool.slug }}">
-    {{ tool_icon(tool.slug) }}
-    <span class="tool-card-body">
-      <h2>{{ tool.name }}</h2>
-      <p>{{ tool.desc }}</p>
-    </span>
-    <span class="tool-card-arrow" aria-hidden="true">→</span>
-  </a>
-  {% endfor %}
+{% for group in tool_groups %}
+<section class="tool-group {% if group.featured %}tool-group--featured{% endif %}" aria-labelledby="group-{{ group.id }}">
+  <div class="tool-group-head">
+    <div>
+      <h2 class="tool-group-title" id="group-{{ group.id }}">{{ group.title }}</h2>
+      {% if group.blurb %}<p class="tool-group-blurb">{{ group.blurb }}</p>{% endif %}
+    </div>
+    {% if group.featured %}<span class="tool-group-badge">{{ _('Featured') }}</span>{% endif %}
+  </div>
+  <div class="tool-grid {% if group.featured %}tool-grid--featured{% endif %}" aria-label="{{ group.title }}">
+    {% for tool in group.tools %}
+    <a class="tool-card {% if group.featured %}tool-card--featured{% endif %}" href="{{ url_for('tool_page', slug=tool.slug) }}" data-tool="{{ tool.slug }}">
+      {{ tool_icon(tool.slug) }}
+      <span class="tool-card-body">
+        <h3>{{ tool.name }}</h3>
+        <p>{{ tool.desc }}</p>
+      </span>
+      <span class="tool-card-arrow" aria-hidden="true">→</span>
+    </a>
+    {% endfor %}
+  </div>
 </section>
+{% endfor %}
 {% endblock %}

@@ -271,6 +271,74 @@ TOOLS = [
     },
 ]
 
+# Homepage sections — featured first, then thematic groups (no competitor name-drops).
+HOMEPAGE_GROUPS = [
+    {
+        "id": "featured",
+        "featured": True,
+        "title": "Standout tools",
+        "blurb": "Deliverability scoring, Exchange exposure, header analysis, and bulk SSL — the checks most people come back for.",
+        "slugs": ["mailtest", "exchange", "headers", "ssl"],
+    },
+    {
+        "id": "email",
+        "featured": False,
+        "title": "Email authentication & SMTP",
+        "blurb": "MX through DMARC, live SMTP probes, and DNSBL checks.",
+        "slugs": ["mx", "spf", "dkim", "dmarc", "smtp", "blacklist"],
+    },
+    {
+        "id": "dns",
+        "featured": False,
+        "title": "DNS & domain",
+        "blurb": "Records, nameservers, CAA, WHOIS, and reverse DNS.",
+        "slugs": ["dns", "ns", "caa", "whois", "rdns"],
+    },
+    {
+        "id": "network",
+        "featured": False,
+        "title": "Network & identity",
+        "blurb": "HTTP headers, open ports, and your public IP.",
+        "slugs": ["http", "port", "ip"],
+    },
+]
+
+
+def homepage_tool_groups(tools_list: list[dict]) -> list[dict]:
+    by_slug = {t["slug"]: t for t in tools_list}
+    used: set[str] = set()
+    groups: list[dict] = []
+    for g in HOMEPAGE_GROUPS:
+        items = []
+        for slug in g["slugs"]:
+            tool = by_slug.get(slug)
+            if not tool:
+                continue
+            items.append(tool)
+            used.add(slug)
+        if items:
+            groups.append(
+                {
+                    "id": g["id"],
+                    "featured": bool(g.get("featured")),
+                    "title": _(g["title"]),
+                    "blurb": _(g["blurb"]) if g.get("blurb") else "",
+                    "tools": items,
+                }
+            )
+    leftover = [t for t in tools_list if t["slug"] not in used]
+    if leftover:
+        groups.append(
+            {
+                "id": "more",
+                "featured": False,
+                "title": _("More tools"),
+                "blurb": "",
+                "tools": leftover,
+            }
+        )
+    return groups
+
 
 def get_tool(slug: str) -> dict | None:
     return next((t for t in TOOLS if t["slug"] == slug), None)
@@ -522,7 +590,7 @@ def health():
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", tool_groups=homepage_tool_groups(localize_tools(TOOLS)))
 
 
 @app.get("/api/visitors/geo")

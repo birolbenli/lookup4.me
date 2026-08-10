@@ -58,6 +58,7 @@
 
         <nav class="nav" id="site-nav">
           <a href="{{ url_for('index') }}" class="{% if request.path == '/' %}active{% endif %}">{{ _('Tools') }}</a>
+          <a href="https://birolbenli.com" target="_blank" rel="noopener noreferrer">{{ _('Blog') }}</a>
           <a href="{{ url_for('feedback_page') }}" class="{% if request.path in ('/feedback', '/report') %}active{% endif %}">{{ _('Report') }}</a>
           <a href="{{ url_for('about') }}" class="{% if request.path == '/about' %}active{% endif %}">{{ _('About') }}</a>
           <a href="{{ url_for('privacy') }}" class="nav-extra {% if request.path == '/privacy' %}active{% endif %}">{{ _('Privacy') }}</a>
@@ -73,6 +74,8 @@
     <footer class="site-footer">
       <div class="footer-main">
         <span class="footer-brand">{{ site_name }}</span>
+        <span class="footer-sep" aria-hidden="true">·</span>
+        <a href="https://birolbenli.com" target="_blank" rel="noopener noreferrer">{{ _('Blog') }}</a>
         <span class="footer-sep" aria-hidden="true">·</span>
         <a href="{{ url_for('privacy') }}">{{ _('Privacy') }}</a>
         <span class="footer-sep" aria-hidden="true">·</span>
@@ -103,6 +106,7 @@
         <a class="bmc thanks-bmc" href="{{ buymeacoffee_url }}" target="_blank" rel="noopener noreferrer">{{ _('Buy me a coffee →') }}</a>
         <div class="contact-block">
           <strong>{{ _('Contact') }}</strong>
+          <a href="https://birolbenli.com" target="_blank" rel="noopener noreferrer">{{ _('Blog') }} · birolbenli.com</a>
           <a href="mailto:birolbenli@gmail.com">birolbenli@gmail.com</a>
           <a href="{{ linkedin_url }}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
           <a href="https://github.com/birolbenli" target="_blank" rel="noopener noreferrer">GitHub</a>
