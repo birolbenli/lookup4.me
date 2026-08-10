@@ -700,15 +700,33 @@ function tDesc(s) {
   return t(text);
 }
 
-function renderAuthCompact(title, block) {
+function renderAuthCompact(title, block, { goodWhenFound = false } = {}) {
   if (!block) return "";
   const found = !!block.found;
+  const status = String(block.status || (found ? "detected" : "not_detected"));
+  const inconclusive = status === "inconclusive";
   const n = (block.endpoints || []).length;
-  return `<div class="auth-compact ${found ? "is-bad" : "is-ok"}">
+  let tone = "is-ok";
+  let statusClass = "ok";
+  let label = found ? t("Detected") : t("Not detected");
+  if (inconclusive) {
+    tone = "is-warn";
+    statusClass = "warn";
+    label = t("Inconclusive");
+  } else if (goodWhenFound) {
+    tone = found ? "is-ok" : "is-warn";
+    statusClass = found ? "ok" : "warn";
+  } else {
+    tone = found ? "is-bad" : "is-ok";
+    statusClass = found ? "err" : "ok";
+  }
+  const conf = block.confidence ? `<span class="muted tiny">${escapeHtml(t("Confidence"))}: ${escapeHtml(t(String(block.confidence)))}</span>` : "";
+  return `<div class="auth-compact ${tone}">
     <div class="auth-compact-title">${escapeHtml(title)}</div>
     <div class="auth-compact-status">
-      <span class="status ${found ? "err" : "ok"}">${escapeHtml(found ? t("Detected") : t("Not detected"))}</span>
+      <span class="status ${statusClass}">${escapeHtml(label)}</span>
       ${found && n ? `<span class="muted tiny">${n} ${escapeHtml(t("endpoint(s)"))}</span>` : ""}
+      ${conf}
     </div>
     <p class="tiny muted">${escapeHtml(tDesc(block.summary || ""))}</p>
   </div>`;
@@ -768,8 +786,8 @@ function exchangeVdCell(e) {
     )}</span>`
   );
   if (auth.ntlm) bits.push(`<span class="status err">NTLM</span>`);
-  else if (auth.oauth) bits.push(`<span class="status ok">OAuth</span>`);
-  else if (auth.basic) bits.push(`<span class="status warn">Basic</span>`);
+  if (auth.oauth) bits.push(`<span class="status ok">OAuth</span>`);
+  if (auth.basic) bits.push(`<span class="status warn">Basic</span>`);
   if (e.healthcheck && e.healthcheck.healthy) {
     bits.push(`<span class="status warn">HC</span>`);
   }
@@ -996,9 +1014,21 @@ function renderExchange(data, root) {
         <h3>${escapeHtml(t("Authentication"))}</h3>
         <div class="auth-compact-grid">
           ${renderAuthCompact("NTLM / Negotiate", audit.ntlm)}
-          ${renderAuthCompact("OAuth 2.0", audit.oauth2)}
+          ${renderAuthCompact("OAuth 2.0", audit.oauth2, { goodWhenFound: true })}
           ${renderAuthCompact("Basic", audit.basic)}
         </div>
+        ${
+          (audit.limits || []).length
+            ? `<ul class="guide-list tiny muted">${(audit.limits || [])
+                .map((x) => `<li>${escapeHtml(tDesc(x))}</li>`)
+                .join("")}</ul>`
+            : ""
+        }
+        ${
+          audit.method
+            ? `<p class="tiny muted">${escapeHtml(t("Probe method"))}: ${escapeHtml(tDesc(audit.method))}</p>`
+            : ""
+        }
       </div>
 
       <div class="block">

@@ -241,7 +241,13 @@ def _parse_auth(www_authenticate: str | None) -> dict:
     m = re.search(r'authorization_uri="([^"]+)"', raw, flags=re.I)
     if m:
         auth_uri = m.group(1)
+    client_id = ""
+    m2 = re.search(r'client_id="([^"]+)"', raw, flags=re.I)
+    if m2:
+        client_id = m2.group(1)
     entra = "login.microsoftonline.com" in auth_uri.lower() or "login.windows.net" in auth_uri.lower()
+    # Strong HMA signal: Bearer + Entra authorization_uri (and usually client_id).
+    hma_challenge = bool(oauth and (entra or client_id))
     return {
         "raw": raw,
         "schemes": schemes,
@@ -249,25 +255,64 @@ def _parse_auth(www_authenticate: str | None) -> dict:
         "oauth": oauth,
         "basic": "Basic" in schemes,
         "authorization_uri": auth_uri,
+        "client_id": client_id,
         "entra_oauth": entra,
+        "hma_challenge": hma_challenge,
         "checked": True,
         "www_authenticate_present": bool(raw.strip()),
     }
 
 
-def _request(url: str, method: str = "GET") -> dict:
-    req = urllib.request.Request(url, method=method, headers={"User-Agent": UA, "Accept": "*/*"})
+def _merge_auth(primary: dict, extra: dict | None) -> dict:
+    """Merge anonymous + dummy-Bearer auth challenges (union of schemes)."""
+    if not extra:
+        return primary
+    schemes = []
+    for s in (primary.get("schemes") or []) + (extra.get("schemes") or []):
+        if s not in schemes:
+            schemes.append(s)
+    raw_parts = [p for p in (primary.get("raw") or "", extra.get("raw") or "") if p]
+    raw = ", ".join(raw_parts)
+    auth_uri = primary.get("authorization_uri") or extra.get("authorization_uri") or ""
+    client_id = primary.get("client_id") or extra.get("client_id") or ""
+    oauth = "Bearer" in schemes or bool(primary.get("oauth") or extra.get("oauth"))
+    ntlm = "NTLM" in schemes or "Negotiate" in schemes
+    entra = bool(primary.get("entra_oauth") or extra.get("entra_oauth"))
+    hma = bool(primary.get("hma_challenge") or extra.get("hma_challenge") or (oauth and (entra or client_id)))
+    return {
+        "raw": raw,
+        "schemes": schemes,
+        "ntlm": ntlm,
+        "oauth": oauth,
+        "basic": "Basic" in schemes,
+        "authorization_uri": auth_uri,
+        "client_id": client_id,
+        "entra_oauth": entra,
+        "hma_challenge": hma,
+        "checked": True,
+        "www_authenticate_present": bool(raw.strip()),
+        "bearer_probe_used": True,
+        "bearer_probe_oauth": bool(extra.get("oauth")),
+        "anonymous_oauth": bool(primary.get("oauth")),
+    }
+
+
+def _request(url: str, method: str = "GET", headers: dict | None = None) -> dict:
+    hdrs = {"User-Agent": UA, "Accept": "*/*"}
+    if headers:
+        hdrs.update(headers)
+    req = urllib.request.Request(url, method=method, headers=hdrs)
     context = ssl.create_default_context()
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT, context=context) as resp:
             body = resp.read(4096)
-            headers = {k: v for k, v in resp.headers.items()}
+            resp_headers = {k: v for k, v in resp.headers.items()}
             return {
                 "reachable": True,
                 "url": url,
                 "final_url": resp.geturl(),
                 "status_code": resp.getcode(),
-                "headers": headers,
+                "headers": resp_headers,
                 "body_preview": body.decode("utf-8", errors="replace"),
             }
     except urllib.error.HTTPError as exc:
@@ -275,13 +320,13 @@ def _request(url: str, method: str = "GET") -> dict:
             body = exc.read(4096)
         except Exception:  # noqa: BLE001
             body = b""
-        headers = {k: v for k, v in (exc.headers.items() if exc.headers else [])}
+        resp_headers = {k: v for k, v in (exc.headers.items() if exc.headers else [])}
         return {
             "reachable": True,
             "url": url,
             "final_url": getattr(exc, "url", None) or url,
             "status_code": exc.code,
-            "headers": headers,
+            "headers": resp_headers,
             "body_preview": body.decode("utf-8", errors="replace") if body else "",
             "error": str(exc.reason),
         }
@@ -293,6 +338,10 @@ def _request(url: str, method: str = "GET") -> dict:
             "headers": {},
             "error": str(exc),
         }
+
+
+# VDirs where a dummy Bearer probe can elicit HMA challenge (client OAuth).
+BEARER_PROBE_VDIRS = {"ews", "eas", "mapi"}
 
 
 def _classify_exposure(status: int | None, auth: dict) -> str:
@@ -313,6 +362,33 @@ def _probe_vdir(host: str, vdir: dict) -> dict:
     path_res = _request(path_url, method="GET")
     headers = {k.lower(): v for k, v in (path_res.get("headers") or {}).items()}
     auth = _parse_auth(headers.get("www-authenticate"))
+    bearer_probe = None
+
+    # Anonymous GET often only returns NTLM/Negotiate. Exchange may surface Bearer
+    # only when Authorization: Bearer <token> is present (HMA client challenge).
+    if vdir.get("id") in BEARER_PROBE_VDIRS and path_res.get("reachable"):
+        bearer_res = _request(
+            path_url,
+            method="GET",
+            headers={"Authorization": "Bearer invalidtoken"},
+        )
+        b_headers = {k.lower(): v for k, v in (bearer_res.get("headers") or {}).items()}
+        bearer_auth = _parse_auth(b_headers.get("www-authenticate"))
+        bearer_probe = {
+            "used": True,
+            "status_code": bearer_res.get("status_code"),
+            "oauth": bool(bearer_auth.get("oauth")),
+            "hma_challenge": bool(bearer_auth.get("hma_challenge")),
+            "www_authenticate_present": bool(bearer_auth.get("www_authenticate_present")),
+            "authorization_uri": bearer_auth.get("authorization_uri") or "",
+            "client_id": bearer_auth.get("client_id") or "",
+            "raw": (bearer_auth.get("raw") or "")[:400],
+        }
+        auth = _merge_auth(auth, bearer_auth)
+        # Prefer richer WWW-Authenticate from bearer probe for header leak scan.
+        if bearer_auth.get("www_authenticate_present"):
+            headers = {**headers, **b_headers}
+
     status = path_res.get("status_code")
     exposure = _classify_exposure(status, auth)
 
@@ -407,6 +483,7 @@ def _probe_vdir(host: str, vdir: dict) -> dict:
         "final_url": path_res.get("final_url"),
         "exposure": exposure,
         "auth": auth,
+        "bearer_probe": bearer_probe,
         "healthcheck": health,
         "leaky_headers": leak_hits,
         "private_ips": private_hits,
@@ -477,11 +554,13 @@ def _auth_audit(endpoints: list[dict]) -> dict:
     probed = [e for e in endpoints if e.get("reachable")]
     ntlm_eps = [e for e in probed if e.get("auth", {}).get("ntlm")]
     oauth_eps = [e for e in probed if e.get("auth", {}).get("oauth")]
+    hma_eps = [e for e in probed if e.get("auth", {}).get("hma_challenge")]
     basic_eps = [e for e in probed if e.get("auth", {}).get("basic")]
     negotiate_eps = [
         e for e in probed if "Negotiate" in (e.get("auth", {}).get("schemes") or [])
     ]
     entra_eps = [e for e in probed if e.get("auth", {}).get("entra_oauth")]
+    bearer_probed = [e for e in probed if (e.get("bearer_probe") or {}).get("used")]
     no_challenge = [
         e
         for e in probed
@@ -497,9 +576,36 @@ def _auth_audit(endpoints: list[dict]) -> dict:
             "summary": found_label if found else missing_label,
         }
 
+    oauth_found = bool(oauth_eps)
+    # External anonymous/dummy probes are low-confidence. Missing Bearer ≠ HMA off;
+    # LB/WAF may strip WWW-Authenticate; S2S hybrid OAuth is invisible externally.
+    if oauth_found:
+        oauth_status = "detected"
+        oauth_confidence = "medium" if hma_eps else "low"
+        oauth_summary = (
+            f"OAuth 2.0/Bearer challenge on {len(oauth_eps)} endpoint(s)"
+            + (f" ({len(hma_eps)} with Entra/client_id hints)." if hma_eps else ".")
+        )
+    else:
+        oauth_status = "inconclusive"
+        oauth_confidence = "low"
+        oauth_summary = (
+            "No Bearer challenge after anonymous + dummy Bearer probes on EWS/EAS/MAPI. "
+            "This is inconclusive (LB/WAF may strip headers). It does not prove HMA/OAuth is missing."
+        )
+
     return {
-        "method": "Unauthenticated HTTPS GET → parse WWW-Authenticate on each reachable VD.",
+        "method": (
+            "Unauthenticated HTTPS GET on each VD; plus Authorization: Bearer invalidtoken "
+            "on EWS / ActiveSync / MAPI to elicit HMA WWW-Authenticate."
+        ),
         "endpoints_probed": len(probed),
+        "bearer_probe_endpoints": len(bearer_probed),
+        "limits": [
+            "External probes cannot verify server-to-server hybrid OAuth (Teams free/busy trust).",
+            "Confirm with Get-AuthServer, Get-IntraOrganizationConnector, Get-OrganizationConfig, Test-OAuthConnectivity.",
+            "Never disable legacy auth / NTLM based only on a failed external Bearer probe.",
+        ],
         "ntlm": {
             **_status(
                 bool(ntlm_eps),
@@ -518,22 +624,28 @@ def _auth_audit(endpoints: list[dict]) -> dict:
             "refs": [MS_REFS["block_legacy"], MS_REFS["hma"]],
         },
         "oauth2": {
-            **_status(
-                bool(oauth_eps),
-                f"OAuth 2.0/Bearer on {len(oauth_eps)} endpoint(s).",
-                "OAuth 2.0/Bearer not advertised.",
-            ),
+            "checked": True,
+            "found": oauth_found,
+            "status": oauth_status,
+            "confidence": oauth_confidence,
+            "summary": oauth_summary,
             "entra_hint": bool(entra_eps),
+            "hma_challenge": bool(hma_eps),
             "endpoints": [
                 {
                     "url": e["url"],
                     "name": e.get("name"),
                     "authorization_uri": e.get("auth", {}).get("authorization_uri") or "",
+                    "client_id": e.get("auth", {}).get("client_id") or "",
                     "entra": bool(e.get("auth", {}).get("entra_oauth")),
+                    "hma_challenge": bool(e.get("auth", {}).get("hma_challenge")),
                 }
                 for e in oauth_eps
             ],
-            "microsoft": "Enable Hybrid Modern Authentication (Entra ID OAuth) for hybrid/Teams.",
+            "microsoft": (
+                "If hybrid clients need HMA, verify server-side (OAuthAuthentication on VDirs, "
+                "OAuth2ClientProfileEnabled). Do not treat a missing external Bearer as proof HMA is off."
+            ),
             "refs": [MS_REFS["hma"]],
         },
         "basic": {
@@ -607,8 +719,8 @@ def _posture(endpoints: list[dict], hosts: list[dict], auth_audit: dict) -> dict
             else "Hybrid vs cloud not clear from this probe alone."
         ),
         "guidance": [
-            "Enable HMA (Entra OAuth) for hybrid clients.",
-            "Then BlockLegacyAuth* via Authentication Policies (Ex2019 CU2+).",
+            "If hybrid clients need Modern Auth, verify HMA server-side (not from this probe alone).",
+            "Block legacy auth only after VDir OAuth=True and a working free/busy / client test.",
             "Keep ECP / remote PowerShell off the public internet.",
         ],
         "refs": [MS_REFS["hma"], MS_REFS["block_legacy"]],
@@ -621,7 +733,7 @@ def _posture(endpoints: list[dict], hosts: list[dict], auth_audit: dict) -> dict
         ),
         "guidance": [
             "Do not blindly disable EWS if Teams calendar is required.",
-            "Remove internet NTLM on EWS; prefer HMA / Modern Auth.",
+            "S2S hybrid OAuth (Teams free/busy) cannot be proven by an external Bearer probe.",
             "Keep ECP/PowerShell internal; use MFA / Conditional Access.",
         ],
         "refs": [MS_REFS["teams_ews"], MS_REFS["hma"]],
@@ -679,18 +791,29 @@ def _security_findings(
                 "endpoints": [e["url"] for e in oauth.get("endpoints") or []][:8],
                 "refs": oauth.get("refs") or [],
                 "context": "modern_auth",
+                "confidence": oauth.get("confidence") or "medium",
             }
         )
     else:
+        # Informational only — never grade down solely on missing external Bearer.
         findings.append(
             {
-                "severity": "warning",
-                "title": "OAuth 2.0 / Bearer not detected",
-                "detail": "No Bearer challenge on probed VDs. Hybrid usually needs HMA.",
-                "guidance": "Enable HMA, then block legacy auth.",
+                "severity": "info",
+                "title": "OAuth 2.0 / Bearer inconclusive",
+                "detail": oauth.get("summary")
+                or (
+                    "No Bearer challenge on probed VDs after dummy Bearer probe. "
+                    "External HTTP cannot prove HMA/OAuth is missing (LB/WAF, S2S blind spot)."
+                ),
+                "guidance": (
+                    "Verify server-side: Get-WebServicesVirtualDirectory OAuthAuthentication, "
+                    "Get-OrganizationConfig OAuth2ClientProfileEnabled, Get-AuthServer, "
+                    "Test-OAuthConnectivity. Do not disable NTLM/legacy auth based only on this probe."
+                ),
                 "endpoints": [],
-                "refs": [MS_REFS["hma"], MS_REFS["block_legacy"]],
+                "refs": [MS_REFS["hma"]],
                 "context": "modern_auth",
+                "confidence": "low",
             }
         )
 
@@ -820,6 +943,10 @@ def _score(findings: list[dict], endpoints: list[dict]) -> dict:
     score = 100
     for f in findings:
         sev = f["severity"]
+        # Low-confidence OAuth notes must not move the letter grade alone.
+        if f.get("context") == "modern_auth" and not f.get("found") and sev in {"info", "warning"}:
+            if f.get("confidence") == "low" or "inconclusive" in (f.get("title") or "").lower():
+                continue
         if sev == "critical":
             score -= 25
         elif sev == "warning":
@@ -904,7 +1031,12 @@ def check_exchange(host: str) -> dict:
                             "basic": False,
                             "checked": False,
                             "www_authenticate_present": False,
+                            "hma_challenge": False,
+                            "client_id": "",
+                            "authorization_uri": "",
+                            "entra_oauth": False,
                         },
+                        "bearer_probe": None,
                         "error": str(exc),
                     }
                 )

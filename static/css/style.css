@@ -1052,6 +1052,11 @@ body.modal-open {
   background: rgba(180, 35, 24, 0.04);
 }
 
+.exchange-report .auth-compact.is-warn {
+  border-color: rgba(184, 106, 0, 0.35);
+  background: rgba(184, 106, 0, 0.06);
+}
+
 .exchange-report .auth-compact.is-ok {
   border-color: rgba(15, 106, 79, 0.28);
   background: rgba(15, 106, 79, 0.04);
