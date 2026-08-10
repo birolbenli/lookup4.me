@@ -64,7 +64,7 @@ curl {{ request.host_url.rstrip('/') }}/ua</pre>
 
   <h2 class="subhead">{{ _('Limits & retention') }}</h2>
   <ul class="about-list">
-    <li>{{ _('Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared bucket). Counters reset at UTC midnight.', mail=rate_limit_mailtest, tools=rate_limit_tools) }}</li>
+    <li>{{ _('Mail Tester: {mail}/day per IP. Each other tool: {tools}/day per IP (separate counters). Counters reset at UTC midnight.', mail=rate_limit_mailtest, tools=rate_limit_tools) }}</li>
     <li>{{ _('Mail Tester inboxes last about 24 hours; scored reports are kept for 7 days.') }}</li>
     <li>{{ _('No accounts required for public tools. Abuse protection may temporarily block noisy IPs.') }}</li>
     <li>{{ _('This is a personal project — availability is best-effort, not a paid SLA.') }}</li>

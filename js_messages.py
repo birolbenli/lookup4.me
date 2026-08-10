@@ -71,6 +71,7 @@ _BASE_JS_MESSAGES: tuple[str, ...] = (
     "Fix",
     "Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.",
     "Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.",
+    "Daily {tool} limit reached ({limit}/day per IP). Try again after UTC midnight.",
     "Pass",
     "Fail",
     "Warn",

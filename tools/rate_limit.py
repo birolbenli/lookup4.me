@@ -1,4 +1,4 @@
-"""Per-IP daily rate limits for tool APIs."""
+"""Per-IP daily rate limits for tool APIs (one counter per tool)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,9 @@ _DB_PATH = os.path.join(
 )
 
 BUCKET_MAILTEST = "mailtest"
+# Legacy shared bucket name — still used as the env-limit key / default lookup.
 BUCKET_TOOLS = "tools"
+TOOL_BUCKET_PREFIX = "tool:"
 
 DEFAULT_LIMITS = {
     BUCKET_MAILTEST: 5,
@@ -24,15 +26,25 @@ DEFAULT_LIMITS = {
 }
 
 
+def tool_bucket(slug: str) -> str:
+    """Per-tool daily bucket, e.g. tool:ssl — independent of other tools."""
+    slug = (slug or "").strip().lower() or "unknown"
+    return f"{TOOL_BUCKET_PREFIX}{slug}"
+
+
 def limit_for(bucket: str) -> int:
-    env_key = {
-        BUCKET_MAILTEST: "RATE_LIMIT_MAILTEST",
-        BUCKET_TOOLS: "RATE_LIMIT_TOOLS",
-    }.get(bucket)
+    bucket = (bucket or "").strip().lower()
+    if bucket == BUCKET_MAILTEST:
+        env_key = "RATE_LIMIT_MAILTEST"
+        default = DEFAULT_LIMITS[BUCKET_MAILTEST]
+    else:
+        # tool:* and legacy "tools" share the same per-tool numeric limit.
+        env_key = "RATE_LIMIT_TOOLS"
+        default = DEFAULT_LIMITS[BUCKET_TOOLS]
     raw = os.environ.get(env_key or "", "")
     if raw.strip().isdigit():
         return max(0, int(raw.strip()))
-    return DEFAULT_LIMITS.get(bucket, 10)
+    return default
 
 
 def _day_key(now: datetime | None = None) -> str:
@@ -196,6 +208,12 @@ def _error_message(bucket: str, limit: int) -> str:
     if bucket == BUCKET_MAILTEST:
         return (
             f"Daily Mail Tester limit reached ({limit}/day per IP). "
+            "Try again after UTC midnight."
+        )
+    if bucket.startswith(TOOL_BUCKET_PREFIX):
+        slug = bucket[len(TOOL_BUCKET_PREFIX) :]
+        return (
+            f"Daily {slug} limit reached ({limit}/day per IP). "
             "Try again after UTC midnight."
         )
     return (

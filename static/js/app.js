@@ -9,14 +9,23 @@ function rateLimitMessage(data) {
   const reset = data?.reset_at
     ? `${String(data.reset_at).replace("T", " ").slice(0, 16)} UTC`
     : "";
-  const base =
-    data?.bucket === "mailtest"
-      ? t("Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.", {
-          limit,
-        })
-      : t("Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.", {
-          limit,
-        });
+  const bucket = data?.bucket || "";
+  let base;
+  if (bucket === "mailtest") {
+    base = t("Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.", {
+      limit,
+    });
+  } else if (typeof bucket === "string" && bucket.startsWith("tool:")) {
+    const tool = data?.tool || bucket.slice(5) || t("tool");
+    base = t("Daily {tool} limit reached ({limit}/day per IP). Try again after UTC midnight.", {
+      tool,
+      limit,
+    });
+  } else {
+    base = t("Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.", {
+      limit,
+    });
+  }
   return reset ? `${base} (${reset})` : base;
 }
 
@@ -297,6 +306,51 @@ function tipCell(labelHtml, detailHtml, opts = {}) {
   </span>`;
 }
 
+function bindFloatingTips(root) {
+  if (!root) return;
+  let floater = null;
+  const hide = () => {
+    if (floater) {
+      floater.remove();
+      floater = null;
+    }
+    document.querySelectorAll(".hover-tip-floater").forEach((n) => n.remove());
+  };
+  const show = (tip) => {
+    const panel = tip.querySelector(".hover-tip-panel");
+    if (!panel) return;
+    hide();
+    floater = panel.cloneNode(true);
+    floater.classList.add("hover-tip-floater");
+    floater.classList.remove("hover-tip-panel");
+    if (tip.classList.contains("hover-tip-wide")) floater.classList.add("hover-tip-wide");
+    floater.removeAttribute("role");
+    document.body.appendChild(floater);
+    const r = tip.getBoundingClientRect();
+    const fr = floater.getBoundingClientRect();
+    let top = r.top - fr.height - 8;
+    if (top < 8) top = Math.min(window.innerHeight - fr.height - 8, r.bottom + 8);
+    let left = r.left;
+    if (left + fr.width > window.innerWidth - 8) left = window.innerWidth - fr.width - 8;
+    if (left < 8) left = 8;
+    floater.style.top = `${Math.max(8, top)}px`;
+    floater.style.left = `${left}px`;
+  };
+  root.querySelectorAll(".hover-tip").forEach((tip) => {
+    tip.addEventListener("mouseenter", () => show(tip));
+    tip.addEventListener("mouseleave", hide);
+    tip.addEventListener("focusin", () => show(tip));
+    tip.addEventListener("focusout", (ev) => {
+      if (!tip.contains(ev.relatedTarget)) hide();
+    });
+  });
+  if (!window.__hoverTipGlobalBound) {
+    window.__hoverTipGlobalBound = true;
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+  }
+}
+
 function renderSsl(data, root) {
   if (!data.ok) return renderError(data, root);
   const s = data.summary || {};
@@ -346,8 +400,7 @@ function renderSsl(data, root) {
       </tr>`;
     })
     .join("");
-  root.appendChild(
-    el(`<div class="ssl-results">
+  const box = el(`<div class="ssl-results">
       <div class="summary">
         <span class="pill">Valid: ${s.valid || 0}</span>
         <span class="pill">Expiring soon: ${s.warning || 0}</span>
@@ -368,8 +421,9 @@ function renderSsl(data, root) {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-    </div>`)
-  );
+    </div>`);
+  root.appendChild(box);
+  bindFloatingTips(box);
 }
 
 function renderHttp(data, root) {

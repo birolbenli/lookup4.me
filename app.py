@@ -78,6 +78,7 @@ from tools.rate_limit import (
     init_rate_limit,
     limit_for as rate_limit_for,
     peek as peek_rate,
+    tool_bucket,
 )
 from tools.stats import bump, get_counts, init_stats, total_count
 from tools.visitors import get_country_counts, init_visitors, track_visitor, visitor_total
@@ -467,9 +468,20 @@ def _rate_limit_response(info: dict, as_json: bool = True):
         "X-RateLimit-Reset": str(info.get("reset_at") or ""),
     }
     limit = info.get("limit") or 0
-    if info.get("bucket") == BUCKET_MAILTEST:
+    bucket = info.get("bucket") or ""
+    tool_name = None
+    if bucket == BUCKET_MAILTEST:
         error = _(
             "Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.",
+            limit=limit,
+        )
+    elif isinstance(bucket, str) and bucket.startswith("tool:"):
+        slug = bucket.split(":", 1)[1]
+        tool = get_tool(slug)
+        tool_name = (tool or {}).get("name") or slug
+        error = _(
+            "Daily {tool} limit reached ({limit}/day per IP). Try again after UTC midnight.",
+            tool=tool_name,
             limit=limit,
         )
     else:
@@ -486,6 +498,7 @@ def _rate_limit_response(info: dict, as_json: bool = True):
         "remaining": info.get("remaining"),
         "reset_at": info.get("reset_at"),
         "bucket": info.get("bucket"),
+        "tool": tool_name,
     }
     if as_json:
         return jsonify(payload), 429, headers
@@ -679,7 +692,7 @@ def tool_page(slug: str, query: str | None = None):
     dns_type = request.args.get("type", "A")
 
     if query and wants_plain() and slug in {"ip", "rdns"}:
-        blocked = _consume_or_reject(BUCKET_TOOLS, as_json=False)
+        blocked = _consume_or_reject(tool_bucket(slug), as_json=False)
         if blocked:
             return blocked
         result = run_tool(slug, query)
@@ -689,7 +702,7 @@ def tool_page(slug: str, query: str | None = None):
         return Response("\n".join(hosts) + ("\n" if hosts else ""), mimetype="text/plain")
 
     if query and request.args.get("format") == "json" and slug not in {"mailtest"}:
-        blocked = _consume_or_reject(BUCKET_TOOLS, as_json=True)
+        blocked = _consume_or_reject(tool_bucket(slug), as_json=True)
         if blocked:
             return blocked
         return jsonify(run_tool(slug, query, {"type": dns_type}))
@@ -725,7 +738,7 @@ def api_tool(slug: str):
     if not str(query).strip() and not tool.get("optional"):
         return jsonify({"ok": False, "error": "Missing query"}), 400
 
-    blocked = _consume_or_reject(BUCKET_TOOLS, as_json=True)
+    blocked = _consume_or_reject(tool_bucket(slug), as_json=True)
     if blocked:
         return blocked
 

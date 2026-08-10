@@ -1713,3 +1713,15 @@ msgstr "uyarı"
 msgid "expired"
 msgstr "süresi dolmuş"
 
+#, python-brace-format
+msgid "Daily {tool} limit reached ({limit}/day per IP). Try again after UTC midnight."
+msgstr "Günlük {tool} hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar deneyin."
+
+#, python-brace-format
+msgid ""
+"Mail Tester: {mail}/day per IP. Each other tool: {tools}/day per IP (separate counters). Counters"
+" reset at UTC midnight."
+msgstr ""
+"Mail Tester: IP başına günde {mail}. Her diğer araç: IP başına günde {tools} (ayrı sayaçlar). "
+"Sayaçlar UTC gece yarısında sıfırlanır."
+
