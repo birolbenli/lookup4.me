@@ -98,6 +98,74 @@ TOOL_MSGIDS = {
         "desc": "See your public IP (curl-friendly) or inspect another IP.",
         "placeholder": "leave empty for your IP",
     },
+    "mtasts": {
+        "name": "MTA-STS Checker",
+        "desc": "Check _mta-sts DNS and the HTTPS policy file (mode, max_age, mx).",
+    },
+    "tlsrpt": {
+        "name": "TLS-RPT Checker",
+        "desc": "Validate _smtp._tls reporting records and rua destinations.",
+    },
+    "bimi": {
+        "name": "BIMI Checker",
+        "desc": "Inspect default._bimi TXT, logo URL reachability, and VMC hints.",
+    },
+    "dane": {
+        "name": "DANE / TLSA Checker",
+        "desc": "List public TLSA records for MX hosts (external DNS only).",
+    },
+    "soa": {
+        "name": "SOA Checker",
+        "desc": "Parse SOA serial, refresh, retry, expire, and minimum TTL.",
+    },
+    "cname": {
+        "name": "CNAME Checker",
+        "desc": "Follow CNAME chains to the final destination and detect loops.",
+    },
+    "securitytxt": {
+        "name": "security.txt Checker",
+        "desc": "Fetch /.well-known/security.txt and validate Contact / Expires fields.",
+    },
+    "hsts": {
+        "name": "HSTS Checker",
+        "desc": "Inspect Strict-Transport-Security max-age, includeSubDomains, preload.",
+    },
+    "robots": {
+        "name": "robots.txt Checker",
+        "desc": "Fetch robots.txt and summarize User-agent and Sitemap lines.",
+    },
+    "redirect": {
+        "name": "Redirect Checker",
+        "desc": "Trace HTTP redirect chains (301/302/307/308) to the final URL.",
+    },
+    "secheaders": {
+        "name": "HTTP Security Headers",
+        "desc": "Score HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP.",
+    },
+    "spfgen": {
+        "name": "SPF Generator",
+        "desc": "Suggested SPF TXT record starter for your domain.",
+    },
+    "dmarcgen": {
+        "name": "DMARC Generator",
+        "desc": "Suggested _dmarc policy record with rua reporting.",
+    },
+    "mtastsgen": {
+        "name": "MTA-STS Generator",
+        "desc": "Suggested _mta-sts TXT and policy file contents.",
+    },
+    "tlsrptgen": {
+        "name": "TLS-RPT Generator",
+        "desc": "Suggested _smtp._tls reporting record.",
+    },
+    "caagen": {
+        "name": "CAA Generator",
+        "desc": "Suggested CAA issue / iodef records.",
+    },
+    "securitytxtgen": {
+        "name": "security.txt Generator",
+        "desc": "Suggested RFC 9116 security.txt contents.",
+    },
 }
 
 

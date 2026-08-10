@@ -104,6 +104,42 @@ a:hover {
   color: #fff !important;
 }
 
+.external-badge {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(15, 76, 129, 0.06);
+  border: 1px solid rgba(15, 76, 129, 0.16);
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.external-badge strong {
+  color: #0f4c81;
+}
+
+.scan-report .score-pill {
+  font-weight: 700;
+}
+
+.scan-report .scan-title {
+  margin: 0.4rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+.scan-report .raw-block {
+  margin: 0.25rem 0 0;
+  padding: 0.65rem 0.75rem;
+  background: #f5f7f4;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 16rem;
+  overflow: auto;
+}
+
 .checks-bar {
   border-radius: 12px;
   padding: 0.85rem 1rem;

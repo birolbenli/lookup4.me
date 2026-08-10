@@ -71,6 +71,25 @@ from tools.smtp_receiver import start_smtp_receiver
 from tools.smtp_test import test_smtp
 from tools.spf import lookup_spf
 from tools.ssl_check import check_bulk
+from tools.mtasts import check_mtasts
+from tools.tlsrpt import check_tlsrpt
+from tools.bimi import check_bimi
+from tools.dane import check_dane
+from tools.soa_check import check_soa
+from tools.cname_check import check_cname
+from tools.security_txt import check_security_txt
+from tools.hsts_check import check_hsts
+from tools.robots_check import check_robots
+from tools.redirect_check import check_redirects
+from tools.sec_headers import check_sec_headers
+from tools.generators import (
+    generate_caa,
+    generate_dmarc,
+    generate_mtasts,
+    generate_security_txt,
+    generate_spf,
+    generate_tlsrpt,
+)
 from tools.rate_limit import (
     BUCKET_MAILTEST,
     BUCKET_TOOLS,
@@ -270,37 +289,239 @@ TOOLS = [
         "input": "text",
         "optional": True,
     },
+    # Wave-1 expansion (external-only)
+    {
+        "slug": "mtasts",
+        "name": "MTA-STS Checker",
+        "desc": "Check _mta-sts DNS and the HTTPS policy file (mode, max_age, mx).",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "google.com",
+        "input": "text",
+    },
+    {
+        "slug": "tlsrpt",
+        "name": "TLS-RPT Checker",
+        "desc": "Validate _smtp._tls reporting records and rua destinations.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "google.com",
+        "input": "text",
+    },
+    {
+        "slug": "bimi",
+        "name": "BIMI Checker",
+        "desc": "Inspect default._bimi TXT, logo URL reachability, and VMC hints.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "paypal.com",
+        "input": "text",
+    },
+    {
+        "slug": "dane",
+        "name": "DANE / TLSA Checker",
+        "desc": "List public TLSA records for MX hosts (external DNS only).",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "nic.cz",
+        "input": "text",
+    },
+    {
+        "slug": "soa",
+        "name": "SOA Checker",
+        "desc": "Parse SOA serial, refresh, retry, expire, and minimum TTL.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "cloudflare.com",
+        "input": "text",
+    },
+    {
+        "slug": "cname",
+        "name": "CNAME Checker",
+        "desc": "Follow CNAME chains to the final destination and detect loops.",
+        "field": "domain",
+        "placeholder": "www.example.com",
+        "example": "www.github.com",
+        "input": "text",
+    },
+    {
+        "slug": "securitytxt",
+        "name": "security.txt Checker",
+        "desc": "Fetch /.well-known/security.txt and validate Contact / Expires fields.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "google.com",
+        "input": "text",
+    },
+    {
+        "slug": "hsts",
+        "name": "HSTS Checker",
+        "desc": "Inspect Strict-Transport-Security max-age, includeSubDomains, preload.",
+        "field": "url",
+        "placeholder": "https://example.com",
+        "example": "https://example.com",
+        "input": "text",
+    },
+    {
+        "slug": "robots",
+        "name": "robots.txt Checker",
+        "desc": "Fetch robots.txt and summarize User-agent and Sitemap lines.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+    },
+    {
+        "slug": "redirect",
+        "name": "Redirect Checker",
+        "desc": "Trace HTTP redirect chains (301/302/307/308) to the final URL.",
+        "field": "url",
+        "placeholder": "http://example.com",
+        "example": "http://github.com",
+        "input": "text",
+    },
+    {
+        "slug": "secheaders",
+        "name": "HTTP Security Headers",
+        "desc": "Score HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP.",
+        "field": "url",
+        "placeholder": "https://example.com",
+        "example": "https://example.com",
+        "input": "text",
+    },
+    {
+        "slug": "spfgen",
+        "name": "SPF Generator",
+        "desc": "Suggested SPF TXT record starter for your domain.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
+    {
+        "slug": "dmarcgen",
+        "name": "DMARC Generator",
+        "desc": "Suggested _dmarc policy record with rua reporting.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
+    {
+        "slug": "mtastsgen",
+        "name": "MTA-STS Generator",
+        "desc": "Suggested _mta-sts TXT and policy file contents.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
+    {
+        "slug": "tlsrptgen",
+        "name": "TLS-RPT Generator",
+        "desc": "Suggested _smtp._tls reporting record.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
+    {
+        "slug": "caagen",
+        "name": "CAA Generator",
+        "desc": "Suggested CAA issue / iodef records.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
+    {
+        "slug": "securitytxtgen",
+        "name": "security.txt Generator",
+        "desc": "Suggested RFC 9116 security.txt contents.",
+        "field": "domain",
+        "placeholder": "example.com",
+        "example": "example.com",
+        "input": "text",
+        "button": "Generate",
+    },
 ]
 
-# Homepage sections — featured first, then thematic groups (no competitor name-drops).
+# Homepage sections — featured first, then thematic groups.
 HOMEPAGE_GROUPS = [
     {
         "id": "featured",
         "featured": True,
-        "title": "Standout tools",
-        "blurb": "Deliverability scoring, Exchange exposure, header analysis, and bulk SSL — the checks most people come back for.",
-        "slugs": ["mailtest", "exchange", "headers", "ssl"],
+        "title": "Featured tools",
+        "blurb": "Exchange exposure, deliverability, security headers, and bulk SSL — start here.",
+        "slugs": ["exchange", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
     },
     {
-        "id": "email",
+        "id": "domain-security",
         "featured": False,
-        "title": "Email authentication & SMTP",
-        "blurb": "MX through DMARC, live SMTP probes, and DNSBL checks.",
-        "slugs": ["mx", "spf", "dkim", "dmarc", "smtp", "blacklist"],
+        "title": "Domain security",
+        "blurb": "Public security.txt and related domain-facing checks.",
+        "slugs": ["securitytxt", "whois"],
+    },
+    {
+        "id": "email-auth",
+        "featured": False,
+        "title": "Email authentication",
+        "blurb": "SPF, DKIM, DMARC, MTA-STS, TLS-RPT, BIMI, and DANE/TLSA.",
+        "slugs": ["mx", "spf", "dkim", "dmarc", "mtasts", "tlsrpt", "bimi", "dane"],
+    },
+    {
+        "id": "smtp-mail",
+        "featured": False,
+        "title": "SMTP & mail server",
+        "blurb": "Live SMTP probes, blacklist checks, and Mail Tester.",
+        "slugs": ["smtp", "blacklist", "mailtest", "headers"],
+    },
+    {
+        "id": "exchange",
+        "featured": False,
+        "title": "Microsoft Exchange",
+        "blurb": "External-only Exchange health, endpoints, TLS, and hybrid signals.",
+        "slugs": ["exchange"],
     },
     {
         "id": "dns",
         "featured": False,
         "title": "DNS & domain",
-        "blurb": "Records, nameservers, CAA, WHOIS, and reverse DNS.",
-        "slugs": ["dns", "ns", "caa", "whois", "rdns"],
+        "blurb": "Records, nameservers, SOA, CNAME chains, CAA, and reverse DNS.",
+        "slugs": ["dns", "ns", "soa", "cname", "caa", "rdns"],
+    },
+    {
+        "id": "ssl-tls",
+        "featured": False,
+        "title": "SSL / TLS",
+        "blurb": "Certificate tables and HSTS inspection.",
+        "slugs": ["ssl", "hsts"],
+    },
+    {
+        "id": "web-security",
+        "featured": False,
+        "title": "Web security",
+        "blurb": "Security headers, redirects, robots.txt, and raw HTTP headers.",
+        "slugs": ["secheaders", "redirect", "robots", "http", "securitytxt"],
     },
     {
         "id": "network",
         "featured": False,
-        "title": "Network & identity",
-        "blurb": "HTTP headers, open ports, and your public IP.",
-        "slugs": ["http", "port", "ip"],
+        "title": "IP & network",
+        "blurb": "Ports and public IP identity.",
+        "slugs": ["port", "ip"],
+    },
+    {
+        "id": "generators",
+        "featured": False,
+        "title": "Generator tools",
+        "blurb": "Starter records and files — review before publishing.",
+        "slugs": ["spfgen", "dmarcgen", "mtastsgen", "tlsrptgen", "caagen", "securitytxtgen"],
     },
 ]
 
@@ -569,6 +790,40 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = check_exchange(query)
     elif slug == "ip":
         result = lookup_ip_info(query, request=request)
+    elif slug == "mtasts":
+        result = check_mtasts(query)
+    elif slug == "tlsrpt":
+        result = check_tlsrpt(query)
+    elif slug == "bimi":
+        result = check_bimi(query)
+    elif slug == "dane":
+        result = check_dane(query)
+    elif slug == "soa":
+        result = check_soa(query)
+    elif slug == "cname":
+        result = check_cname(query)
+    elif slug == "securitytxt":
+        result = check_security_txt(query)
+    elif slug == "hsts":
+        result = check_hsts(query)
+    elif slug == "robots":
+        result = check_robots(query)
+    elif slug == "redirect":
+        result = check_redirects(query)
+    elif slug == "secheaders":
+        result = check_sec_headers(query)
+    elif slug == "spfgen":
+        result = generate_spf(query)
+    elif slug == "dmarcgen":
+        result = generate_dmarc(query)
+    elif slug == "mtastsgen":
+        result = generate_mtasts(query)
+    elif slug == "tlsrptgen":
+        result = generate_tlsrpt(query)
+    elif slug == "caagen":
+        result = generate_caa(query)
+    elif slug == "securitytxtgen":
+        result = generate_security_txt(query)
     else:
         result = {"ok": False, "error": "Unknown tool"}
 

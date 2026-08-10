@@ -4,6 +4,10 @@
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }} {{ _('Create a temporary inbox, send one test message, and get a deliverability score with clear fixes.') }}</p>
+<p class="external-badge">
+  <strong>{{ _('External check') }}</strong>
+  — {{ _('Target server credentials are not required. Probes use public DNS, TCP, TLS, HTTP(S), and SMTP only.') }}
+</p>
 {{ checks_bar('mailtest') }}
 
 <div class="notice notice-warn">

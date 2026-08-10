@@ -4,6 +4,10 @@
 {% block content %}
 <h1 class="page-title">{{ tool.name }}</h1>
 <p class="page-desc">{{ tool.desc }}</p>
+<p class="external-badge">
+  <strong>{{ _('External check') }}</strong>
+  — {{ _('Target server credentials are not required. Probes use public DNS, TCP, TLS, HTTP(S), and SMTP only.') }}
+</p>
 {{ checks_bar(tool.slug) }}
 
 <section class="panel"
@@ -35,7 +39,7 @@
       </select>
       {% endif %}
 
-      <button class="btn" type="submit">{{ _('Lookup') }}</button>
+      <button class="btn" type="submit">{{ _(tool.button) if tool.button else _('Lookup') }}</button>
     </div>
   </form>
 

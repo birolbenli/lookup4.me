@@ -1342,6 +1342,192 @@ function renderExchange(data, root) {
   );
 }
 
+function sevBadge(sev) {
+  const s = String(sev || "info").toLowerCase();
+  const cls =
+    s === "critical" || s === "high" || s === "error" || s === "fail"
+      ? "err"
+      : s === "medium" || s === "warn" || s === "warning"
+        ? "warn"
+        : s === "pass" || s === "ok" || s === "valid"
+          ? "ok"
+          : "info";
+  return `<span class="status ${cls}">${escapeHtml(t(sev || "Info"))}</span>`;
+}
+
+function renderScanReport(data, root) {
+  if (!data.ok && data.error && !data.findings && !data.records) {
+    return renderError(data, root);
+  }
+  const findings = (data.findings || [])
+    .map(
+      (f) => `<tr>
+        <td>${sevBadge(f.severity)}</td>
+        <td><strong>${escapeHtml(f.title || "")}</strong><div class="tiny muted">${escapeHtml(
+          f.detail || ""
+        )}</div></td>
+      </tr>`
+    )
+    .join("");
+  const genRows = (data.records || [])
+    .map(
+      (r) => `<tr>
+        <td class="mono">${escapeHtml(r.type || "")}</td>
+        <td class="mono tiny">${escapeHtml(r.name || "")}</td>
+        <td><pre class="raw-block">${escapeHtml(r.value || "")}</pre>${
+          r.note ? `<div class="tiny muted">${escapeHtml(r.note)}</div>` : ""
+        }</td>
+      </tr>`
+    )
+    .join("");
+  const headerRows = (data.headers || [])
+    .map(
+      (h) => `<tr>
+        <td class="mono">${escapeHtml(h.header || "")}</td>
+        <td>${sevBadge(h.status || (h.present ? "pass" : "fail"))}</td>
+        <td class="mono tiny">${escapeHtml(h.value || "—")}</td>
+      </tr>`
+    )
+    .join("");
+  const chainBlocks = (data.chains || [])
+    .map((c) => {
+      const hops = (c.hops || [])
+        .map(
+          (h) =>
+            `<li><span class="mono">${escapeHtml(String(h.status_code ?? "—"))}</span> ${escapeHtml(
+              h.url || ""
+            )}${h.location ? ` → <span class="mono">${escapeHtml(h.location)}</span>` : ""}${
+              h.error ? ` <span class="muted">(${escapeHtml(h.error)})</span>` : ""
+            }</li>`
+        )
+        .join("");
+      return `<div class="block"><div class="muted tiny">${escapeHtml(
+        c.start_url || ""
+      )}</div><ol class="chain">${hops}</ol></div>`;
+    })
+    .join("");
+  const cnameSteps = (data.chain || [])
+    .map(
+      (s) =>
+        `<li><strong>${escapeHtml(s.type || "")}</strong> ${escapeHtml(s.host || "")} → ${escapeHtml(
+          Array.isArray(s.value) ? s.value.join(", ") : String(s.value ?? "")
+        )}</li>`
+    )
+    .join("");
+  const daneTargets = (data.targets || [])
+    .map((trow) => {
+      const recs = (trow.records || [])
+        .map(
+          (r) =>
+            `<tr><td>${escapeHtml(r.usage_label || r.usage || "")}</td><td>${escapeHtml(
+              r.selector_label || r.selector || ""
+            )}</td><td>${escapeHtml(r.matching_label || r.matching_type || "")}</td><td class="mono tiny">${escapeHtml(
+              (r.association || "").slice(0, 48)
+            )}${(r.association || "").length > 48 ? "…" : ""}</td></tr>`
+        )
+        .join("");
+      return `<div class="block">
+        <div class="mono">${escapeHtml(trow.name || "")}</div>
+        ${
+          recs
+            ? `<div class="table-wrap"><table><thead><tr><th>Usage</th><th>Selector</th><th>Match</th><th>Assoc</th></tr></thead><tbody>${recs}</tbody></table></div>`
+            : `<p class="muted tiny">${escapeHtml(trow.error || t("No record"))}</p>`
+        }
+      </div>`;
+    })
+    .join("");
+  const kv = [];
+  if (data.domain) kv.push([t("Domain"), data.domain]);
+  if (data.dns_name) kv.push(["DNS", data.dns_name]);
+  if (data.url) kv.push(["URL", data.url]);
+  if (data.final_url) kv.push([t("Final URL"), data.final_url]);
+  if (data.status_code != null) kv.push([t("Status"), String(data.status_code)]);
+  if (data.policy) {
+    kv.push(["mode", data.policy.mode || "—"]);
+    kv.push(["max_age", data.policy.max_age || "—"]);
+    if ((data.policy.mx || []).length) kv.push(["mx", (data.policy.mx || []).join(", ")]);
+  }
+  if (data.soa) {
+    Object.entries(data.soa).forEach(([k, v]) => {
+      if (k !== "raw" && v != null) kv.push([k, String(v)]);
+    });
+  }
+  if (data.hsts && data.hsts.raw) {
+    kv.push(["HSTS", data.hsts.raw]);
+    kv.push(["max-age", String(data.hsts.max_age ?? "—")]);
+    kv.push(["includeSubDomains", data.hsts.include_subdomains ? t("Yes") : t("No")]);
+    kv.push(["preload", data.hsts.preload ? t("Yes") : t("No")]);
+  }
+  if (data.record && data.record.logo_url) kv.push(["Logo", data.record.logo_url]);
+  if ((data.sitemaps || []).length) kv.push(["Sitemap", data.sitemaps.join(", ")]);
+  const kvHtml = kv.length
+    ? `<div class="table-wrap"><table><tbody>${kv
+        .map(
+          ([k, v]) =>
+            `<tr><th>${escapeHtml(k)}</th><td class="mono">${escapeHtml(String(v))}</td></tr>`
+        )
+        .join("")}</tbody></table></div>`
+    : "";
+  const guidance = (data.guidance || [])
+    .map((g) => `<li>${escapeHtml(g)}</li>`)
+    .join("");
+  const raw =
+    data.policy?.raw || data.raw
+      ? `<details class="block"><summary>${escapeHtml(t("Raw evidence"))}</summary><pre class="raw-block">${escapeHtml(
+          data.policy?.raw || data.raw || ""
+        )}</pre></details>`
+      : "";
+
+  root.appendChild(
+    el(`<div class="scan-report">
+      <div class="summary">
+        <span class="pill">${escapeHtml(t("External check"))}</span>
+        ${
+          data.score != null
+            ? `<span class="pill score-pill">${escapeHtml(t("Score"))}: ${escapeHtml(
+                String(data.score)
+              )}/100</span>`
+            : ""
+        }
+        ${data.generator ? `<span class="pill">${escapeHtml(t("Generator"))}</span>` : ""}
+      </div>
+      ${data.title ? `<h3 class="scan-title">${escapeHtml(data.title)}</h3>` : ""}
+      ${data.note ? `<p class="muted">${escapeHtml(data.note)}</p>` : ""}
+      ${kvHtml}
+      ${
+        findings
+          ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
+              t("Severity")
+            )}</th><th>${escapeHtml(t("Findings"))}</th></tr></thead><tbody>${findings}</tbody></table></div>`
+          : ""
+      }
+      ${
+        genRows
+          ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
+              t("Type")
+            )}</th><th>${escapeHtml(t("Name"))}</th><th>${escapeHtml(
+              t("Value")
+            )}</th></tr></thead><tbody>${genRows}</tbody></table></div>`
+          : ""
+      }
+      ${
+        headerRows
+          ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
+              t("Header")
+            )}</th><th>${escapeHtml(t("Status"))}</th><th>${escapeHtml(
+              t("Value")
+            )}</th></tr></thead><tbody>${headerRows}</tbody></table></div>`
+          : ""
+      }
+      ${chainBlocks}
+      ${cnameSteps ? `<ol class="chain">${cnameSteps}</ol>` : ""}
+      ${daneTargets}
+      ${guidance ? `<ul class="guide-list">${guidance}</ul>` : ""}
+      ${raw}
+    </div>`)
+  );
+}
+
 const RENDERERS = {
   mx: renderMx,
   spf: renderSpf,
@@ -1360,6 +1546,23 @@ const RENDERERS = {
   smtp: renderSmtp,
   exchange: renderExchange,
   ip: renderIp,
+  mtasts: renderScanReport,
+  tlsrpt: renderScanReport,
+  bimi: renderScanReport,
+  dane: renderScanReport,
+  soa: renderScanReport,
+  cname: renderScanReport,
+  securitytxt: renderScanReport,
+  hsts: renderScanReport,
+  robots: renderScanReport,
+  redirect: renderScanReport,
+  secheaders: renderScanReport,
+  spfgen: renderScanReport,
+  dmarcgen: renderScanReport,
+  mtastsgen: renderScanReport,
+  tlsrptgen: renderScanReport,
+  caagen: renderScanReport,
+  securitytxtgen: renderScanReport,
 };
 
 function syncUrl(slug, query, type) {

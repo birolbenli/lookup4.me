@@ -1725,3 +1725,196 @@ msgstr ""
 "Mail Tester: IP başına günde {mail}. Her diğer araç: IP başına günde {tools} (ayrı sayaçlar). "
 "Sayaçlar UTC gece yarısında sıfırlanır."
 
+msgid "External check"
+msgstr "Dış kontrol"
+
+msgid ""
+"Target server credentials are not required. Probes use public DNS, TCP, TLS, HTTP(S), and SMTP "
+"only."
+msgstr ""
+"Hedef sunucu kimlik bilgisi istenmez. Kontroller yalnızca genel DNS, TCP, TLS, HTTP(S) ve SMTP "
+"üzerinden yapılır."
+
+msgid "Featured tools"
+msgstr "Öne çıkan araçlar"
+
+msgid "Exchange exposure, deliverability, security headers, and bulk SSL — start here."
+msgstr "Exchange yüzeyi, teslimat, güvenlik başlıkları ve toplu SSL — buradan başlayın."
+
+msgid "Domain security"
+msgstr "Alan güvenliği"
+
+msgid "Public security.txt and related domain-facing checks."
+msgstr "Genel security.txt ve ilgili alan kontrolleri."
+
+msgid "Email authentication"
+msgstr "E-posta kimlik doğrulama"
+
+msgid "SPF, DKIM, DMARC, MTA-STS, TLS-RPT, BIMI, and DANE/TLSA."
+msgstr "SPF, DKIM, DMARC, MTA-STS, TLS-RPT, BIMI ve DANE/TLSA."
+
+msgid "SMTP & mail server"
+msgstr "SMTP ve posta sunucusu"
+
+msgid "Live SMTP probes, blacklist checks, and Mail Tester."
+msgstr "Canlı SMTP testleri, kara liste ve Mail Tester."
+
+msgid "Microsoft Exchange"
+msgstr "Microsoft Exchange"
+
+msgid "External-only Exchange health, endpoints, TLS, and hybrid signals."
+msgstr "Yalnızca dışarıdan Exchange sağlığı, uç noktalar, TLS ve hybrid sinyaller."
+
+msgid "Records, nameservers, SOA, CNAME chains, CAA, and reverse DNS."
+msgstr "Kayıtlar, ad sunucuları, SOA, CNAME zincirleri, CAA ve ters DNS."
+
+msgid "SSL / TLS"
+msgstr "SSL / TLS"
+
+msgid "Certificate tables and HSTS inspection."
+msgstr "Sertifika tabloları ve HSTS incelemesi."
+
+msgid "Web security"
+msgstr "Web güvenliği"
+
+msgid "Security headers, redirects, robots.txt, and raw HTTP headers."
+msgstr "Güvenlik başlıkları, yönlendirmeler, robots.txt ve ham HTTP başlıkları."
+
+msgid "IP & network"
+msgstr "IP ve ağ"
+
+msgid "Ports and public IP identity."
+msgstr "Portlar ve genel IP kimliği."
+
+msgid "Generator tools"
+msgstr "Oluşturucu araçlar"
+
+msgid "Starter records and files — review before publishing."
+msgstr "Başlangıç kayıtları ve dosyalar — yayınlamadan önce gözden geçirin."
+
+msgid "Generate"
+msgstr "Oluştur"
+
+msgid "Generator"
+msgstr "Oluşturucu"
+
+msgid "Final URL"
+msgstr "Son URL"
+
+msgid "Severity"
+msgstr "Önem"
+
+msgid "Name"
+msgstr "Ad"
+
+msgid "critical"
+msgstr "kritik"
+
+msgid "pass"
+msgstr "geçti"
+
+msgid "fail"
+msgstr "kaldı"
+
+msgid "MTA-STS Checker"
+msgstr "MTA-STS Kontrolü"
+
+msgid "Check _mta-sts DNS and the HTTPS policy file (mode, max_age, mx)."
+msgstr "_mta-sts DNS ve HTTPS politika dosyasını (mode, max_age, mx) kontrol edin."
+
+msgid "TLS-RPT Checker"
+msgstr "TLS-RPT Kontrolü"
+
+msgid "Validate _smtp._tls reporting records and rua destinations."
+msgstr "_smtp._tls rapor kayıtlarını ve rua hedeflerini doğrulayın."
+
+msgid "BIMI Checker"
+msgstr "BIMI Kontrolü"
+
+msgid "Inspect default._bimi TXT, logo URL reachability, and VMC hints."
+msgstr "default._bimi TXT, logo URL erişimi ve VMC ipuçlarını inceleyin."
+
+msgid "DANE / TLSA Checker"
+msgstr "DANE / TLSA Kontrolü"
+
+msgid "List public TLSA records for MX hosts (external DNS only)."
+msgstr "MX sunucuları için genel TLSA kayıtlarını listeleyin (yalnızca dış DNS)."
+
+msgid "SOA Checker"
+msgstr "SOA Kontrolü"
+
+msgid "Parse SOA serial, refresh, retry, expire, and minimum TTL."
+msgstr "SOA serial, refresh, retry, expire ve minimum TTL değerlerini ayrıştırın."
+
+msgid "CNAME Checker"
+msgstr "CNAME Kontrolü"
+
+msgid "Follow CNAME chains to the final destination and detect loops."
+msgstr "CNAME zincirini izleyin; döngü ve kırık hedefleri bulun."
+
+msgid "security.txt Checker"
+msgstr "security.txt Kontrolü"
+
+msgid "Fetch /.well-known/security.txt and validate Contact / Expires fields."
+msgstr "/.well-known/security.txt dosyasını alıp Contact / Expires alanlarını doğrulayın."
+
+msgid "HSTS Checker"
+msgstr "HSTS Kontrolü"
+
+msgid "Inspect Strict-Transport-Security max-age, includeSubDomains, preload."
+msgstr "Strict-Transport-Security max-age, includeSubDomains ve preload değerlerine bakın."
+
+msgid "robots.txt Checker"
+msgstr "robots.txt Kontrolü"
+
+msgid "Fetch robots.txt and summarize User-agent and Sitemap lines."
+msgstr "robots.txt dosyasını alıp User-agent ve Sitemap satırlarını özetleyin."
+
+msgid "Redirect Checker"
+msgstr "Yönlendirme Kontrolü"
+
+msgid "Trace HTTP redirect chains (301/302/307/308) to the final URL."
+msgstr "HTTP yönlendirme zincirini (301/302/307/308) son URL’ye kadar izleyin."
+
+msgid "HTTP Security Headers"
+msgstr "HTTP Güvenlik Başlıkları"
+
+msgid "Score HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP."
+msgstr "HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP puanlayın."
+
+msgid "SPF Generator"
+msgstr "SPF Oluşturucu"
+
+msgid "Suggested SPF TXT record starter for your domain."
+msgstr "Alanınız için önerilen SPF TXT başlangıç kaydı."
+
+msgid "DMARC Generator"
+msgstr "DMARC Oluşturucu"
+
+msgid "Suggested _dmarc policy record with rua reporting."
+msgstr "rua raporlu önerilen _dmarc politika kaydı."
+
+msgid "MTA-STS Generator"
+msgstr "MTA-STS Oluşturucu"
+
+msgid "Suggested _mta-sts TXT and policy file contents."
+msgstr "Önerilen _mta-sts TXT ve politika dosyası içeriği."
+
+msgid "TLS-RPT Generator"
+msgstr "TLS-RPT Oluşturucu"
+
+msgid "Suggested _smtp._tls reporting record."
+msgstr "Önerilen _smtp._tls rapor kaydı."
+
+msgid "CAA Generator"
+msgstr "CAA Oluşturucu"
+
+msgid "Suggested CAA issue / iodef records."
+msgstr "Önerilen CAA issue / iodef kayıtları."
+
+msgid "security.txt Generator"
+msgstr "security.txt Oluşturucu"
+
+msgid "Suggested RFC 9116 security.txt contents."
+msgstr "Önerilen RFC 9116 security.txt içeriği."
+
