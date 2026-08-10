@@ -1052,9 +1052,14 @@ body.modal-open {
   background: rgba(180, 35, 24, 0.04);
 }
 
-.exchange-report .auth-compact.is-warn {
-  border-color: rgba(184, 106, 0, 0.35);
-  background: rgba(184, 106, 0, 0.06);
+.exchange-report .mt-sm { margin-top: 0.65rem; }
+.exchange-report .finding-head .pill.tiny {
+  font-size: 0.68rem;
+  padding: 0.1rem 0.35rem;
+}
+.exchange-report .subhead {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 0.95rem;
 }
 
 .exchange-report .auth-compact.is-ok {

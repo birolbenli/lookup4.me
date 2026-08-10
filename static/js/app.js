@@ -733,18 +733,35 @@ function renderAuthCompact(title, block, { goodWhenFound = false } = {}) {
 }
 
 function renderExchangeFinding(f, { compact = false } = {}) {
+  const sev = f.ui_severity || f.severity || "info";
   const eps = (f.endpoints || [])
     .slice(0, compact ? 4 : 8)
     .map((e) => `<li class="mono">${escapeHtml(e)}</li>`)
     .join("");
-  return `<div class="finding sev-${escapeHtml(f.severity || "info")}">
+  const refs = (f.refs || [])
+    .slice(0, 3)
+    .map(
+      (r) =>
+        `<a href="${escapeHtml(r.url || "#")}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+          r.id || r.title || "ref"
+        )}</a>`
+    )
+    .join(" · ");
+  const observed = f.observed || f.detail || "";
+  const remediation = f.remediation || f.guidance || "";
+  return `<div class="finding sev-${escapeHtml(sev)}">
     <div class="finding-head">
-      <span class="status ${severityClass(f.severity)}">${escapeHtml(sevLabel(f.severity))}</span>
+      <span class="status ${severityClass(sev)}">${escapeHtml(sevLabel(sev))}</span>
+      ${f.status ? `<span class="pill tiny">${escapeHtml(f.status)}</span>` : ""}
       <strong>${escapeHtml(tDesc(f.title || ""))}</strong>
+      ${f.id ? `<span class="mono tiny muted">${escapeHtml(f.id)}</span>` : ""}
     </div>
-    ${f.detail ? `<p>${escapeHtml(tDesc(f.detail))}</p>` : ""}
-    ${f.guidance ? `<p class="tiny"><strong>${escapeHtml(t("Fix"))}:</strong> ${escapeHtml(tDesc(f.guidance))}</p>` : ""}
+    ${observed ? `<p><strong>${escapeHtml(t("Observed"))}:</strong> ${escapeHtml(tDesc(observed))}</p>` : ""}
+    ${!compact && f.why ? `<p class="tiny"><strong>${escapeHtml(t("Why it matters"))}:</strong> ${escapeHtml(tDesc(f.why))}</p>` : ""}
+    ${remediation ? `<p class="tiny"><strong>${escapeHtml(t("Fix"))}:</strong> ${escapeHtml(tDesc(remediation))}</p>` : ""}
+    ${!compact && f.scope_limitation ? `<p class="tiny muted">${escapeHtml(tDesc(f.scope_limitation))}</p>` : ""}
     ${eps ? `<ul class="finding-eps">${eps}</ul>` : ""}
+    ${refs ? `<p class="tiny muted">${escapeHtml(t("Microsoft references"))}: ${refs}</p>` : ""}
   </div>`;
 }
 
@@ -803,6 +820,10 @@ function renderExchange(data, root) {
   const summary = data.summary || {};
   const counts = data.counts || {};
   const ssl = data.ssl || {};
+  const tls = data.tls_detail || {};
+  const http = data.http_detail || {};
+  const smtp = data.smtp_assess || {};
+  const mail = data.mail_domain || {};
   const findings = data.findings || [];
   const endpoints = data.endpoints || [];
   const hosts = data.hosts || [];
@@ -812,6 +833,10 @@ function renderExchange(data, root) {
   const teams = posture.teams || {};
   const headerItems = dedupeHeaderItems((data.headers_report || {}).items || []);
   const shared = data.shared_frontends || [];
+  const coverage = data.coverage || {};
+  const notObs = data.not_observable || [];
+  const sevCounts = summary.severity_counts || {};
+  const exec = data.executive_summary || {};
 
   const issues = findings.filter((f) => f.severity === "critical" || f.severity === "warning");
   const notes = findings.filter((f) => f.severity === "info");
@@ -931,46 +956,92 @@ function renderExchange(data, root) {
     .join("");
 
   const guideList = [...new Set([...(hybrid.guidance || []), ...(teams.guidance || [])])]
-    .slice(0, 5)
+    .slice(0, 6)
     .map((g) => `<li>${escapeHtml(tDesc(g))}</li>`)
     .join("");
+
+  const protoRows = (tls.protocols || [])
+    .map((p) => {
+      const ok = p.supported === true;
+      const no = p.supported === false;
+      const label = ok ? t("Supported") : no ? t("Not supported") : "—";
+      const cls = ok && ["SSLv3", "TLSv1.0", "TLSv1.1"].includes(p.protocol) ? "err" : ok ? "ok" : "";
+      return `<tr>
+        <td class="mono">${escapeHtml(p.protocol)}</td>
+        <td><span class="status ${cls}">${escapeHtml(label)}</span></td>
+        <td class="tiny muted">${escapeHtml(p.cipher || p.error || "")}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const smtpSum = smtp.summary || {};
+  const mailSpf = mail.spf || {};
+  const mailDmarc = mail.dmarc || {};
+  const mailDkim = mail.dkim || {};
+
+  const notObsHtml = notObs
+    .map(
+      (n) => `<li><strong>${escapeHtml(tDesc(n.title || ""))}</strong>
+        <div class="tiny muted">${escapeHtml(tDesc(n.detail || ""))}</div></li>`
+    )
+    .join("");
+
+  const rawEvidence = JSON.stringify(
+    {
+      host: data.host,
+      coverage,
+      tls_summary: tls.summary,
+      smtp_summary: smtpSum,
+      mail: {
+        spf: mailSpf,
+        dmarc: mailDmarc,
+        dkim_selectors: mailDkim.selectors_found,
+        mta_sts: (mail.mta_sts || {}).present,
+      },
+      auth: {
+        ntlm: (audit.ntlm || {}).found,
+        oauth: (audit.oauth2 || {}).status,
+        basic: (audit.basic || {}).found,
+      },
+    },
+    null,
+    2
+  );
 
   root.appendChild(
     el(`<div class="stack exchange-report">
       <div class="summary">
         <span class="pill score-pill">${escapeHtml(t("Score"))} ${escapeHtml(String(summary.score ?? "—"))} · ${escapeHtml(summary.grade || "")} · ${escapeHtml(t(summary.label || ""))}</span>
+        <span class="pill">${escapeHtml(t("External-only assessment"))}</span>
+        <span class="pill">${escapeHtml(String(sevCounts.critical || 0))} ${escapeHtml(t("Critical"))}</span>
+        <span class="pill">${escapeHtml(String(sevCounts.high || 0))} ${escapeHtml(t("High"))}</span>
         <span class="pill">${escapeHtml(String(counts.ntlm || 0))} NTLM</span>
         <span class="pill">${escapeHtml(String(counts.oauth || 0))} OAuth</span>
-        <span class="pill">${escapeHtml(String(counts.healthcheck_open || 0))} ${escapeHtml(t("Healthcheck open"))}</span>
-        <span class="pill">${escapeHtml(String(counts.header_leaks || 0))} ${escapeHtml(t("Header leaks"))}</span>
       </div>
+      <p class="muted tiny">
+        <span class="mono">${escapeHtml(data.host || "")}</span>
+        ${data.org_domain ? ` · ${escapeHtml(t("Org domain"))}: <span class="mono">${escapeHtml(data.org_domain)}</span>` : ""}
+        ${data.scanned_at ? ` · ${escapeHtml(t("Scan time"))}: ${escapeHtml(String(data.scanned_at).replace("T", " ").slice(0, 19))} UTC` : ""}
+        ${data.duration_ms != null ? ` · ${escapeHtml(String(data.duration_ms))} ms` : ""}
+        · v${escapeHtml(String(data.assessment_version || "2"))}
+      </p>
+      ${
+        (exec.top_issues || []).length
+          ? `<p class="tiny"><strong>${escapeHtml(t("Top findings"))}:</strong> ${(exec.top_issues || [])
+              .map((x) => escapeHtml(tDesc(x)))
+              .join(" · ")}</p>`
+          : ""
+      }
+      <p class="tiny muted">${escapeHtml(t("Coverage"))}:
+        TLS ${coverage.tls ? "✓" : "—"} ·
+        HTTP ${coverage.http ? "✓" : "—"} ·
+        SMTP ${coverage.smtp ? "✓" : "—"} ·
+        ${escapeHtml(t("Mail domain"))} ${coverage.mail_domain ? "✓" : "—"} ·
+        ${escapeHtml(String(coverage.endpoints || 0))} ${escapeHtml(t("endpoints"))}
+      </p>
 
       <div class="block">
-        <h3>${escapeHtml(t("Findings"))}</h3>
-        <p class="muted tiny"><span class="mono">${escapeHtml(data.host || "")}</span>${
-          data.org_domain ? ` · ${escapeHtml(t("Org domain"))}: <span class="mono">${escapeHtml(data.org_domain)}</span>` : ""
-        }</p>
-        <div class="findings">
-          ${issues.map((f) => renderExchangeFinding(f, { compact: true })).join("") || `<p class="status ok">${escapeHtml(t("No critical issues"))}</p>`}
-        </div>
-        ${
-          notes.length
-            ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))} (${notes.length})</summary><div class="findings">${notes
-                .map((f) => renderExchangeFinding(f, { compact: true }))
-                .join("")}</div></details>`
-            : ""
-        }
-        ${
-          oks.length
-            ? `<details class="ex-more"><summary>${escapeHtml(t("Passed checks"))} (${oks.length})</summary><div class="findings">${oks
-                .map((f) => renderExchangeFinding(f, { compact: true }))
-                .join("")}</div></details>`
-            : ""
-        }
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("Related hosts"))}</h3>
+        <h3>${escapeHtml(t("Attack surface"))} / ${escapeHtml(t("Related hosts"))}</h3>
         ${sharedHtml}
         <div class="table-wrap"><table class="ex-table ex-table-hosts">
           <thead><tr>
@@ -984,30 +1055,41 @@ function renderExchange(data, root) {
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("Virtual directories"))}</h3>
-        <p class="muted tiny">${escapeHtml(t("One row per VD — columns are related hostnames."))}</p>
-        <div class="table-wrap"><table class="ex-table ex-matrix">
-          <thead><tr>
-            <th class="ex-vd-col">${escapeHtml(t("VD"))}</th>
-            ${hostHead}
-          </tr></thead>
-          <tbody>${matrixRows || `<tr><td colspan="${hostCols.length + 1}">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
-        </table></div>
-        <p class="muted tiny">${escapeHtml(t("Legend: NTLM/OAuth/Basic = auth challenge; HC = public healthcheck."))}</p>
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("Sensitive headers"))}</h3>
-        <p class="muted tiny">${escapeHtml(t("Server name, version, or internal IP in headers is risky."))}</p>
-        <div class="table-wrap"><table class="ex-table ex-table-headers">
-          <thead><tr>
-            <th>${escapeHtml(t("Risk"))}</th>
-            <th>${escapeHtml(t("Header"))}</th>
-            <th>${escapeHtml(t("Value"))}</th>
-            <th>${escapeHtml(t("Seen on"))}</th>
-          </tr></thead>
-          <tbody>${headerRows || `<tr><td colspan="4">${escapeHtml(t("No sensitive headers found"))}</td></tr>`}</tbody>
-        </table></div>
+        <h3>${escapeHtml(t("TLS"))}</h3>
+        <div class="geo-grid ex-tls">
+          <div><span class="muted">${escapeHtml(t("Status"))}</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(sevLabel(ssl.status) || ssl.status || "—")}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Days left"))}</span><strong>${escapeHtml(String(ssl.days_left ?? "—"))}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Expires"))}</span><strong class="mono">${escapeHtml(String(ssl.expiry_date || "—"))}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Issuer"))}</span><strong class="truncate" title="${escapeHtml(String(ssl.issuer || "—"))}">${escapeHtml(String(ssl.issuer || "—"))}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Hostname match"))}</span><strong>${escapeHtml(
+            (tls.certificate || {}).hostname_match === true
+              ? t("Yes")
+              : (tls.certificate || {}).hostname_match === false
+                ? t("No")
+                : "—"
+          )}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Key"))}</span><strong class="mono">${escapeHtml(
+            [(tls.certificate || {}).key_type, (tls.certificate || {}).key_bits].filter(Boolean).join(" ") || "—"
+          )}</strong></div>
+        </div>
+        ${
+          protoRows
+            ? `<div class="table-wrap mt-sm"><table class="ex-table">
+          <thead><tr><th>${escapeHtml(t("Protocol"))}</th><th>${escapeHtml(t("Result"))}</th><th>${escapeHtml(t("Detail"))}</th></tr></thead>
+          <tbody>${protoRows}</tbody>
+        </table></div>`
+            : ""
+        }
+        ${
+          http.ok
+            ? `<p class="tiny muted">HSTS: ${
+                (http.hsts || {}).present ? escapeHtml((http.hsts || {}).value || t("Present")) : escapeHtml(t("Missing"))
+              }
+              · HTTP→HTTPS: ${
+                (http.http || {}).redirects_to_https ? escapeHtml(t("Yes")) : escapeHtml(t("No"))
+              }</p>`
+            : ""
+        }
       </div>
 
       <div class="block">
@@ -1032,22 +1114,111 @@ function renderExchange(data, root) {
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("TLS certificate"))}</h3>
-        <div class="geo-grid ex-tls">
-          <div><span class="muted">${escapeHtml(t("Status"))}</span><strong class="status ${severityClass(ssl.status)}">${escapeHtml(sevLabel(ssl.status) || ssl.status || "—")}</strong></div>
-          <div><span class="muted">${escapeHtml(t("Days left"))}</span><strong>${escapeHtml(String(ssl.days_left ?? "—"))}</strong></div>
-          <div><span class="muted">${escapeHtml(t("Expires"))}</span><strong class="mono">${escapeHtml(String(ssl.expiry_date || "—"))}</strong></div>
-          <div><span class="muted">${escapeHtml(t("Issuer"))}</span><strong class="truncate" title="${escapeHtml(String(ssl.issuer || "—"))}">${escapeHtml(String(ssl.issuer || "—"))}</strong></div>
-        </div>
+        <h3>${escapeHtml(t("Virtual directories"))}</h3>
+        <p class="muted tiny">${escapeHtml(t("One row per VD — columns are related hostnames."))}</p>
+        <div class="table-wrap"><table class="ex-table ex-matrix">
+          <thead><tr>
+            <th class="ex-vd-col">${escapeHtml(t("VD"))}</th>
+            ${hostHead}
+          </tr></thead>
+          <tbody>${matrixRows || `<tr><td colspan="${hostCols.length + 1}">${escapeHtml(t("No record"))}</td></tr>`}</tbody>
+        </table></div>
+        <p class="muted tiny">${escapeHtml(t("Legend: NTLM/OAuth/Basic = auth challenge; HC = public healthcheck."))}</p>
       </div>
 
       <div class="block">
-        <h3>${escapeHtml(t("Hybrid & Teams"))}</h3>
+        <h3>SMTP</h3>
+        <div class="geo-grid">
+          <div><span class="muted">${escapeHtml(t("Reachable"))}</span><strong>${escapeHtml(
+            smtpSum.reachable ? t("Yes") : t("No")
+          )}</strong></div>
+          <div><span class="muted">STARTTLS</span><strong>${escapeHtml(smtpSum.starttls ? t("Yes") : t("No"))}</strong></div>
+          <div><span class="muted">TLS</span><strong class="mono">${escapeHtml(String(smtpSum.tls_version || "—"))}</strong></div>
+          <div><span class="muted">AUTH</span><strong class="mono">${escapeHtml(
+            (smtpSum.auth_mechs || []).join(" ") || "—"
+          )}</strong></div>
+          <div><span class="muted">${escapeHtml(t("Open relay suspected"))}</span><strong class="status ${
+            smtpSum.open_relay_suspected ? "err" : "ok"
+          }">${escapeHtml(smtpSum.open_relay_suspected ? t("Yes") : t("No"))}</strong></div>
+        </div>
+        <p class="tiny muted">${escapeHtml(t("Relay test stops at RCPT TO — DATA is never sent."))}</p>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Mail domain"))}</h3>
+        <div class="geo-grid">
+          <div><span class="muted">SPF</span><strong class="status ${mailSpf.ok ? "ok" : "warn"}">${escapeHtml(
+            mailSpf.ok ? t("Present") : t("Missing")
+          )}</strong></div>
+          <div><span class="muted">DMARC</span><strong class="status ${mailDmarc.ok ? "ok" : "warn"}">${escapeHtml(
+            mailDmarc.ok ? `p=${mailDmarc.policy || "?"}` : t("Missing")
+          )}</strong></div>
+          <div><span class="muted">DKIM</span><strong>${escapeHtml(
+            (mailDkim.selectors_found || []).slice(0, 4).join(", ") || t("None found")
+          )}</strong></div>
+          <div><span class="muted">MTA-STS</span><strong>${escapeHtml(
+            (mail.mta_sts || {}).present ? t("Present") : t("Missing")
+          )}</strong></div>
+          <div><span class="muted">TLS-RPT</span><strong>${escapeHtml(
+            (mail.tls_rpt || {}).present ? t("Present") : t("Missing")
+          )}</strong></div>
+          <div><span class="muted">CAA</span><strong>${escapeHtml(
+            (mail.caa || {}).present ? t("Present") : t("Missing")
+          )}</strong></div>
+        </div>
+        <p class="tiny muted">DNSSEC / DANE: ${escapeHtml(t("Not observable externally"))}</p>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Hybrid external signals"))}</h3>
         <p>${escapeHtml(tDesc(hybrid.summary || teams.summary || ""))}</p>
         ${guideList ? `<ul class="guide-list">${guideList}</ul>` : ""}
         <p class="muted tiny">${escapeHtml(tDesc(teams.ews_status || ""))}${
           teams.ntlm_on_ews ? ` · ${escapeHtml(t("NTLM on EWS"))}` : ""
         }${teams.oauth_on_ews ? ` · ${escapeHtml(t("OAuth on EWS"))}` : ""}</p>
+        <h4 class="subhead">${escapeHtml(t("Not observable externally"))}</h4>
+        <ul class="guide-list">${notObsHtml}</ul>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Findings"))}</h3>
+        <div class="findings">
+          ${issues.map((f) => renderExchangeFinding(f, { compact: false })).join("") || `<p class="status ok">${escapeHtml(t("No critical issues"))}</p>`}
+        </div>
+        ${
+          notes.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))} (${notes.length})</summary><div class="findings">${notes
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
+            : ""
+        }
+        ${
+          oks.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Passed checks"))} (${oks.length})</summary><div class="findings">${oks
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
+            : ""
+        }
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("Sensitive headers"))}</h3>
+        <div class="table-wrap"><table class="ex-table ex-table-headers">
+          <thead><tr>
+            <th>${escapeHtml(t("Risk"))}</th>
+            <th>${escapeHtml(t("Header"))}</th>
+            <th>${escapeHtml(t("Value"))}</th>
+            <th>${escapeHtml(t("Seen on"))}</th>
+          </tr></thead>
+          <tbody>${headerRows || `<tr><td colspan="4">${escapeHtml(t("No sensitive headers found"))}</td></tr>`}</tbody>
+        </table></div>
+      </div>
+
+      <div class="block">
+        <details class="ex-more">
+          <summary>${escapeHtml(t("Raw evidence"))}</summary>
+          <pre class="about-pre">${escapeHtml(rawEvidence)}</pre>
+        </details>
       </div>
     </div>`)
   );

@@ -1,499 +1,34 @@
-"""Exchange Server virtual directory / health / exposure scanner."""
+"""Microsoft Exchange External Security Assessment v2 — orchestrator."""
 
 from __future__ import annotations
 
-import ipaddress
-import re
-import ssl
-import urllib.error
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from .dns_common import is_ip, normalize_domain, query_records
-from .ssl_check import get_ssl_info
-
-UA = "tools.birolbenli.com/1.0 (+https://tools.birolbenli.com; Exchange HC)"
-TIMEOUT = 8.0
-
-MS_REFS = {
-    "hma": {
-        "title": "Configure Exchange Server for Hybrid Modern Authentication",
-        "url": "https://learn.microsoft.com/en-us/microsoft-365/enterprise/configure-exchange-server-for-hybrid-modern-authentication",
-    },
-    "block_legacy": {
-        "title": "Use authentication policies to block legacy auth (hybrid)",
-        "url": "https://learn.microsoft.com/en-us/exchange/hybrid-deployment/block-legacy-auth-2019-hybrid",
-    },
-    "disable_basic": {
-        "title": "Disable Basic authentication on Exchange virtual directories",
-        "url": "https://learn.microsoft.com/en-us/exchange/plan-and-deploy/post-installation-tasks/disable-basic-authentication-on-exchange-server-virtual-directories",
-    },
-    "legacy_blog": {
-        "title": "Disabling Legacy Authentication in Exchange Server 2019",
-        "url": "https://techcommunity.microsoft.com/blog/exchange/disabling-legacy-authentication-in-exchange-server-2019/712048",
-    },
-    "vd_defaults": {
-        "title": "Default settings for Exchange virtual directories",
-        "url": "https://learn.microsoft.com/en-us/exchange/clients/default-virtual-directory-settings",
-    },
-    "teams_ews": {
-        "title": "How Exchange and Microsoft Teams interact",
-        "url": "https://learn.microsoft.com/en-us/microsoftteams/exchange-teams-interact",
-    },
-    "publish": {
-        "title": "Client access services (publishing Exchange)",
-        "url": "https://learn.microsoft.com/en-us/exchange/architecture/client-access",
-    },
-}
-
-# Common Exchange virtual directories and optional healthcheck paths.
-VDIRS = [
-    {
-        "id": "owa",
-        "name": "OWA",
-        "path": "/owa/",
-        "healthcheck": "/owa/healthcheck.htm",
-    },
-    {
-        "id": "ecp",
-        "name": "ECP",
-        "path": "/ecp/",
-        "healthcheck": "/ecp/healthcheck.htm",
-    },
-    {
-        "id": "ews",
-        "name": "EWS",
-        "path": "/EWS/Exchange.asmx",
-        "healthcheck": "/EWS/healthcheck.htm",
-    },
-    {
-        "id": "eas",
-        "name": "ActiveSync",
-        "path": "/Microsoft-Server-ActiveSync",
-        "healthcheck": "/Microsoft-Server-ActiveSync/healthcheck.htm",
-    },
-    {
-        "id": "autodiscover",
-        "name": "Autodiscover",
-        "path": "/Autodiscover/Autodiscover.xml",
-        "healthcheck": "/Autodiscover/healthcheck.htm",
-    },
-    {
-        "id": "mapi",
-        "name": "MAPI",
-        "path": "/mapi/emsmdb",
-        "healthcheck": "/mapi/healthcheck.htm",
-    },
-    {
-        "id": "oab",
-        "name": "OAB",
-        "path": "/OAB/",
-        "healthcheck": None,
-    },
-    {
-        "id": "powershell",
-        "name": "PowerShell",
-        "path": "/PowerShell/",
-        "healthcheck": "/PowerShell/healthcheck.htm",
-    },
-    {
-        "id": "rpc",
-        "name": "RPC",
-        "path": "/rpc/rpcproxy.dll",
-        "healthcheck": "/rpc/healthcheck.htm",
-    },
-]
-
-LEAKY_HEADERS = (
-    "server",
-    "x-powered-by",
-    "x-aspnet-version",
-    "x-owa-version",
-    "x-feserver",
-    "x-beserver",
-    "x-calculatedbetarget",
-    "x-calculatedfetarget",
-    "x-ms-diagnostics",
-    "x-diaginfo",
-    "x-backendhttpstatus",
-    "x-routerecovery",
-    "x-owa-diagnostics",
-    "request-id",
+from .dns_common import is_ip, normalize_domain
+from .exchange_endpoints import (
+    hosts_to_probe,
+    org_domain,
+    probe_all_endpoints,
+    public_ips,
 )
-
-PRIVATE_IP_RE = re.compile(
-    r"\b(?:10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|127(?:\.\d{1,3}){3})\b"
+from .exchange_findings import (
+    ADMIN_SURFACE,
+    HYBRID_EXPECTED_PUBLIC,
+    finding,
+    not_observable_section,
+    ui_severity,
+    weighted_score,
 )
-
-# Left-most labels that are service hosts, not the org domain.
-SERVICE_LABELS = {
-    "mail",
-    "posta",
-    "owa",
-    "webmail",
-    "exchange",
-    "outlook",
-    "smtp",
-    "mx",
-    "autodiscover",
-    "download",
-    "eas",
-    "ews",
-    "ecp",
-}
-
-
-def _org_domain(host: str) -> str:
-    """Org domain for Autodiscover: mail.izto.org.tr → izto.org.tr (not org.tr)."""
-    host = normalize_domain(host)
-    parts = host.split(".")
-    if len(parts) < 2:
-        return host
-    # download.mail.example.com → strip download + mail
-    if parts[0] == "download" and len(parts) > 2 and parts[1] in SERVICE_LABELS - {"download", "autodiscover"}:
-        return ".".join(parts[2:])
-    if parts[0] in SERVICE_LABELS:
-        return ".".join(parts[1:])
-    return host
-
-
-def _hosts_to_probe(host: str) -> list[dict]:
-    """primary + autodiscover.<org> + download.<primary>.
-
-    Example: mail.izto.org.tr →
-      mail.izto.org.tr, autodiscover.izto.org.tr, download.mail.izto.org.tr
-    """
-    host = normalize_domain(host)
-    org = _org_domain(host)
-    parts = host.split(".")
-
-    if parts[0] == "download" and len(parts) > 2:
-        rest = ".".join(parts[1:])
-        primary = rest if not rest.startswith("autodiscover.") else f"mail.{org}"
-    elif parts[0] == "autodiscover":
-        primary = f"mail.{org}"
-    elif parts[0] not in SERVICE_LABELS:
-        # Bare org (izto.org.tr) → assume mail.<org> + download.mail.<org>
-        primary = f"mail.{org}"
-    else:
-        primary = host
-
-    hosts = [
-        {"role": "primary", "host": primary, "org_domain": org},
-        {"role": "autodiscover", "host": f"autodiscover.{org}", "org_domain": org},
-        {"role": "download", "host": f"download.{primary}", "org_domain": org},
-    ]
-    # Keep the typed name if it is not already one of the three.
-    if host not in {h["host"] for h in hosts}:
-        hosts.insert(0, {"role": "input", "host": host, "org_domain": org})
-
-    seen: set[str] = set()
-    out = []
-    for item in hosts:
-        h = item["host"]
-        if not h or h in seen or h.startswith("download.autodiscover."):
-            continue
-        seen.add(h)
-        out.append(item)
-    return out
-
-
-def _public_ips(host: str) -> list[str]:
-    ips: list[str] = []
-    if is_ip(host):
-        ips.append(host)
-    else:
-        for rtype in ("A", "AAAA"):
-            ans = query_records(host, rtype)
-            for rec in ans.get("records") or []:
-                data = rec.get("data")
-                if data:
-                    ips.append(data)
-    public = []
-    for ip in ips:
-        try:
-            addr = ipaddress.ip_address(ip)
-        except ValueError:
-            continue
-        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved or addr.is_multicast:
-            continue
-        public.append(ip)
-    return public
-
-
-def _parse_auth(www_authenticate: str | None) -> dict:
-    raw = www_authenticate or ""
-    lower = raw.lower()
-    schemes = []
-    if "ntlm" in lower:
-        schemes.append("NTLM")
-    if "negotiate" in lower:
-        schemes.append("Negotiate")
-    if "basic" in lower:
-        schemes.append("Basic")
-    if "bearer" in lower:
-        schemes.append("Bearer")
-    oauth = "Bearer" in schemes or "oauth" in lower
-    # Negotiate often includes NTLM fallback on Windows; treat as legacy Windows auth exposure.
-    ntlm = "NTLM" in schemes or "Negotiate" in schemes
-    auth_uri = ""
-    m = re.search(r'authorization_uri="([^"]+)"', raw, flags=re.I)
-    if m:
-        auth_uri = m.group(1)
-    client_id = ""
-    m2 = re.search(r'client_id="([^"]+)"', raw, flags=re.I)
-    if m2:
-        client_id = m2.group(1)
-    entra = "login.microsoftonline.com" in auth_uri.lower() or "login.windows.net" in auth_uri.lower()
-    # Strong HMA signal: Bearer + Entra authorization_uri (and usually client_id).
-    hma_challenge = bool(oauth and (entra or client_id))
-    return {
-        "raw": raw,
-        "schemes": schemes,
-        "ntlm": ntlm,
-        "oauth": oauth,
-        "basic": "Basic" in schemes,
-        "authorization_uri": auth_uri,
-        "client_id": client_id,
-        "entra_oauth": entra,
-        "hma_challenge": hma_challenge,
-        "checked": True,
-        "www_authenticate_present": bool(raw.strip()),
-    }
-
-
-def _merge_auth(primary: dict, extra: dict | None) -> dict:
-    """Merge anonymous + dummy-Bearer auth challenges (union of schemes)."""
-    if not extra:
-        return primary
-    schemes = []
-    for s in (primary.get("schemes") or []) + (extra.get("schemes") or []):
-        if s not in schemes:
-            schemes.append(s)
-    raw_parts = [p for p in (primary.get("raw") or "", extra.get("raw") or "") if p]
-    raw = ", ".join(raw_parts)
-    auth_uri = primary.get("authorization_uri") or extra.get("authorization_uri") or ""
-    client_id = primary.get("client_id") or extra.get("client_id") or ""
-    oauth = "Bearer" in schemes or bool(primary.get("oauth") or extra.get("oauth"))
-    ntlm = "NTLM" in schemes or "Negotiate" in schemes
-    entra = bool(primary.get("entra_oauth") or extra.get("entra_oauth"))
-    hma = bool(primary.get("hma_challenge") or extra.get("hma_challenge") or (oauth and (entra or client_id)))
-    return {
-        "raw": raw,
-        "schemes": schemes,
-        "ntlm": ntlm,
-        "oauth": oauth,
-        "basic": "Basic" in schemes,
-        "authorization_uri": auth_uri,
-        "client_id": client_id,
-        "entra_oauth": entra,
-        "hma_challenge": hma,
-        "checked": True,
-        "www_authenticate_present": bool(raw.strip()),
-        "bearer_probe_used": True,
-        "bearer_probe_oauth": bool(extra.get("oauth")),
-        "anonymous_oauth": bool(primary.get("oauth")),
-    }
-
-
-def _request(url: str, method: str = "GET", headers: dict | None = None) -> dict:
-    hdrs = {"User-Agent": UA, "Accept": "*/*"}
-    if headers:
-        hdrs.update(headers)
-    req = urllib.request.Request(url, method=method, headers=hdrs)
-    context = ssl.create_default_context()
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=context) as resp:
-            body = resp.read(4096)
-            resp_headers = {k: v for k, v in resp.headers.items()}
-            return {
-                "reachable": True,
-                "url": url,
-                "final_url": resp.geturl(),
-                "status_code": resp.getcode(),
-                "headers": resp_headers,
-                "body_preview": body.decode("utf-8", errors="replace"),
-            }
-    except urllib.error.HTTPError as exc:
-        try:
-            body = exc.read(4096)
-        except Exception:  # noqa: BLE001
-            body = b""
-        resp_headers = {k: v for k, v in (exc.headers.items() if exc.headers else [])}
-        return {
-            "reachable": True,
-            "url": url,
-            "final_url": getattr(exc, "url", None) or url,
-            "status_code": exc.code,
-            "headers": resp_headers,
-            "body_preview": body.decode("utf-8", errors="replace") if body else "",
-            "error": str(exc.reason),
-        }
-    except Exception as exc:  # noqa: BLE001
-        return {
-            "reachable": False,
-            "url": url,
-            "status_code": None,
-            "headers": {},
-            "error": str(exc),
-        }
-
-
-# VDirs where a dummy Bearer probe can elicit HMA challenge (client OAuth).
-BEARER_PROBE_VDIRS = {"ews", "eas", "mapi"}
-
-
-def _classify_exposure(status: int | None, auth: dict) -> str:
-    if status is None:
-        return "closed"
-    if status in (401, 403):
-        return "auth_required"
-    if 200 <= status < 400:
-        return "open"
-    if status in (301, 302, 303, 307, 308):
-        return "redirect"
-    return "error"
-
-
-def _probe_vdir(host: str, vdir: dict) -> dict:
-    base = f"https://{host}"
-    path_url = base + vdir["path"]
-    path_res = _request(path_url, method="GET")
-    headers = {k.lower(): v for k, v in (path_res.get("headers") or {}).items()}
-    auth = _parse_auth(headers.get("www-authenticate"))
-    bearer_probe = None
-
-    # Anonymous GET often only returns NTLM/Negotiate. Exchange may surface Bearer
-    # only when Authorization: Bearer <token> is present (HMA client challenge).
-    if vdir.get("id") in BEARER_PROBE_VDIRS and path_res.get("reachable"):
-        bearer_res = _request(
-            path_url,
-            method="GET",
-            headers={"Authorization": "Bearer invalidtoken"},
-        )
-        b_headers = {k.lower(): v for k, v in (bearer_res.get("headers") or {}).items()}
-        bearer_auth = _parse_auth(b_headers.get("www-authenticate"))
-        bearer_probe = {
-            "used": True,
-            "status_code": bearer_res.get("status_code"),
-            "oauth": bool(bearer_auth.get("oauth")),
-            "hma_challenge": bool(bearer_auth.get("hma_challenge")),
-            "www_authenticate_present": bool(bearer_auth.get("www_authenticate_present")),
-            "authorization_uri": bearer_auth.get("authorization_uri") or "",
-            "client_id": bearer_auth.get("client_id") or "",
-            "raw": (bearer_auth.get("raw") or "")[:400],
-        }
-        auth = _merge_auth(auth, bearer_auth)
-        # Prefer richer WWW-Authenticate from bearer probe for header leak scan.
-        if bearer_auth.get("www_authenticate_present"):
-            headers = {**headers, **b_headers}
-
-    status = path_res.get("status_code")
-    exposure = _classify_exposure(status, auth)
-
-    health = None
-    if vdir.get("healthcheck"):
-        health_url = base + vdir["healthcheck"]
-        health_res = _request(health_url, method="GET")
-        h_status = health_res.get("status_code")
-        body = (health_res.get("body_preview") or "").strip()
-        # Classic Exchange healthcheck returns HTTP 200 with a tiny "200 OK" body.
-        healthy = bool(
-            health_res.get("reachable")
-            and h_status == 200
-            and (
-                body.upper().startswith("200")
-                or body.upper() in {"OK", "200 OK"}
-                or (len(body) <= 32 and "html" not in body.lower())
-            )
-        )
-        health = {
-            "url": health_url,
-            "reachable": health_res.get("reachable"),
-            "status_code": h_status,
-            "healthy": healthy,
-            "body_preview": body[:80],
-            "error": health_res.get("error"),
-            "headers": {k.lower(): v for k, v in (health_res.get("headers") or {}).items()},
-            "recommendation": (
-                "Public healthcheck — restrict to LB/monitoring IPs."
-                if healthy
-                else None
-            ),
-        }
-
-    header_sources = [headers]
-    if health and health.get("headers"):
-        header_sources.append(health["headers"])
-
-    leak_hits = []
-    seen_hdr: set[str] = set()
-    for src in header_sources:
-        for key in LEAKY_HEADERS:
-            if key not in src:
-                continue
-            mark = f"{key}|{src[key][:80]}"
-            if mark in seen_hdr:
-                continue
-            seen_hdr.add(mark)
-            leak_hits.append({"header": key, "value": src[key][:180]})
-        # Location / redirect targets with internal IPs
-        loc = src.get("location") or ""
-        if loc and PRIVATE_IP_RE.search(loc):
-            mark = f"location|{loc[:80]}"
-            if mark not in seen_hdr:
-                seen_hdr.add(mark)
-                leak_hits.append({"header": "location", "value": loc[:180]})
-
-    private_hits = []
-    blob = " ".join(
-        [
-            path_res.get("final_url") or "",
-            path_res.get("body_preview") or "",
-            " ".join(headers.values()),
-            " ".join((health or {}).get("headers", {}).values()) if health else "",
-        ]
-    )
-    for match in PRIVATE_IP_RE.findall(blob):
-        if match not in private_hits:
-            private_hits.append(match)
-            mark = f"private-ip|{match}"
-            if mark not in seen_hdr:
-                seen_hdr.add(mark)
-                leak_hits.append({"header": "private-ip", "value": match})
-
-    severity = "info"
-    if exposure == "open" and auth["ntlm"]:
-        severity = "critical"
-    elif auth["ntlm"] or (health and health.get("healthy")):
-        severity = "warning"
-    elif exposure in ("open", "auth_required") and auth["basic"]:
-        severity = "warning"
-    elif exposure == "open":
-        severity = "warning"
-
-    return {
-        "id": vdir["id"],
-        "name": vdir["name"],
-        "host": host,
-        "url": path_url,
-        "reachable": path_res.get("reachable"),
-        "status_code": status,
-        "final_url": path_res.get("final_url"),
-        "exposure": exposure,
-        "auth": auth,
-        "bearer_probe": bearer_probe,
-        "healthcheck": health,
-        "leaky_headers": leak_hits,
-        "private_ips": private_hits,
-        "severity": severity,
-        "error": path_res.get("error"),
-    }
+from .exchange_http import assess_http
+from .exchange_mail_domain import assess_mail_domain
+from .exchange_ms_refs import EXCHANGE_SU_BASELINE, MS_REFS
+from .exchange_smtp_assess import assess_smtp
+from .exchange_tls import assess_tls
 
 
 def _headers_report(endpoints: list[dict]) -> dict:
-    """Aggregate risky response headers (server name, version, internal IP)."""
     items: list[dict] = []
     seen: set[str] = set()
     for e in endpoints:
@@ -506,7 +41,7 @@ def _headers_report(endpoints: list[dict]) -> dict:
             if key in seen:
                 continue
             seen.add(key)
-            if name == "private-ip" or PRIVATE_IP_RE.search(val):
+            if name == "private-ip" or "private" in name:
                 risk, note = "critical", "Internal IP"
             elif name in {
                 "x-feserver",
@@ -522,8 +57,6 @@ def _headers_report(endpoints: list[dict]) -> dict:
                 risk, note = "warning", "Server banner"
             elif name == "location":
                 risk, note = "critical", "Internal redirect"
-            elif name == "x-powered-by":
-                risk, note = "info", "Stack hint"
             else:
                 risk, note = "info", "Header"
             items.append(
@@ -550,7 +83,6 @@ def _headers_report(endpoints: list[dict]) -> dict:
 
 
 def _auth_audit(endpoints: list[dict]) -> dict:
-    """Explicit statement of what was checked for NTLM / OAuth 2.0 / Basic."""
     probed = [e for e in endpoints if e.get("reachable")]
     ntlm_eps = [e for e in probed if e.get("auth", {}).get("ntlm")]
     oauth_eps = [e for e in probed if e.get("auth", {}).get("oauth")]
@@ -561,24 +93,9 @@ def _auth_audit(endpoints: list[dict]) -> dict:
     ]
     entra_eps = [e for e in probed if e.get("auth", {}).get("entra_oauth")]
     bearer_probed = [e for e in probed if (e.get("bearer_probe") or {}).get("used")]
-    no_challenge = [
-        e
-        for e in probed
-        if e.get("exposure") in {"open", "auth_required", "error"}
-        and not e.get("auth", {}).get("www_authenticate_present")
-    ]
-
-    def _status(found: bool, found_label: str, missing_label: str) -> dict:
-        return {
-            "checked": True,
-            "found": found,
-            "status": "detected" if found else "not_detected",
-            "summary": found_label if found else missing_label,
-        }
+    idp = [e for e in probed if e.get("idp_redirect")]
 
     oauth_found = bool(oauth_eps)
-    # External anonymous/dummy probes are low-confidence. Missing Bearer ≠ HMA off;
-    # LB/WAF may strip WWW-Authenticate; S2S hybrid OAuth is invisible externally.
     if oauth_found:
         oauth_status = "detected"
         oauth_confidence = "medium" if hma_eps else "low"
@@ -607,21 +124,18 @@ def _auth_audit(endpoints: list[dict]) -> dict:
             "Never disable legacy auth / NTLM based only on a failed external Bearer probe.",
         ],
         "ntlm": {
-            **_status(
-                bool(ntlm_eps),
-                f"NTLM/Negotiate on {len(ntlm_eps)} endpoint(s).",
-                "NTLM/Negotiate not advertised.",
+            "checked": True,
+            "found": bool(ntlm_eps),
+            "status": "detected" if ntlm_eps else "not_detected",
+            "summary": (
+                f"NTLM/Negotiate on {len(ntlm_eps)} endpoint(s)."
+                if ntlm_eps
+                else "NTLM/Negotiate not advertised."
             ),
             "endpoints": [
-                {
-                    "url": e["url"],
-                    "name": e.get("name"),
-                    "schemes": e.get("auth", {}).get("schemes") or [],
-                }
+                {"url": e["url"], "name": e.get("name"), "schemes": e.get("auth", {}).get("schemes") or []}
                 for e in ntlm_eps
             ],
-            "microsoft": "Use HMA + Authentication Policies to block legacy auth (not by disabling NTLM on VDirs).",
-            "refs": [MS_REFS["block_legacy"], MS_REFS["hma"]],
         },
         "oauth2": {
             "checked": True,
@@ -642,337 +156,755 @@ def _auth_audit(endpoints: list[dict]) -> dict:
                 }
                 for e in oauth_eps
             ],
-            "microsoft": (
-                "If hybrid clients need HMA, verify server-side (OAuthAuthentication on VDirs, "
-                "OAuth2ClientProfileEnabled). Do not treat a missing external Bearer as proof HMA is off."
-            ),
-            "refs": [MS_REFS["hma"]],
         },
         "basic": {
-            **_status(
-                bool(basic_eps),
-                f"Basic auth on {len(basic_eps)} endpoint(s).",
-                "Basic auth not advertised.",
+            "checked": True,
+            "found": bool(basic_eps),
+            "status": "detected" if basic_eps else "not_detected",
+            "summary": (
+                f"Basic auth on {len(basic_eps)} endpoint(s)."
+                if basic_eps
+                else "Basic auth not advertised."
             ),
             "endpoints": [{"url": e["url"], "name": e.get("name")} for e in basic_eps],
-            "microsoft": "Disable Basic auth on Exchange VDirs where possible.",
-            "refs": [MS_REFS["disable_basic"]],
         },
         "negotiate": {
-            **_status(
-                bool(negotiate_eps),
-                f"Negotiate on {len(negotiate_eps)} endpoint(s).",
-                "Negotiate not advertised.",
+            "checked": True,
+            "found": bool(negotiate_eps),
+            "status": "detected" if negotiate_eps else "not_detected",
+            "summary": (
+                f"Negotiate on {len(negotiate_eps)} endpoint(s)."
+                if negotiate_eps
+                else "Negotiate not advertised."
             ),
             "endpoints": [{"url": e["url"], "name": e.get("name")} for e in negotiate_eps],
         },
-        "no_www_authenticate": {
-            "count": len(no_challenge),
-            "note": "No WWW-Authenticate may still mean forms/cookie auth — not proof of Modern Auth.",
-            "endpoints": [e["url"] for e in no_challenge[:8]],
+        "idp_redirects": {
+            "found": bool(idp),
+            "count": len(idp),
+            "endpoints": [e["url"] for e in idp[:8]],
         },
     }
 
 
-def _posture(endpoints: list[dict], hosts: list[dict], auth_audit: dict) -> dict:
-    """Hybrid / Teams oriented interpretation based on remote signals + Microsoft guidance."""
-    signals = []
-    autodiscover_host = next((h for h in hosts if h.get("role") == "autodiscover"), None)
-    download_host = next((h for h in hosts if h.get("role") == "download"), None)
-    ews = [e for e in endpoints if e.get("id") == "ews" and e.get("reachable")]
-    mapi = [e for e in endpoints if e.get("id") == "mapi" and e.get("reachable")]
-    owa = [e for e in endpoints if e.get("id") == "owa" and e.get("reachable")]
+def _passive_fingerprint(endpoints: list[dict]) -> dict:
+    versions = []
+    for e in endpoints:
+        for h in e.get("leaky_headers") or []:
+            if (h.get("header") or "").lower() == "x-owa-version":
+                versions.append(h.get("value") or "")
+    versions = sorted({v for v in versions if v})
+    hint = None
+    confidence = "low"
+    if versions:
+        hint = versions[0]
+        confidence = "low"
+    return {
+        "x_owa_versions": versions[:5],
+        "build_hint": hint,
+        "confidence": confidence,
+        "su_baseline": EXCHANGE_SU_BASELINE,
+        "note": (
+            "Exact Exchange build/SU cannot be asserted from one HTTP header. "
+            "CVE mapping requires reliable version evidence; otherwise treat as "
+            "potentially affected / not confirmed."
+        ),
+        "cve_claim": "not_confirmed",
+    }
 
-    leak_blob = " ".join(
-        f"{h.get('header','')}:{h.get('value','')}"
-        for e in endpoints
-        for h in (e.get("leaky_headers") or [])
-    ).lower()
-    if "outlook.com" in leak_blob or "prod.outlook.com" in leak_blob:
-        signals.append("cloud_frontend_headers")
-    if any(e.get("auth", {}).get("entra_oauth") for e in endpoints):
-        signals.append("entra_oauth_challenge")
+
+def _hybrid_signals(endpoints: list[dict], hosts: list[dict], auth_audit: dict, fingerprint: dict) -> dict:
+    signals = []
     if auth_audit.get("ntlm", {}).get("found"):
         signals.append("legacy_windows_auth")
-    if autodiscover_host and autodiscover_host.get("resolves"):
+    if any(e.get("id") in HYBRID_EXPECTED_PUBLIC and e.get("reachable") for e in endpoints):
+        signals.append("hybrid_capable_endpoints_public")
+    if auth_audit.get("oauth2", {}).get("found"):
+        signals.append("bearer_challenge_observed")
+    if auth_audit.get("idp_redirects", {}).get("found"):
+        signals.append("entra_idp_redirect")
+    if any(h.get("role") == "autodiscover" and h.get("resolves") for h in hosts):
         signals.append("autodiscover_dns")
-    if download_host and download_host.get("resolves"):
-        signals.append("download_dns")
-    if ews:
-        signals.append("ews_published")
-    if mapi:
-        signals.append("mapi_published")
+    if fingerprint.get("build_hint"):
+        signals.append("owa_version_header")
 
-    likely_hybrid = bool(
-        signals.count("legacy_windows_auth")
-        or (signals.count("ews_published") and signals.count("autodiscover_dns"))
-        or signals.count("entra_oauth_challenge")
+    likely = bool(
+        "legacy_windows_auth" in signals
+        or ("hybrid_capable_endpoints_public" in signals and "autodiscover_dns" in signals)
+        or "bearer_challenge_observed" in signals
     )
-    likely_onprem_publish = bool(auth_audit.get("ntlm", {}).get("found") or owa or ews)
-
-    hybrid = {
-        "likely": likely_hybrid or likely_onprem_publish,
+    return {
+        "likely": likely,
+        "confidence": "low" if likely else "low",
         "signals": signals,
         "summary": (
-            "Looks like internet-facing Exchange (on-prem or hybrid)."
-            if likely_hybrid or likely_onprem_publish
+            "External signals suggest internet-facing Exchange (on-prem or classic hybrid)."
+            if likely
             else "Hybrid vs cloud not clear from this probe alone."
         ),
         "guidance": [
-            "If hybrid clients need Modern Auth, verify HMA server-side (not from this probe alone).",
-            "Block legacy auth only after VDir OAuth=True and a working free/busy / client test.",
-            "Keep ECP / remote PowerShell off the public internet.",
+            "Classic Hybrid may require public EWS/MRSProxy/Autodiscover — do not flag solely for being public.",
+            "Hybrid Agent / Dedicated Hybrid App cannot be confirmed externally.",
+            "OAuth/Bearer observed externally is a signal, not proof of complete HMA correctness.",
         ],
-        "refs": [MS_REFS["hma"], MS_REFS["block_legacy"]],
+        "never_claim": [
+            "Hybrid Agent confirmed",
+            "Dedicated Hybrid App confirmed",
+            "Auth Certificate valid",
+            "Extended Protection enabled",
+        ],
     }
 
-    teams = {
-        "relevant": True,
-        "summary": (
-            "Teams needs Exchange (often EWS/Autodiscover). Keep them available, but not with public NTLM."
-        ),
-        "guidance": [
-            "Do not blindly disable EWS if Teams calendar is required.",
-            "S2S hybrid OAuth (Teams free/busy) cannot be proven by an external Bearer probe.",
-            "Keep ECP/PowerShell internal; use MFA / Conditional Access.",
-        ],
-        "refs": [MS_REFS["teams_ews"], MS_REFS["hma"]],
-        "ews_status": "EWS reachable." if ews else "EWS not reachable externally.",
-        "ntlm_on_ews": any(e.get("auth", {}).get("ntlm") for e in ews),
-        "oauth_on_ews": any(e.get("auth", {}).get("oauth") for e in ews),
-    }
 
-    return {"hybrid": hybrid, "teams": teams}
-
-
-def _security_findings(
+def _build_findings(
+    *,
+    host: str,
     endpoints: list[dict],
-    ssl_info: dict,
-    hosts: list[dict],
     auth_audit: dict,
+    tls: dict,
+    http: dict,
+    smtp: dict,
+    mail: dict,
+    headers_report: dict,
+    hybrid: dict,
+    fingerprint: dict,
+    hosts: list[dict],
 ) -> list[dict]:
     findings: list[dict] = []
 
+    # --- Auth ---
     ntlm = auth_audit.get("ntlm") or {}
     if ntlm.get("found"):
         findings.append(
-            {
-                "severity": "critical",
-                "title": "NTLM / Negotiate exposed on the internet",
-                "detail": ntlm.get("summary"),
-                "guidance": "Block legacy auth (HMA + Authentication Policies).",
-                "endpoints": [e["url"] for e in ntlm.get("endpoints") or []][:8],
-                "refs": ntlm.get("refs") or [],
-                "context": "legacy_auth",
-            }
+            finding(
+                id="AUTH-NTLM-EXPOSED",
+                title="NTLM / Negotiate exposed on the internet",
+                status="WARN",
+                severity="medium",
+                confidence="high",
+                target=host,
+                observed=ntlm.get("summary") or "",
+                expected="Prefer Modern Auth / HMA; reduce internet NTLM where topology allows.",
+                why="NTLM on the public internet is a common relay/brute target.",
+                remediation="Use HMA + Authentication Policies to block legacy auth (not by blindly disabling NTLM on VDirs required for hybrid).",
+                ref_keys=("block_legacy", "hma", "M9"),
+                category="legacy_auth",
+                endpoints=[e["url"] for e in ntlm.get("endpoints") or []][:8],
+            )
         )
     else:
         findings.append(
-            {
-                "severity": "ok",
-                "title": "NTLM / Negotiate not detected",
-                "detail": ntlm.get("summary"),
-                "guidance": "Still prefer Authentication Policies for hybrid users.",
-                "endpoints": [],
-                "refs": [MS_REFS["block_legacy"]],
-                "context": "legacy_auth",
-            }
+            finding(
+                id="AUTH-NTLM-ABSENT",
+                title="NTLM / Negotiate not detected",
+                status="PASS",
+                severity="info",
+                confidence="medium",
+                target=host,
+                observed=ntlm.get("summary") or "",
+                expected="No internet NTLM challenge (or not advertised).",
+                why="Reduces classic NTLM relay surface.",
+                remediation="Still prefer Authentication Policies for hybrid users.",
+                ref_keys=("block_legacy",),
+                category="legacy_auth",
+            )
         )
 
     oauth = auth_audit.get("oauth2") or {}
     if oauth.get("found"):
         findings.append(
-            {
-                "severity": "ok",
-                "title": "OAuth 2.0 / Bearer detected",
-                "detail": oauth.get("summary")
-                + (" Entra ID issuer." if oauth.get("entra_hint") else ""),
-                "guidance": oauth.get("microsoft"),
-                "endpoints": [e["url"] for e in oauth.get("endpoints") or []][:8],
-                "refs": oauth.get("refs") or [],
-                "context": "modern_auth",
-                "confidence": oauth.get("confidence") or "medium",
-            }
+            finding(
+                id="AUTH-OAUTH-DETECTED",
+                title="OAuth 2.0 / Bearer detected",
+                status="PASS",
+                severity="info",
+                confidence=oauth.get("confidence") or "medium",
+                target=host,
+                observed=oauth.get("summary") or "",
+                expected="Bearer challenge with Entra authorization_uri on modern endpoints.",
+                why="External Bearer is a modern-auth signal (not full HMA proof).",
+                remediation="Verify server-side HMA completeness separately.",
+                ref_keys=("hma", "M12"),
+                category="modern_auth",
+                endpoints=[e["url"] for e in oauth.get("endpoints") or []][:8],
+            )
         )
     else:
-        # Informational only — never grade down solely on missing external Bearer.
         findings.append(
-            {
-                "severity": "info",
-                "title": "OAuth 2.0 / Bearer inconclusive",
-                "detail": oauth.get("summary")
-                or (
-                    "No Bearer challenge on probed VDs after dummy Bearer probe. "
-                    "External HTTP cannot prove HMA/OAuth is missing (LB/WAF, S2S blind spot)."
-                ),
-                "guidance": (
+            finding(
+                id="AUTH-OAUTH-INCONCLUSIVE",
+                title="OAuth 2.0 / Bearer inconclusive",
+                status="INFO",
+                severity="info",
+                confidence="low",
+                target=host,
+                observed=oauth.get("summary") or "",
+                expected="Optional external Bearer challenge; absence is not proof HMA is off.",
+                why="Anonymous probes and LB/WAF may hide Bearer; S2S OAuth is not visible externally.",
+                scope_limitation="Cannot confirm VDir OAuthAuthentication or S2S hybrid OAuth.",
+                remediation=(
                     "Verify server-side: Get-WebServicesVirtualDirectory OAuthAuthentication, "
                     "Get-OrganizationConfig OAuth2ClientProfileEnabled, Get-AuthServer, "
                     "Test-OAuthConnectivity. Do not disable NTLM/legacy auth based only on this probe."
                 ),
-                "endpoints": [],
-                "refs": [MS_REFS["hma"]],
-                "context": "modern_auth",
-                "confidence": "low",
-            }
+                ref_keys=("hma", "M12"),
+                category="modern_auth",
+            )
         )
 
     basic = auth_audit.get("basic") or {}
     if basic.get("found"):
         findings.append(
-            {
-                "severity": "warning",
-                "title": "HTTP Basic auth advertised",
-                "detail": basic.get("summary"),
-                "guidance": "Disable Basic on VDirs where possible.",
-                "endpoints": [e["url"] for e in basic.get("endpoints") or []][:8],
-                "refs": basic.get("refs") or [],
-                "context": "legacy_auth",
-            }
+            finding(
+                id="AUTH-BASIC-EXPOSED",
+                title="HTTP Basic auth advertised",
+                status="FAIL",
+                severity="high",
+                confidence="high",
+                target=host,
+                observed=basic.get("summary") or "",
+                expected="Basic auth disabled on internet-facing Exchange VDirs where possible.",
+                why="Basic auth sends credentials in a reusable form and is frequently abused.",
+                remediation="Disable Basic on VDirs where possible.",
+                ref_keys=("M9", "disable_basic"),
+                category="legacy_auth",
+                endpoints=[e["url"] for e in basic.get("endpoints") or []][:8],
+            )
         )
 
+    # --- Exchange web / topology-aware ---
     hc_open = [e for e in endpoints if e.get("healthcheck") and e["healthcheck"].get("healthy")]
     if hc_open:
         findings.append(
-            {
-                "severity": "warning",
-                "title": "Exchange healthcheck URLs are publicly reachable",
-                "detail": "Public healthchecks fingerprint Exchange.",
-                "guidance": "Allow only LB/monitoring IPs.",
-                "endpoints": [e["healthcheck"]["url"] for e in hc_open if e.get("healthcheck")][:8],
-                "refs": [MS_REFS["publish"]],
-                "context": "exposure",
-            }
+            finding(
+                id="EX-HEALTHCHECK-PUBLIC",
+                title="Exchange healthcheck URLs are publicly reachable",
+                status="WARN",
+                severity="medium",
+                confidence="high",
+                target=host,
+                observed="Public healthchecks fingerprint Exchange.",
+                expected="Healthchecks limited to LB/monitoring IPs.",
+                why="Public healthchecks fingerprint Exchange and aid reconnaissance.",
+                remediation="Allow only LB/monitoring IPs.",
+                ref_keys=("publish",),
+                category="exposure",
+                endpoints=[e["healthcheck"]["url"] for e in hc_open if e.get("healthcheck")][:8],
+            )
         )
 
     open_admin = [
         e
         for e in endpoints
-        if e.get("id") in {"ecp", "powershell"} and e.get("exposure") in {"open", "auth_required"}
-    ]
-    open_owa = [
-        e for e in endpoints if e.get("id") == "owa" and e.get("exposure") in {"open", "auth_required", "error"}
+        if e.get("id") in ADMIN_SURFACE and e.get("exposure") in {"open", "auth_required"}
     ]
     if open_admin:
         findings.append(
-            {
-                "severity": "warning",
-                "title": "Admin surfaces (ECP / PowerShell) reachable",
-                "detail": "ECP/PowerShell should stay internal.",
-                "guidance": "Publish only OWA/EWS/Autodiscover/MAPI as needed.",
-                "endpoints": [e["url"] for e in open_admin[:8]],
-                "refs": [MS_REFS["vd_defaults"], MS_REFS["publish"]],
-                "context": "exposure",
-            }
+            finding(
+                id="EX-ADMIN-SURFACE",
+                title="Admin surfaces (ECP / PowerShell) reachable",
+                status="WARN",
+                severity="high",
+                confidence="high",
+                target=host,
+                observed="ECP/PowerShell should stay internal.",
+                expected="Admin surfaces not published to the internet.",
+                why="Admin panels increase brute-force and exploit surface.",
+                remediation="Publish only OWA/EWS/Autodiscover/MAPI as needed.",
+                ref_keys=("vd_defaults", "publish"),
+                category="exposure",
+                endpoints=[e["url"] for e in open_admin[:8]],
+            )
         )
+
+    # Public EWS — informational for hybrid, not automatic FAIL
+    ews_pub = [
+        e
+        for e in endpoints
+        if e.get("id") in {"ews", "ews_asmx", "mrsproxy"}
+        and e.get("exposure") in {"open", "auth_required"}
+    ]
+    if ews_pub:
+        findings.append(
+            finding(
+                id="EX-EWS-PUBLIC",
+                title="EWS / MRSProxy reachable externally",
+                status="INFO",
+                severity="info",
+                confidence="medium",
+                target=host,
+                observed=f"{len(ews_pub)} EWS-related endpoint(s) reachable.",
+                expected="May be required for classic hybrid / Teams; Hybrid Agent topologies differ.",
+                why="Public EWS is not universally bad; topology-dependent.",
+                scope_limitation="Cannot confirm Hybrid Agent or classic hybrid necessity.",
+                remediation="Keep available if hybrid needs it; remove public NTLM where possible; do not disable blindly.",
+                ref_keys=("M11", "M5", "teams_ews"),
+                category="hybrid",
+                endpoints=[e["url"] for e in ews_pub[:6]],
+            )
+        )
+
+    open_owa = [
+        e for e in endpoints if e.get("id") in {"owa", "owa_auth"} and e.get("exposure") in {"open", "auth_required", "error"}
+    ]
     if open_owa:
         findings.append(
-            {
-                "severity": "info",
-                "title": "OWA reachable externally",
-                "detail": "Common — use Modern Auth / MFA.",
-                "guidance": "Prefer HMA + Conditional Access.",
-                "endpoints": [e["url"] for e in open_owa[:4]],
-                "refs": [MS_REFS["hma"], MS_REFS["vd_defaults"]],
-                "context": "exposure",
-            }
+            finding(
+                id="EX-OWA-PUBLIC",
+                title="OWA reachable externally",
+                status="INFO",
+                severity="info",
+                confidence="high",
+                target=host,
+                observed="OWA is published.",
+                expected="Common — use Modern Auth / MFA.",
+                why="Expected for many deployments; strengthen with MFA/Conditional Access.",
+                remediation="Prefer HMA + Conditional Access.",
+                ref_keys=("hma", "vd_defaults"),
+                category="exposure",
+                endpoints=[e["url"] for e in open_owa[:4]],
+            )
         )
 
-    # Header/IP leaks are reported via headers_report (+ summary finding in check_exchange).
+    # --- TLS ---
+    summary = tls.get("summary") or {}
+    cert = tls.get("certificate") or {}
+    legacy_protos = summary.get("legacy_protocols") or []
+    if "SSLv3" in legacy_protos:
+        findings.append(
+            finding(
+                id="TLS-SSLV3",
+                title="SSLv3 supported",
+                status="FAIL",
+                severity="critical",
+                confidence="high",
+                target=host,
+                observed="SSLv3 handshake succeeded.",
+                expected="SSLv3 disabled.",
+                why="SSLv3 is obsolete and broken.",
+                remediation="Disable SSLv3; follow Exchange TLS best practices.",
+                ref_keys=("M7", "tls"),
+                category="tls",
+            )
+        )
+    if any(p in legacy_protos for p in ("TLSv1.0", "TLSv1.1")):
+        findings.append(
+            finding(
+                id="TLS-LEGACY",
+                title="Legacy TLS 1.0/1.1 supported",
+                status="FAIL",
+                severity="high",
+                confidence="high",
+                target=host,
+                observed=", ".join(legacy_protos),
+                expected="TLS 1.2+ only for Exchange HTTPS.",
+                why="Legacy TLS weakens transport security.",
+                remediation="Disable TLS 1.0/1.1 per Microsoft Exchange TLS guidance.",
+                ref_keys=("M7",),
+                category="tls",
+            )
+        )
+    if summary.get("expired") or (isinstance(summary.get("days_left"), int) and summary["days_left"] < 0):
+        findings.append(
+            finding(
+                id="TLS-CERT-EXPIRED",
+                title="TLS certificate expired",
+                status="FAIL",
+                severity="high",
+                confidence="high",
+                target=host,
+                observed=f"days_left={summary.get('days_left')}",
+                expected="Valid, unexpired certificate matching hostname.",
+                why="Expired certificates break clients and enable MITM warnings.",
+                remediation="Renew immediately.",
+                ref_keys=("M7",),
+                category="tls",
+            )
+        )
+    elif isinstance(summary.get("days_left"), int) and summary["days_left"] <= 30:
+        findings.append(
+            finding(
+                id="TLS-CERT-EXPIRING",
+                title="TLS certificate expires soon",
+                status="WARN",
+                severity="medium",
+                confidence="high",
+                target=host,
+                observed=f"{summary.get('days_left')} day(s) left.",
+                expected="Certificate validity > 30 days.",
+                why="Upcoming expiry causes outages.",
+                remediation="Renew before expiry.",
+                ref_keys=("M7",),
+                category="tls",
+            )
+        )
+    elif cert.get("ok") or (tls.get("legacy_ssl") or {}).get("status") == "valid":
+        findings.append(
+            finding(
+                id="TLS-CERT-VALID",
+                title="TLS certificate valid",
+                status="PASS",
+                severity="info",
+                confidence="high",
+                target=host,
+                observed=f"{summary.get('days_left')} day(s) left · {cert.get('issuer') or (tls.get('legacy_ssl') or {}).get('issuer')}.",
+                expected="Valid certificate.",
+                why="Healthy TLS baseline.",
+                remediation="Keep auto-renewal.",
+                ref_keys=("M7",),
+                category="tls",
+            )
+        )
 
-    if ssl_info:
-        days = ssl_info.get("days_left")
-        status = ssl_info.get("status")
-        if status == "expired" or (isinstance(days, int) and days < 0):
-            findings.append(
-                {
-                    "severity": "critical",
-                    "title": "TLS certificate expired",
-                    "detail": f"{ssl_info.get('domain')} expired.",
-                    "guidance": "Renew immediately.",
-                    "endpoints": [],
-                    "refs": [],
-                    "context": "tls",
-                }
+    if cert.get("ok") and cert.get("hostname_match") is False:
+        findings.append(
+            finding(
+                id="TLS-HOSTNAME-MISMATCH",
+                title="TLS certificate hostname mismatch",
+                status="FAIL",
+                severity="high",
+                confidence="high",
+                target=host,
+                observed=f"CN/SAN does not clearly match {host}. SANs={cert.get('sans')}",
+                expected="Certificate SAN includes the published hostname.",
+                why="Clients reject mismatched names; may indicate wrong cert or interception.",
+                remediation="Issue a certificate covering all published names.",
+                ref_keys=("M7",),
+                category="tls",
             )
-        elif isinstance(days, int) and days <= 30:
-            findings.append(
-                {
-                    "severity": "warning",
-                    "title": "TLS certificate expires soon",
-                    "detail": f"{ssl_info.get('domain')}: {days} day(s) left.",
-                    "guidance": "Renew before expiry.",
-                    "endpoints": [],
-                    "refs": [],
-                    "context": "tls",
-                }
+        )
+
+    if summary.get("tls13") is False and any(
+        p.get("supported") and p.get("protocol") == "TLSv1.2" for p in (tls.get("protocols") or [])
+    ):
+        findings.append(
+            finding(
+                id="TLS-NO-1-3",
+                title="TLS 1.3 not negotiated",
+                status="INFO",
+                severity="info",
+                confidence="medium",
+                target=host,
+                observed="TLS 1.3 handshake not successful; TLS 1.2 may still be fine.",
+                expected="TLS 1.3 optional; TLS 1.2 minimum.",
+                why="Absence of TLS 1.3 is informational, not automatically a failure.",
+                remediation="Enable TLS 1.3 when platform supports it.",
+                ref_keys=("M7",),
+                category="tls",
             )
-        elif status == "valid":
+        )
+
+    # --- HTTP ---
+    if http.get("ok"):
+        if not (http.get("hsts") or {}).get("present"):
             findings.append(
-                {
-                    "severity": "ok",
-                    "title": "TLS certificate valid",
-                    "detail": f"{days} day(s) left · {ssl_info.get('issuer')}.",
-                    "guidance": "Keep auto-renewal.",
-                    "endpoints": [],
-                    "refs": [],
-                    "context": "tls",
-                }
+                finding(
+                    id="HTTP-NO-HSTS",
+                    title="HSTS not present",
+                    status="WARN",
+                    severity="medium",
+                    confidence="high",
+                    target=host,
+                    observed="Strict-Transport-Security header missing on HTTPS root.",
+                    expected="HSTS enabled for Exchange HTTPS.",
+                    why="Without HSTS, clients may be downgraded to HTTP.",
+                    remediation="Configure HSTS per Microsoft Exchange guidance.",
+                    ref_keys=("M8", "hsts"),
+                    category="http",
+                )
             )
+        else:
+            findings.append(
+                finding(
+                    id="HTTP-HSTS-OK",
+                    title="HSTS present",
+                    status="PASS",
+                    severity="info",
+                    confidence="high",
+                    target=host,
+                    observed=(http.get("hsts") or {}).get("value") or "HSTS set",
+                    expected="HSTS present.",
+                    why="Helps prevent SSL stripping.",
+                    remediation="Keep max-age appropriate for production.",
+                    ref_keys=("M8",),
+                    category="http",
+                )
+            )
+
+        http_block = http.get("http") or {}
+        if http_block.get("reachable") and not http_block.get("redirects_to_https"):
+            findings.append(
+                finding(
+                    id="HTTP-NO-REDIRECT",
+                    title="HTTP does not redirect to HTTPS",
+                    status="WARN",
+                    severity="medium",
+                    confidence="medium",
+                    target=host,
+                    observed=f"HTTP final URL: {http_block.get('final_url')}",
+                    expected="Port 80 redirects to HTTPS.",
+                    why="Cleartext HTTP enables interception.",
+                    remediation="Redirect HTTP to HTTPS at the load balancer or IIS.",
+                    ref_keys=("M8",),
+                    category="http",
+                )
+            )
+
+        if (http.get("methods") or {}).get("trace_enabled"):
+            findings.append(
+                finding(
+                    id="HTTP-TRACE",
+                    title="HTTP TRACE appears enabled",
+                    status="WARN",
+                    severity="low",
+                    confidence="medium",
+                    target=host,
+                    observed=f"TRACE status={(http.get('methods') or {}).get('trace_status')}",
+                    expected="TRACE disabled.",
+                    why="TRACE can assist cross-site tracing attacks.",
+                    remediation="Disable TRACE at IIS/load balancer.",
+                    ref_keys=("publish",),
+                    category="http",
+                )
+            )
+
+    # --- SMTP ---
+    smtp_sum = smtp.get("summary") or {}
+    if smtp.get("open_relay_suspected"):
+        findings.append(
+            finding(
+                id="SMTP-OPEN-RELAY",
+                title="Possible open relay (RCPT accepted)",
+                status="FAIL",
+                severity="critical",
+                confidence="medium",
+                target=org_domain(host),
+                observed="RCPT TO for unrelated external recipient returned 250 (DATA not sent).",
+                expected="Reject unauthorized relay recipients.",
+                why="Open relays are abused for spam and malware.",
+                scope_limitation="Stopped before DATA; treat as suspected until confirmed operationally.",
+                remediation="Fix receive connectors / relay permissions immediately.",
+                ref_keys=("publish",),
+                category="smtp",
+            )
+        )
+    if smtp_sum.get("reachable") and not smtp_sum.get("starttls"):
+        findings.append(
+            finding(
+                id="SMTP-NO-STARTTLS",
+                title="SMTP STARTTLS missing or failed",
+                status="FAIL",
+                severity="high",
+                confidence="high",
+                target=org_domain(host),
+                observed="STARTTLS not successful on tested MX/host.",
+                expected="STARTTLS available and working on port 25.",
+                why="Cleartext SMTP exposes credentials and message content.",
+                remediation="Enable and prefer STARTTLS on receive connectors.",
+                ref_keys=("M7",),
+                category="smtp",
+            )
+        )
+    elif smtp_sum.get("reachable") and smtp_sum.get("starttls"):
+        findings.append(
+            finding(
+                id="SMTP-STARTTLS-OK",
+                title="SMTP STARTTLS available",
+                status="PASS",
+                severity="info",
+                confidence="high",
+                target=org_domain(host),
+                observed=f"TLS={smtp_sum.get('tls_version')}",
+                expected="STARTTLS works.",
+                why="Encrypted SMTP submission/relay path.",
+                remediation="Keep strong TLS on SMTP.",
+                ref_keys=("M7",),
+                category="smtp",
+            )
+        )
+    elif not smtp_sum.get("reachable"):
+        findings.append(
+            finding(
+                id="SMTP-UNREACHABLE",
+                title="SMTP port 25 not reachable from scanner",
+                status="INFO",
+                severity="info",
+                confidence="medium",
+                target=org_domain(host),
+                observed=smtp.get("attempts", [{}])[-1].get("error") if smtp.get("attempts") else "unreachable",
+                expected="Optional — many hosts filter port 25.",
+                why="May be intentional firewall policy.",
+                remediation="Ensure MX path accepts mail from the internet if this host should receive mail.",
+                ref_keys=("publish",),
+                category="smtp",
+            )
+        )
+
+    # --- Mail domain ---
+    spf = mail.get("spf") or {}
+    if not spf.get("ok"):
+        findings.append(
+            finding(
+                id="MAIL-SPF-MISSING",
+                title="SPF missing or invalid",
+                status="WARN",
+                severity="medium",
+                confidence="high",
+                target=mail.get("domain") or org_domain(host),
+                observed=spf.get("error") or "No SPF",
+                expected="Single valid v=spf1 record.",
+                why="Missing SPF weakens spoofing defenses.",
+                remediation="Publish one SPF record covering legitimate senders.",
+                ref_keys=("publish",),
+                category="mail_domain",
+            )
+        )
+    elif spf.get("count", 0) > 1:
+        findings.append(
+            finding(
+                id="MAIL-SPF-MULTIPLE",
+                title="Multiple SPF records",
+                status="FAIL",
+                severity="medium",
+                confidence="high",
+                target=mail.get("domain") or org_domain(host),
+                observed=f"{spf.get('count')} SPF TXT records at apex.",
+                expected="Exactly one SPF record.",
+                why="Multiple SPF records are invalid per RFC.",
+                remediation="Merge into a single v=spf1 record.",
+                ref_keys=("publish",),
+                category="mail_domain",
+            )
+        )
+
+    dmarc = mail.get("dmarc") or {}
+    if not dmarc.get("ok"):
+        findings.append(
+            finding(
+                id="MAIL-DMARC-MISSING",
+                title="DMARC missing",
+                status="WARN",
+                severity="medium",
+                confidence="high",
+                target=mail.get("domain") or org_domain(host),
+                observed=dmarc.get("error") or "No DMARC",
+                expected="DMARC with an explicit policy.",
+                why="DMARC enables spoof reporting and enforcement.",
+                remediation="Publish _dmarc TXT; move toward p=quarantine/reject.",
+                ref_keys=("publish",),
+                category="mail_domain",
+            )
+        )
+    elif (dmarc.get("policy") or "").lower() in {"none", "n"}:
+        findings.append(
+            finding(
+                id="MAIL-DMARC-NONE",
+                title="DMARC policy is none",
+                status="INFO",
+                severity="low",
+                confidence="high",
+                target=mail.get("domain") or org_domain(host),
+                observed=f"p={dmarc.get('policy')}",
+                expected="Eventually p=quarantine or p=reject.",
+                why="Monitoring-only DMARC does not block spoofing.",
+                remediation="Raise policy after reviewing aggregate reports.",
+                ref_keys=("publish",),
+                category="mail_domain",
+            )
+        )
+
+    if not (mail.get("mta_sts") or {}).get("present"):
+        findings.append(
+            finding(
+                id="MAIL-MTASTS-MISSING",
+                title="MTA-STS not published",
+                status="INFO",
+                severity="low",
+                confidence="high",
+                target=mail.get("domain") or org_domain(host),
+                observed="No _mta-sts TXT.",
+                expected="Optional but recommended for SMTP STS.",
+                why="MTA-STS helps enforce TLS for inbound SMTP.",
+                remediation="Publish MTA-STS DNS + policy file when ready.",
+                ref_keys=("publish",),
+                category="mail_domain",
+            )
+        )
+
+    # --- Disclosure ---
+    if headers_report.get("risk_count"):
+        findings.append(
+            finding(
+                id="DISC-HEADERS",
+                title="Sensitive data in HTTP headers",
+                status="FAIL" if headers_report.get("critical") else "WARN",
+                severity="high" if headers_report.get("critical") else "medium",
+                confidence="high",
+                target=host,
+                observed=f"{headers_report['risk_count']} leak(s): hostname, version, and/or internal IP.",
+                expected="No internal hostnames/IPs/version banners on public responses.",
+                why="Aids attackers in mapping internal topology and version.",
+                remediation="Strip X-FEServer/version at proxy; hide private IPs.",
+                ref_keys=("publish",),
+                category="disclosure",
+                endpoints=[
+                    f"{r['header']}: {r['value']}" for r in (headers_report.get("items") or [])[:6]
+                ],
+            )
+        )
+
+    if fingerprint.get("build_hint"):
+        findings.append(
+            finding(
+                id="DISC-FINGERPRINT",
+                title="Passive Exchange version hint",
+                status="INFO",
+                severity="low",
+                confidence="low",
+                target=host,
+                observed=f"x-owa-version≈{fingerprint.get('build_hint')}",
+                expected="Minimize version disclosure; do not treat as confirmed build.",
+                why="Passive fingerprint only — not a confirmed SU/CVE claim.",
+                scope_limitation="Exact build/SU not reliably knowable from external HTTP alone.",
+                remediation=(
+                    f"Compare against current SU baseline {EXCHANGE_SU_BASELINE.get('build')} "
+                    f"({EXCHANGE_SU_BASELINE.get('label')}) using internal HealthChecker / build inventory."
+                ),
+                ref_keys=("M1", "M2", "M13"),
+                category="fingerprint",
+            )
+        )
 
     unresolved = [h for h in hosts if not h.get("ips")]
     if unresolved:
         findings.append(
-            {
-                "severity": "info",
-                "title": "Some related hostnames did not resolve",
-                "detail": "OK if unused (e.g. download.*).",
-                "guidance": "Match Autodiscover to your design.",
-                "endpoints": [h["host"] for h in unresolved],
-                "refs": [MS_REFS["vd_defaults"]],
-                "context": "dns",
-            }
+            finding(
+                id="DNS-UNRESOLVED",
+                title="Some related hostnames did not resolve",
+                status="INFO",
+                severity="info",
+                confidence="high",
+                target=host,
+                observed=", ".join(h["host"] for h in unresolved),
+                expected="OK if unused (e.g. download.*).",
+                why="Incomplete DNS may be intentional.",
+                remediation="Match Autodiscover to your design.",
+                ref_keys=("vd_defaults",),
+                category="dns",
+                endpoints=[h["host"] for h in unresolved],
+            )
         )
 
+    # Sort: FAIL/critical first using ui severity
     order = {"critical": 0, "warning": 1, "info": 2, "ok": 3}
-    findings.sort(key=lambda f: order.get(f["severity"], 9))
+    findings.sort(key=lambda f: order.get(ui_severity(f), 9))
     return findings
 
 
-def _score(findings: list[dict], endpoints: list[dict]) -> dict:
-    score = 100
-    for f in findings:
-        sev = f["severity"]
-        # Low-confidence OAuth notes must not move the letter grade alone.
-        if f.get("context") == "modern_auth" and not f.get("found") and sev in {"info", "warning"}:
-            if f.get("confidence") == "low" or "inconclusive" in (f.get("title") or "").lower():
-                continue
-        if sev == "critical":
-            score -= 25
-        elif sev == "warning":
-            score -= 12
-        elif sev == "info":
-            score -= 2
-    # Bonus small penalty for each publicly reachable VD
-    exposed = sum(1 for e in endpoints if e.get("exposure") in {"open", "auth_required"})
-    score -= min(20, exposed * 2)
-    score = max(0, min(100, score))
-    if score >= 85:
-        grade = "A"
-        label = "Good"
-    elif score >= 70:
-        grade = "B"
-        label = "Fair"
-    elif score >= 50:
-        grade = "C"
-        label = "Needs work"
-    else:
-        grade = "D"
-        label = "High risk"
-    return {"score": score, "grade": grade, "label": label}
-
-
 def check_exchange(host: str) -> dict:
+    started = time.time()
+    scanned_at = datetime.now(timezone.utc).isoformat()
+
     raw = (host or "").strip()
     if not raw:
         return {"ok": False, "error": "Please enter an Exchange hostname (e.g. mail.example.com)"}
@@ -980,11 +912,10 @@ def check_exchange(host: str) -> dict:
     if "://" in raw:
         raw = urlparse(raw).hostname or raw
     host = normalize_domain(raw.replace("\\", "/").split("/")[0])
-    if not host or "." not in host and not is_ip(host):
+    if not host or ("." not in host and not is_ip(host)):
         return {"ok": False, "error": "Enter a valid hostname such as mail.example.com"}
 
-    # SSRF guard: require at least one public IP for the primary host
-    primary_ips = _public_ips(host)
+    primary_ips = public_ips(host)
     if not primary_ips:
         return {
             "ok": False,
@@ -992,103 +923,116 @@ def check_exchange(host: str) -> dict:
             "host": host,
         }
 
+    org = org_domain(host)
     host_rows = []
-    for item in _hosts_to_probe(host):
-        ips = _public_ips(item["host"])
+    for item in hosts_to_probe(host):
+        ips = public_ips(item["host"])
         host_rows.append({**item, "ips": ips, "resolves": bool(ips)})
 
-    ssl_info = get_ssl_info(host, 443)
-
-    # Same VD set on every resolving namespace (they often front the same Exchange).
-    jobs = []
-    for h in host_rows:
-        if not h["resolves"]:
-            continue
-        for v in VDIRS:
-            jobs.append((h["host"], v))
-
-    endpoints: list[dict] = []
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        futs = {pool.submit(_probe_vdir, h, v): (h, v) for h, v in jobs}
-        for fut in as_completed(futs):
-            try:
-                endpoints.append(fut.result())
-            except Exception as exc:  # noqa: BLE001
-                h, v = futs[fut]
-                endpoints.append(
-                    {
-                        "id": v["id"],
-                        "name": v["name"],
-                        "host": h,
-                        "url": f"https://{h}{v['path']}",
-                        "reachable": False,
-                        "exposure": "closed",
-                        "severity": "info",
-                        "auth": {
-                            "schemes": [],
-                            "ntlm": False,
-                            "oauth": False,
-                            "basic": False,
-                            "checked": False,
-                            "www_authenticate_present": False,
-                            "hma_challenge": False,
-                            "client_id": "",
-                            "authorization_uri": "",
-                            "entra_oauth": False,
-                        },
-                        "bearer_probe": None,
-                        "error": str(exc),
-                    }
-                )
-
-    # Stable sort: primary host first, then by name
-    role_rank = {h["host"]: i for i, h in enumerate(host_rows)}
-    endpoints.sort(key=lambda e: (role_rank.get(e.get("host"), 99), e.get("name") or ""))
-
+    # Core probes
+    endpoints = probe_all_endpoints(host_rows)
     auth_audit = _auth_audit(endpoints)
-    posture = _posture(endpoints, host_rows, auth_audit)
-    findings = _security_findings(endpoints, ssl_info, host_rows, auth_audit)
     headers_report = _headers_report(endpoints)
-    if headers_report.get("risk_count"):
-        findings.append(
-            {
-                "severity": "critical" if headers_report.get("critical") else "warning",
-                "title": "Sensitive data in HTTP headers",
-                "detail": f"{headers_report['risk_count']} leak(s): hostname, version, and/or internal IP.",
-                "guidance": "Strip X-FEServer/version at proxy; hide private IPs.",
-                "endpoints": [
-                    f"{r['header']}: {r['value']}" for r in (headers_report.get("items") or [])[:6]
-                ],
-                "refs": [],
-                "context": "headers",
-            }
-        )
-        findings.sort(key=lambda f: {"critical": 0, "warning": 1, "info": 2, "ok": 3}.get(f["severity"], 9))
-    summary = _score(findings, endpoints)
+    tls = assess_tls(host)
+    http = assess_http(host)
+    smtp = assess_smtp(org, host)
+    mail = assess_mail_domain(org)
+    fingerprint = _passive_fingerprint(endpoints)
+    hybrid = _hybrid_signals(endpoints, host_rows, auth_audit, fingerprint)
 
-    # Same-IP hint across namespaces
+    findings = _build_findings(
+        host=host,
+        endpoints=endpoints,
+        auth_audit=auth_audit,
+        tls=tls,
+        http=http,
+        smtp=smtp,
+        mail=mail,
+        headers_report=headers_report,
+        hybrid=hybrid,
+        fingerprint=fingerprint,
+        hosts=host_rows,
+    )
+
+    summary = weighted_score(findings)
+
+    # Shared frontends
     ip_map: dict[str, list[str]] = {}
     for h in host_rows:
         for ip in h.get("ips") or []:
             ip_map.setdefault(ip, []).append(h["host"])
-    shared_frontends = [
-        {"ip": ip, "hosts": hs} for ip, hs in ip_map.items() if len(hs) > 1
-    ]
+    shared_frontends = [{"ip": ip, "hosts": hs} for ip, hs in ip_map.items() if len(hs) > 1]
+
+    duration_ms = int((time.time() - started) * 1000)
+    coverage = {
+        "dns_hosts": len(host_rows),
+        "endpoints": len(endpoints),
+        "tls": bool(tls.get("ok")),
+        "http": bool(http.get("ok")),
+        "smtp": bool((smtp.get("summary") or {}).get("reachable")),
+        "mail_domain": bool(mail.get("ok")),
+        "auth_probed": (auth_audit.get("endpoints_probed") or 0),
+    }
+
+    # Legacy ssl key for older UI bits
+    legacy_ssl = tls.get("legacy_ssl") or {}
+    if tls.get("certificate", {}).get("ok"):
+        c = tls["certificate"]
+        legacy_ssl = {
+            **legacy_ssl,
+            "domain": host,
+            "status": "expired" if c.get("expired") else ("warning" if (c.get("days_left") or 99) <= 30 else "valid"),
+            "days_left": c.get("days_left"),
+            "expiry_date": c.get("not_after"),
+            "issuer": c.get("issuer"),
+            "subject": c.get("subject_cn"),
+        }
+
+    # For legacy UI that expects severity critical|warning|info|ok on findings
+    for f in findings:
+        f["severity"] = f.get("ui_severity") or ui_severity(f)
 
     return {
         "ok": True,
-        "host": host,
-        "org_domain": _org_domain(host),
+        "assessment_version": "2.0",
+        "mode": "external_only",
         "tool": "Microsoft Exchange Server HC",
+        "host": host,
+        "org_domain": org,
+        "scanned_at": scanned_at,
+        "duration_ms": duration_ms,
         "hosts": host_rows,
         "shared_frontends": shared_frontends,
-        "ssl": ssl_info,
+        "ssl": legacy_ssl,
+        "tls_detail": tls,
+        "http_detail": http,
         "endpoints": endpoints,
         "auth_audit": auth_audit,
-        "posture": posture,
+        "smtp_assess": smtp,
+        "mail_domain": mail,
+        "fingerprint": fingerprint,
+        "posture": {"hybrid": hybrid, "teams": {
+            "relevant": True,
+            "summary": "Teams often needs Exchange (EWS/Autodiscover). Public EWS is topology-dependent.",
+            "guidance": hybrid.get("guidance") or [],
+            "ews_status": (
+                "EWS reachable."
+                if any(e.get("id") in {"ews", "ews_asmx"} and e.get("reachable") for e in endpoints)
+                else "EWS not reachable externally."
+            ),
+            "ntlm_on_ews": any(
+                e.get("id") in {"ews", "ews_asmx"} and e.get("auth", {}).get("ntlm") for e in endpoints
+            ),
+            "oauth_on_ews": any(
+                e.get("id") in {"ews", "ews_asmx"} and e.get("auth", {}).get("oauth") for e in endpoints
+            ),
+        }},
         "headers_report": headers_report,
+        "not_observable": not_observable_section(),
         "findings": findings,
         "summary": summary,
+        "coverage": coverage,
+        "microsoft_refs": [MS_REFS[k] for k in ("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13")],
         "counts": {
             "reachable": sum(1 for e in endpoints if e.get("reachable")),
             "ntlm": sum(1 for e in endpoints if e.get("auth", {}).get("ntlm")),
@@ -1098,5 +1042,14 @@ def check_exchange(host: str) -> dict:
                 1 for e in endpoints if e.get("healthcheck") and e["healthcheck"].get("healthy")
             ),
             "header_leaks": headers_report.get("risk_count") or 0,
+        },
+        "executive_summary": {
+            "headline": f"{summary.get('grade')} · {summary.get('score')}/100 · {summary.get('label')}",
+            "mode": "External-only assessment — no Exchange login, agent, or PowerShell.",
+            "top_issues": [
+                f.get("title")
+                for f in findings
+                if f.get("status") in {"FAIL", "WARN"}
+            ][:5],
         },
     }

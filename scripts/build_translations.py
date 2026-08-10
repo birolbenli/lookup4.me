@@ -90,7 +90,7 @@ TOOL_MSGIDS = {
     },
     "exchange": {
         "name": "Microsoft Exchange Server HC",
-        "desc": "External Exchange health check: VDirs, NTLM vs OAuth 2.0, hybrid/Teams guidance, TLS.",
+        "desc": "External-only Exchange security assessment: TLS, auth, VDirs, SMTP, mail domain, hybrid signals.",
         "placeholder": "mail.example.com",
     },
     "ip": {
