@@ -128,6 +128,29 @@ a:hover {
   font-size: 1.05rem;
 }
 
+.scan-report .scan-subtitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.scan-report .gen-existing {
+  margin-bottom: 0.85rem;
+}
+
+.scan-report .status.added,
+.scan-report .status.improved {
+  background: rgba(15, 76, 129, 0.1);
+  color: #0f4c81;
+  border-color: rgba(15, 76, 129, 0.22);
+}
+
+.scan-report .status.kept,
+.scan-report .status.unchanged {
+  background: #e8ece9;
+  color: var(--muted);
+}
+
 .scan-report .raw-block {
   margin: 0.25rem 0 0;
   padding: 0.65rem 0.75rem;

@@ -1972,3 +1972,54 @@ msgstr "security.txt oluştur"
 msgid "Build RFC 9116 security.txt text — not a live fetch."
 msgstr "RFC 9116 security.txt metni — canlı indirme değil."
 
+msgid "Current (live)"
+msgstr "Mevcut (canlı)"
+
+msgid "Found existing configuration"
+msgstr "Mevcut yapılandırma bulundu"
+
+msgid "Nothing found — creating from scratch"
+msgstr "Kayıt yok — sıfırdan oluşturuluyor"
+
+msgid "What changed / why"
+msgstr "Ne değişti / neden"
+
+msgid "Item"
+msgstr "Öğe"
+
+msgid "Action"
+msgstr "İşlem"
+
+msgid "Why it helps"
+msgstr "Ne işe yarar"
+
+msgid "What each part means"
+msgstr "Her parçanın anlamı"
+
+msgid "Part"
+msgstr "Parça"
+
+msgid "Meaning"
+msgstr "Anlam"
+
+msgid "Proposed result"
+msgstr "Önerilen sonuç"
+
+msgid "Improved from existing"
+msgstr "Mevcut üzerine iyileştirildi"
+
+msgid "Created from scratch"
+msgstr "Sıfırdan oluşturuldu"
+
+msgid "added"
+msgstr "eklendi"
+
+msgid "improved"
+msgstr "iyileştirildi"
+
+msgid "kept"
+msgstr "korundu"
+
+msgid "unchanged"
+msgstr "değişmedi"
+

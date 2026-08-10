@@ -1478,6 +1478,79 @@ function renderScanReport(data, root) {
         )}</pre></details>`
       : "";
 
+  const existing = data.existing || null;
+  const existingHtml = existing
+    ? `<div class="block gen-existing">
+        <h4 class="scan-subtitle">${escapeHtml(t("Current (live)"))}</h4>
+        <p class="muted tiny">${escapeHtml(
+          existing.found ? t("Found existing configuration") : t("Nothing found — creating from scratch")
+        )}${existing.summary ? `: ${escapeHtml(String(existing.summary).slice(0, 280))}` : ""}</p>
+        ${
+          (existing.records || []).length
+            ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(t("Type"))}</th><th>${escapeHtml(
+                t("Name")
+              )}</th><th>${escapeHtml(t("Value"))}</th></tr></thead><tbody>${(existing.records || [])
+                .map(
+                  (r) => `<tr>
+              <td class="mono">${escapeHtml(r.type || "")}</td>
+              <td class="mono tiny">${escapeHtml(r.name || "")}</td>
+              <td><pre class="raw-block">${escapeHtml(r.value || "")}</pre></td>
+            </tr>`
+                )
+                .join("")}</tbody></table></div>`
+            : ""
+        }
+      </div>`
+    : "";
+
+  const changesHtml = (data.changes || []).length
+    ? `<div class="block">
+        <h4 class="scan-subtitle">${escapeHtml(t("What changed / why"))}</h4>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>${escapeHtml(t("Item"))}</th>
+            <th>${escapeHtml(t("Action"))}</th>
+            <th>${escapeHtml(t("Why it helps"))}</th>
+          </tr></thead>
+          <tbody>${(data.changes || [])
+            .map(
+              (c) => `<tr>
+              <td><strong>${escapeHtml(c.item || "")}</strong>${
+                c.detail ? `<div class="mono tiny muted">${escapeHtml(c.detail)}</div>` : ""
+              }</td>
+              <td>${sevBadge(c.action || "info")}</td>
+              <td class="tiny">${escapeHtml(c.why || "")}</td>
+            </tr>`
+            )
+            .join("")}</tbody>
+        </table></div>
+      </div>`
+    : "";
+
+  const explainHtml = (data.explanations || []).length
+    ? `<div class="block">
+        <h4 class="scan-subtitle">${escapeHtml(t("What each part means"))}</h4>
+        <div class="table-wrap"><table>
+          <thead><tr><th>${escapeHtml(t("Part"))}</th><th>${escapeHtml(t("Meaning"))}</th></tr></thead>
+          <tbody>${(data.explanations || [])
+            .map(
+              (e) =>
+                `<tr><td class="mono">${escapeHtml(e.token || "")}</td><td class="tiny">${escapeHtml(
+                  e.meaning || ""
+                )}</td></tr>`
+            )
+            .join("")}</tbody>
+        </table></div>
+      </div>`
+    : "";
+
+  const modePill =
+    data.mode === "improved"
+      ? t("Improved from existing")
+      : data.mode === "created"
+        ? t("Created from scratch")
+        : "";
+
   root.appendChild(
     el(`<div class="scan-report">
       <div class="summary">
@@ -1490,10 +1563,12 @@ function renderScanReport(data, root) {
             : ""
         }
         ${data.generator ? `<span class="pill">${escapeHtml(t("Generator"))}</span>` : ""}
+        ${modePill ? `<span class="pill">${escapeHtml(modePill)}</span>` : ""}
       </div>
       ${data.title ? `<h3 class="scan-title">${escapeHtml(data.title)}</h3>` : ""}
       ${data.note ? `<p class="muted">${escapeHtml(data.note)}</p>` : ""}
       ${kvHtml}
+      ${existingHtml}
       ${
         findings
           ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
@@ -1503,13 +1578,17 @@ function renderScanReport(data, root) {
       }
       ${
         genRows
-          ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
+          ? `<div class="block"><h4 class="scan-subtitle">${escapeHtml(
+              t("Proposed result")
+            )}</h4><div class="table-wrap"><table><thead><tr><th>${escapeHtml(
               t("Type")
             )}</th><th>${escapeHtml(t("Name"))}</th><th>${escapeHtml(
               t("Value")
-            )}</th></tr></thead><tbody>${genRows}</tbody></table></div>`
+            )}</th></tr></thead><tbody>${genRows}</tbody></table></div></div>`
           : ""
       }
+      ${changesHtml}
+      ${explainHtml}
       ${
         headerRows
           ? `<div class="table-wrap"><table><thead><tr><th>${escapeHtml(
