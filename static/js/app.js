@@ -671,22 +671,35 @@ function renderEmailReport(data, root) {
 }
 
 function severityClass(sev) {
-  if (sev === "critical" || sev === "expired" || sev === "error") return "err";
-  if (sev === "warning" || sev === "warn") return "warn";
-  if (sev === "ok" || sev === "valid") return "ok";
-  return "";
+  const s = String(sev || "").toLowerCase();
+  if (s === "critical" || s === "expired" || s === "error" || s === "fail" || s === "err") return "err";
+  if (s === "warning" || s === "warn" || s === "high" || s === "medium") return "warn";
+  if (s === "ok" || s === "valid" || s === "pass" || s === "good") return "ok";
+  if (s === "info" || s === "low" || s === "neutral" || s === "na" || s === "not_observable") return "info";
+  return "info";
+}
+
+function statusToneClass(status) {
+  const s = String(status || "").toUpperCase();
+  if (s === "PASS") return "ok";
+  if (s === "FAIL" || s === "ERROR") return "err";
+  if (s === "WARN") return "warn";
+  return "info"; // INFO, NA, NOT_OBSERVABLE
 }
 
 function sevLabel(sev) {
   const key = {
     critical: "Critical",
     warning: "Warning",
+    warn: "Warning",
     info: "Info",
     ok: "OK",
+    pass: "Pass",
     error: "Error",
+    fail: "Fail",
     valid: "Valid",
     expired: "Expired",
-  }[sev] || sev || "";
+  }[String(sev || "").toLowerCase()] || sev || "";
   return t(key);
 }
 
@@ -752,7 +765,11 @@ function renderExchangeFinding(f, { compact = false } = {}) {
   return `<div class="finding sev-${escapeHtml(sev)}">
     <div class="finding-head">
       <span class="status ${severityClass(sev)}">${escapeHtml(sevLabel(sev))}</span>
-      ${f.status ? `<span class="pill tiny">${escapeHtml(f.status)}</span>` : ""}
+      ${
+        f.status
+          ? `<span class="status ${statusToneClass(f.status)} status-code">${escapeHtml(f.status)}</span>`
+          : ""
+      }
       <strong>${escapeHtml(tDesc(f.title || ""))}</strong>
       ${f.id ? `<span class="mono tiny muted">${escapeHtml(f.id)}</span>` : ""}
     </div>
