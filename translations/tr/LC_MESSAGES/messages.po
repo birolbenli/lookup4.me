@@ -1930,3 +1930,45 @@ msgstr "HSTS ve ilgili TLS yüzey kontrolleri."
 msgid "Redirects, robots.txt, and raw HTTP headers."
 msgstr "Yönlendirmeler, robots.txt ve ham HTTP başlıkları."
 
+msgid "Raw HTTP Headers"
+msgstr "Ham HTTP Başlıkları"
+
+msgid "Fetch status code and all response headers (unscored)."
+msgstr "Durum kodunu ve tüm yanıt başlıklarını alın (puansız)."
+
+msgid "Create SPF record"
+msgstr "SPF kaydı oluştur"
+
+msgid "Build a starter SPF TXT to publish — not a live lookup."
+msgstr "Yayınlamak için başlangıç SPF TXT metni — canlı sorgu değil."
+
+msgid "Create DMARC record"
+msgstr "DMARC kaydı oluştur"
+
+msgid "Build a starter _dmarc policy — not a live lookup."
+msgstr "Başlangıç _dmarc politikası metni — canlı sorgu değil."
+
+msgid "Create MTA-STS policy"
+msgstr "MTA-STS politikası oluştur"
+
+msgid "Build starter DNS + policy file text — not a live check."
+msgstr "Başlangıç DNS + politika dosyası metni — canlı kontrol değil."
+
+msgid "Create TLS-RPT record"
+msgstr "TLS-RPT kaydı oluştur"
+
+msgid "Build a starter _smtp._tls record — not a live check."
+msgstr "Başlangıç _smtp._tls kaydı — canlı kontrol değil."
+
+msgid "Create CAA records"
+msgstr "CAA kayıtları oluştur"
+
+msgid "Build starter CAA issue/iodef records — not a live lookup."
+msgstr "Başlangıç CAA issue/iodef kayıtları — canlı sorgu değil."
+
+msgid "Create security.txt"
+msgstr "security.txt oluştur"
+
+msgid "Build RFC 9116 security.txt text — not a live fetch."
+msgstr "RFC 9116 security.txt metni — canlı indirme değil."
+

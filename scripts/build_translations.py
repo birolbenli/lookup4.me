@@ -69,8 +69,8 @@ TOOL_MSGIDS = {
         "desc": "Check up to 10 certificates at once in a table.",
     },
     "http": {
-        "name": "HTTP Headers",
-        "desc": "Fetch status code and response headers.",
+        "name": "Raw HTTP Headers",
+        "desc": "Fetch status code and all response headers (unscored).",
     },
     "port": {
         "name": "Port Check",
@@ -143,28 +143,28 @@ TOOL_MSGIDS = {
         "desc": "Score HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP.",
     },
     "spfgen": {
-        "name": "SPF Generator",
-        "desc": "Suggested SPF TXT record starter for your domain.",
+        "name": "Create SPF record",
+        "desc": "Build a starter SPF TXT to publish — not a live lookup.",
     },
     "dmarcgen": {
-        "name": "DMARC Generator",
-        "desc": "Suggested _dmarc policy record with rua reporting.",
+        "name": "Create DMARC record",
+        "desc": "Build a starter _dmarc policy — not a live lookup.",
     },
     "mtastsgen": {
-        "name": "MTA-STS Generator",
-        "desc": "Suggested _mta-sts TXT and policy file contents.",
+        "name": "Create MTA-STS policy",
+        "desc": "Build starter DNS + policy file text — not a live check.",
     },
     "tlsrptgen": {
-        "name": "TLS-RPT Generator",
-        "desc": "Suggested _smtp._tls reporting record.",
+        "name": "Create TLS-RPT record",
+        "desc": "Build a starter _smtp._tls record — not a live check.",
     },
     "caagen": {
-        "name": "CAA Generator",
-        "desc": "Suggested CAA issue / iodef records.",
+        "name": "Create CAA records",
+        "desc": "Build starter CAA issue/iodef records — not a live lookup.",
     },
     "securitytxtgen": {
-        "name": "security.txt Generator",
-        "desc": "Suggested RFC 9116 security.txt contents.",
+        "name": "Create security.txt",
+        "desc": "Build RFC 9116 security.txt text — not a live fetch.",
     },
 }
 

@@ -227,8 +227,8 @@ TOOLS = [
     },
     {
         "slug": "http",
-        "name": "HTTP Headers",
-        "desc": "Fetch status code and response headers.",
+        "name": "Raw HTTP Headers",
+        "desc": "Fetch status code and all response headers (unscored).",
         "field": "url",
         "placeholder": "https://example.com",
         "example": "https://example.com",
@@ -391,63 +391,69 @@ TOOLS = [
     },
     {
         "slug": "spfgen",
-        "name": "SPF Generator",
-        "desc": "Suggested SPF TXT record starter for your domain.",
+        "name": "Create SPF record",
+        "desc": "Build a starter SPF TXT to publish — not a live lookup.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
     {
         "slug": "dmarcgen",
-        "name": "DMARC Generator",
-        "desc": "Suggested _dmarc policy record with rua reporting.",
+        "name": "Create DMARC record",
+        "desc": "Build a starter _dmarc policy — not a live lookup.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
     {
         "slug": "mtastsgen",
-        "name": "MTA-STS Generator",
-        "desc": "Suggested _mta-sts TXT and policy file contents.",
+        "name": "Create MTA-STS policy",
+        "desc": "Build starter DNS + policy file text — not a live check.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
     {
         "slug": "tlsrptgen",
-        "name": "TLS-RPT Generator",
-        "desc": "Suggested _smtp._tls reporting record.",
+        "name": "Create TLS-RPT record",
+        "desc": "Build a starter _smtp._tls record — not a live check.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
     {
         "slug": "caagen",
-        "name": "CAA Generator",
-        "desc": "Suggested CAA issue / iodef records.",
+        "name": "Create CAA records",
+        "desc": "Build starter CAA issue/iodef records — not a live lookup.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
     {
         "slug": "securitytxtgen",
-        "name": "security.txt Generator",
-        "desc": "Suggested RFC 9116 security.txt contents.",
+        "name": "Create security.txt",
+        "desc": "Build RFC 9116 security.txt text — not a live fetch.",
         "field": "domain",
         "placeholder": "example.com",
         "example": "example.com",
         "input": "text",
         "button": "Generate",
+        "badge": "Generator",
     },
 ]
 
@@ -656,6 +662,10 @@ def _after_request(response):
             samesite="Lax",
         )
     ctype = (response.content_type or "").lower()
+    if "text/html" in ctype:
+        # Avoid stale homepage/tool lists after deploys
+        response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
     if _should_track_visitor() and "text/html" in ctype and response.status_code < 400:
         ip = client_ip_from_request(request)
         ua = request.headers.get("User-Agent", "")

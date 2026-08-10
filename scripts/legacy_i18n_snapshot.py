@@ -245,8 +245,8 @@ TOOLS_TR: dict[str, dict[str, str]] = {
         "desc": "Bir kerede en fazla 10 sertifikayı tabloda kontrol edin.",
     },
     "http": {
-        "name": "HTTP Başlıkları",
-        "desc": "Durum kodunu ve yanıt başlıklarını alın.",
+        "name": "Ham HTTP Başlıkları",
+        "desc": "Durum kodunu ve tüm yanıt başlıklarını alın (puansız).",
     },
     "port": {
         "name": "Port Kontrolü",
@@ -318,14 +318,29 @@ TOOLS_TR: dict[str, dict[str, str]] = {
         "name": "HTTP Güvenlik Başlıkları",
         "desc": "HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP puanlayın.",
     },
-    "spfgen": {"name": "SPF Oluşturucu", "desc": "Alanınız için önerilen SPF TXT başlangıç kaydı."},
-    "dmarcgen": {"name": "DMARC Oluşturucu", "desc": "rua raporlu önerilen _dmarc politika kaydı."},
-    "mtastsgen": {"name": "MTA-STS Oluşturucu", "desc": "Önerilen _mta-sts TXT ve politika dosyası içeriği."},
-    "tlsrptgen": {"name": "TLS-RPT Oluşturucu", "desc": "Önerilen _smtp._tls rapor kaydı."},
-    "caagen": {"name": "CAA Oluşturucu", "desc": "Önerilen CAA issue / iodef kayıtları."},
+    "spfgen": {
+        "name": "SPF kaydı oluştur",
+        "desc": "Yayınlamak için başlangıç SPF TXT metni — canlı sorgu değil.",
+    },
+    "dmarcgen": {
+        "name": "DMARC kaydı oluştur",
+        "desc": "Başlangıç _dmarc politikası metni — canlı sorgu değil.",
+    },
+    "mtastsgen": {
+        "name": "MTA-STS politikası oluştur",
+        "desc": "Başlangıç DNS + politika dosyası metni — canlı kontrol değil.",
+    },
+    "tlsrptgen": {
+        "name": "TLS-RPT kaydı oluştur",
+        "desc": "Başlangıç _smtp._tls kaydı — canlı kontrol değil.",
+    },
+    "caagen": {
+        "name": "CAA kayıtları oluştur",
+        "desc": "Başlangıç CAA issue/iodef kayıtları — canlı sorgu değil.",
+    },
     "securitytxtgen": {
-        "name": "security.txt Oluşturucu",
-        "desc": "Önerilen RFC 9116 security.txt içeriği.",
+        "name": "security.txt oluştur",
+        "desc": "RFC 9116 security.txt metni — canlı indirme değil.",
     },
 }
 

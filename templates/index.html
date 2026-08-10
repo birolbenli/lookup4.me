@@ -18,10 +18,10 @@
   </div>
   <div class="tool-grid {% if group.featured %}tool-grid--featured{% endif %}" aria-label="{{ group.title }}">
     {% for tool in group.tools %}
-    <a class="tool-card {% if group.featured %}tool-card--featured{% endif %}" href="{{ url_for('tool_page', slug=tool.slug) }}" data-tool="{{ tool.slug }}">
+    <a class="tool-card {% if group.featured %}tool-card--featured{% endif %}{% if tool.badge %} tool-card--badge{% endif %}" href="{{ url_for('tool_page', slug=tool.slug) }}" data-tool="{{ tool.slug }}">
       {{ tool_icon(tool.slug) }}
       <span class="tool-card-body">
-        <h3>{{ tool.name }}</h3>
+        <h3>{{ tool.name }}{% if tool.badge %} <span class="tool-card-badge">{{ _(tool.badge) }}</span>{% endif %}</h3>
         <p>{{ tool.desc }}</p>
       </span>
       <span class="tool-card-arrow" aria-hidden="true">→</span>
