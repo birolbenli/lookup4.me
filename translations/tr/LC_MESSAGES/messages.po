@@ -2023,3 +2023,6 @@ msgstr "korundu"
 msgid "unchanged"
 msgstr "değişmedi"
 
+msgid "Server is busy with other external checks. Please try again in a moment."
+msgstr "Sunucu başka dış kontrollerle meşgul. Lütfen biraz sonra tekrar deneyin."
+

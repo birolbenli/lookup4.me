@@ -90,6 +90,7 @@ from tools.generators import (
     generate_spf,
     generate_tlsrpt,
 )
+from tools.concurrency import HEAVY_SLUGS, release_heavy, try_acquire_heavy
 from tools.rate_limit import (
     BUCKET_MAILTEST,
     BUCKET_TOOLS,
@@ -974,7 +975,25 @@ def tool_page(slug: str, query: str | None = None):
         blocked = _consume_or_reject(tool_bucket(slug), as_json=True)
         if blocked:
             return blocked
-        return jsonify(run_tool(slug, query, {"type": dns_type}))
+        held = try_acquire_heavy(slug)
+        if slug in HEAVY_SLUGS and not held:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": _(
+                            "Server is busy with other external checks. Please try again in a moment."
+                        ),
+                        "code": "busy",
+                    }
+                ),
+                503,
+            )
+        try:
+            return jsonify(run_tool(slug, query, {"type": dns_type}))
+        finally:
+            if held:
+                release_heavy()
 
     template = tool.get("template") or "tool.html"
     localized = next((t for t in localize_tools(TOOLS) if t["slug"] == slug), tool)
@@ -1011,8 +1030,27 @@ def api_tool(slug: str):
     if blocked:
         return blocked
 
+    held = try_acquire_heavy(slug)
+    if slug in HEAVY_SLUGS and not held:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": _(
+                        "Server is busy with other external checks. Please try again in a moment."
+                    ),
+                    "code": "busy",
+                }
+            ),
+            503,
+        )
+
     extra = {"type": data.get("type") or "A"}
-    return jsonify(run_tool(slug, str(query), extra))
+    try:
+        return jsonify(run_tool(slug, str(query), extra))
+    finally:
+        if held:
+            release_heavy()
 
 
 @app.post("/api/mailtest/create")

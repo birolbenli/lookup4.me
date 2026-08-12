@@ -77,7 +77,14 @@ async def _run_smtp(host: str, port: int, domain: str) -> None:
     from aiosmtpd.controller import Controller
 
     handler = _Handler(domain)
-    controller = Controller(handler, hostname=host, port=port, decode_data=False)
+    # Short SMTP session timeout — internet scanners otherwise hold connections.
+    controller = Controller(
+        handler,
+        hostname=host,
+        port=port,
+        decode_data=False,
+        timeout=45,
+    )
     controller.start()
     log.info("Mail-test SMTP sink listening on %s:%s", host, port)
     try:

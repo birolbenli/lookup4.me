@@ -25,15 +25,36 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - SECRET_KEY=${SECRET_KEY:-}
       - FORCE_HTTPS=${FORCE_HTTPS:-1}
+      - HEAVY_CONCURRENCY=${HEAVY_CONCURRENCY:-2}
+      - GUNICORN_THREADS=${GUNICORN_THREADS:-6}
+      - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-90}
+      - GUNICORN_MAX_REQUESTS=${GUNICORN_MAX_REQUESTS:-120}
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped
     mem_limit: 300m
+    labels:
+      - autoheal=true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 2
+      start_period: 25s
+
+  # Restarts containers that stay unhealthy (Docker does not do this by itself).
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    container_name: lookup4me-autoheal
+    restart: unless-stopped
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=20
+      - AUTOHEAL_START_PERIOD=40
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=20
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 48m
 
 volumes:
   lookup4me_data:

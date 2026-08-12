@@ -103,6 +103,7 @@ TR: dict[str, str] = {
     "Daily Mail Tester limit reached ({limit}/day per IP). Try again after UTC midnight.": "Günlük Mail Tester hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar deneyin.",
     "Daily tool limit reached ({limit}/day per IP). Try again after UTC midnight.": "Günlük araç hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar deneyin.",
     "Daily {tool} limit reached ({limit}/day per IP). Try again after UTC midnight.": "Günlük {tool} hakkınız doldu (IP başına {limit}/gün). UTC gece yarısından sonra tekrar deneyin.",
+    "Server is busy with other external checks. Please try again in a moment.": "Sunucu başka dış kontrollerle meşgul. Lütfen biraz sonra tekrar deneyin.",
     "Rate limits": "Kullanım limitleri",
     "Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared). Limits reset at UTC midnight.": "Mail Tester: IP başına günde {mail}. Her diğer araç: IP başına günde {tools} (ayrı). Limitler UTC gece yarısında sıfırlanır.",
     "Mail Tester: {mail}/day per IP. Other tools: {tools}/day per IP (shared bucket). Counters reset at UTC midnight.": "Mail Tester: IP başına günde {mail}. Her diğer araç: IP başına günde {tools} (ayrı sayaçlar). Sayaçlar UTC gece yarısında sıfırlanır.",

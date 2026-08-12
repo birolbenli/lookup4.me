@@ -52,6 +52,13 @@ async function runLookup(endpoint, payload, render) {
       )}</div>`;
       return;
     }
+    if (res.status === 503 || data.code === "busy") {
+      out.innerHTML = `<div class="error-box">${escapeHtml(
+        data.error ||
+          t("Server is busy with other external checks. Please try again in a moment.")
+      )}</div>`;
+      return;
+    }
     render(data, out);
   } catch (err) {
     out.innerHTML = `<div class="error-box">${escapeHtml(t("Request failed"))}: ${escapeHtml(String(err))}</div>`;
