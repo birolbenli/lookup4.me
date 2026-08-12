@@ -286,8 +286,8 @@ TOOLS = [
         "name": "Exchange Autodiscover",
         "desc": "Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify SRV points at the org Autodiscover.",
         "field": "domain",
-        "placeholder": "btcturkhisse.com",
-        "example": "btcturkhisse.com",
+        "placeholder": "alias.example.com",
+        "example": "alias.example.com",
         "input": "text",
     },
     {

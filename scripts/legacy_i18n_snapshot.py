@@ -192,8 +192,8 @@ TR: dict[str, str] = {
     "A / AAAA / CNAME for the autodiscover hostname": "autodiscover ana bilgisayar adı için A / AAAA / CNAME",
     "SRV _autodiscover._tcp (common for accepted / alias domains)": "SRV _autodiscover._tcp (kabul edilen / alias alanlarda yaygındır)",
     "HTTPS Autodiscover.xml probes (401 without credentials is normal)": "HTTPS Autodiscover.xml sondaları (kimlik bilgisi olmadan 401 normaldir)",
-    "Optional primary domain: alias / primary — e.g. btcturkhisse.com / btcturk.com": "İsteğe bağlı ana alan: alias / primary — örn. btcturkhisse.com / btcturk.com",
-    "Enter one domain; optionally add / primary (e.g. alias / btcturk.com) only to compare": "Tek alan girin; karşılaştırmak için isteğe bağlı / ana-alan ekleyin (örn. alias / btcturk.com)",
+    "Optional primary domain: alias / primary — e.g. alias.example.com / example.com": "İsteğe bağlı ana alan: alias / primary — örn. alias.example.com / example.com",
+    "Enter one domain; optionally add / primary (e.g. alias.example.com / example.com) only to compare": "Tek alan girin; karşılaştırmak için isteğe bağlı / ana-alan ekleyin (örn. alias.example.com / example.com)",
     "Legacy HTTP→HTTPS redirect method when DNS/HTTPS paths are incomplete": "DNS/HTTPS yolları eksikse eski HTTP→HTTPS yönlendirme yöntemi",
     "DNS records": "DNS kayıtları",
     "Primary domain": "Ana alan adı",
@@ -287,7 +287,7 @@ TOOLS_TR: dict[str, dict[str, str]] = {
     "autodiscover": {
         "name": "Exchange Autodiscover",
         "desc": "Tek bir alanın Autodiscover DNS (A/CNAME + SRV) ve HTTPS kontrolü. İsteğe bağlı: / ana-alan ekleyerek SRV’nin org Autodiscover’a gittiğini doğrulayın.",
-        "placeholder": "btcturkhisse.com",
+        "placeholder": "alias.example.com",
     },
     "ip": {
         "name": "IP Sorgusu",

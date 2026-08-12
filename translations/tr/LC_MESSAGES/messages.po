@@ -2091,3 +2091,14 @@ msgstr ""
 msgid "btcturkhisse.com"
 msgstr "btcturkhisse.com"
 
+msgid "Optional primary domain: alias / primary — e.g. alias.example.com / example.com"
+msgstr "İsteğe bağlı ana alan: alias / primary — örn. alias.example.com / example.com"
+
+msgid "Enter one domain; optionally add / primary (e.g. alias.example.com / example.com) only to compare"
+msgstr ""
+"Tek alan girin; karşılaştırmak için isteğe bağlı / ana-alan ekleyin (örn. alias.example.com / "
+"example.com)"
+
+msgid "alias.example.com"
+msgstr "alias.example.com"
+

@@ -96,7 +96,7 @@ TOOL_MSGIDS = {
     "autodiscover": {
         "name": "Exchange Autodiscover",
         "desc": "Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify SRV points at the org Autodiscover.",
-        "placeholder": "btcturkhisse.com",
+        "placeholder": "alias.example.com",
     },
     "ip": {
         "name": "IP Lookup",

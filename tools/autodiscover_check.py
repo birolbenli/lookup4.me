@@ -1,8 +1,8 @@
 """Exchange Autodiscover DNS + HTTPS discovery (external-only).
 
 Covers the common multi-domain pattern:
-- Primary org (e.g. btcturk.com) hosts Autodiscover on autodiscover.<primary>
-- Accepted domains (e.g. btcturkhisse.com) publish SRV _autodiscover._tcp
+- Primary org (e.g. example.com) hosts Autodiscover on autodiscover.<primary>
+- Accepted domains (e.g. alias.example.com) publish SRV _autodiscover._tcp
   (and/or CNAME) pointing at the primary Autodiscover host
 """
 
@@ -509,7 +509,7 @@ def check_autodiscover(query: str) -> dict[str, Any]:
     guidance = [
         "Outlook order (simplified, external): HTTPS autodiscover.<domain>, HTTPS <domain>, HTTP redirect, then SRV _autodiscover._tcp.<domain>.",
         "Accepted domains often skip a full Autodiscover site and only publish SRV (or CNAME) to the primary org Autodiscover host.",
-        "Optional input: domain / primary — e.g. btcturkhisse.com / btcturk.com — to verify SRV/CNAME alignment.",
+        "Optional input: domain / primary — e.g. alias.example.com / example.com — to verify SRV/CNAME alignment.",
         "HTTP 401 on Autodiscover.xml is normal without credentials; it still means the endpoint is published.",
     ]
 
