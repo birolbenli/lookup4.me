@@ -151,6 +151,7 @@ TR: dict[str, str] = {
     "Target server credentials are not required. Probes use public DNS, TCP, TLS, HTTP(S), and SMTP only.": "Hedef sunucu kimlik bilgisi istenmez. Kontroller yalnızca genel DNS, TCP, TLS, HTTP(S) ve SMTP üzerinden yapılır.",
     "Featured tools": "Öne çıkan araçlar",
     "Exchange exposure, deliverability, security headers, and bulk SSL — start here.": "Exchange yüzeyi, teslimat, güvenlik başlıkları ve toplu SSL — buradan başlayın.",
+    "Exchange exposure, Autodiscover, deliverability, security headers, and bulk SSL — start here.": "Exchange yüzeyi, Autodiscover, teslimat, güvenlik başlıkları ve toplu SSL — buradan başlayın.",
     "Domain security": "Alan güvenliği",
     "Public security.txt and related domain-facing checks.": "Genel security.txt ve ilgili alan kontrolleri.",
     "Email authentication": "E-posta kimlik doğrulama",
@@ -192,6 +193,7 @@ TR: dict[str, str] = {
     "SRV _autodiscover._tcp (common for accepted / alias domains)": "SRV _autodiscover._tcp (kabul edilen / alias alanlarda yaygındır)",
     "HTTPS Autodiscover.xml probes (401 without credentials is normal)": "HTTPS Autodiscover.xml sondaları (kimlik bilgisi olmadan 401 normaldir)",
     "Optional primary domain: alias / primary — e.g. btcturkhisse.com / btcturk.com": "İsteğe bağlı ana alan: alias / primary — örn. btcturkhisse.com / btcturk.com",
+    "Enter one domain; optionally add / primary (e.g. alias / btcturk.com) only to compare": "Tek alan girin; karşılaştırmak için isteğe bağlı / ana-alan ekleyin (örn. alias / btcturk.com)",
     "Legacy HTTP→HTTPS redirect method when DNS/HTTPS paths are incomplete": "DNS/HTTPS yolları eksikse eski HTTP→HTTPS yönlendirme yöntemi",
     "DNS records": "DNS kayıtları",
     "Primary domain": "Ana alan adı",
@@ -284,8 +286,8 @@ TOOLS_TR: dict[str, dict[str, str]] = {
     },
     "autodiscover": {
         "name": "Exchange Autodiscover",
-        "desc": "Autodiscover DNS (A/CNAME + SRV) ve HTTPS uç noktalarını kontrol edin — SRV ile ana org’a yönlenen kabul edilen alanlar dahil.",
-        "placeholder": "btcturkhisse.com / btcturk.com",
+        "desc": "Tek bir alanın Autodiscover DNS (A/CNAME + SRV) ve HTTPS kontrolü. İsteğe bağlı: / ana-alan ekleyerek SRV’nin org Autodiscover’a gittiğini doğrulayın.",
+        "placeholder": "btcturkhisse.com",
     },
     "ip": {
         "name": "IP Sorgusu",

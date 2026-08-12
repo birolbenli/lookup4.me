@@ -95,8 +95,8 @@ TOOL_MSGIDS = {
     },
     "autodiscover": {
         "name": "Exchange Autodiscover",
-        "desc": "Check Autodiscover DNS (A/CNAME + SRV) and HTTPS endpoints — including accepted domains that SRV to a primary org.",
-        "placeholder": "btcturkhisse.com / btcturk.com",
+        "desc": "Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify SRV points at the org Autodiscover.",
+        "placeholder": "btcturkhisse.com",
     },
     "ip": {
         "name": "IP Lookup",

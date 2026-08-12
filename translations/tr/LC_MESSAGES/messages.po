@@ -2075,3 +2075,19 @@ msgstr ""
 msgid "btcturkhisse.com / btcturk.com"
 msgstr "btcturkhisse.com / btcturk.com"
 
+msgid "Exchange exposure, Autodiscover, deliverability, security headers, and bulk SSL — start here."
+msgstr "Exchange yüzeyi, Autodiscover, teslimat, güvenlik başlıkları ve toplu SSL — buradan başlayın."
+
+msgid "Enter one domain; optionally add / primary (e.g. alias / btcturk.com) only to compare"
+msgstr "Tek alan girin; karşılaştırmak için isteğe bağlı / ana-alan ekleyin (örn. alias / btcturk.com)"
+
+msgid ""
+"Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify "
+"SRV points at the org Autodiscover."
+msgstr ""
+"Tek bir alanın Autodiscover DNS (A/CNAME + SRV) ve HTTPS kontrolü. İsteğe bağlı: / ana-alan "
+"ekleyerek SRV’nin org Autodiscover’a gittiğini doğrulayın."
+
+msgid "btcturkhisse.com"
+msgstr "btcturkhisse.com"
+

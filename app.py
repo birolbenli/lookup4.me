@@ -284,10 +284,10 @@ TOOLS = [
     {
         "slug": "autodiscover",
         "name": "Exchange Autodiscover",
-        "desc": "Check Autodiscover DNS (A/CNAME + SRV) and HTTPS endpoints — including accepted domains that SRV to a primary org.",
+        "desc": "Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify SRV points at the org Autodiscover.",
         "field": "domain",
-        "placeholder": "btcturkhisse.com / btcturk.com",
-        "example": "btcturkhisse.com/btcturk.com",
+        "placeholder": "btcturkhisse.com",
+        "example": "btcturkhisse.com",
         "input": "text",
     },
     {
@@ -474,8 +474,8 @@ HOMEPAGE_GROUPS = [
         "id": "featured",
         "featured": True,
         "title": "Featured tools",
-        "blurb": "Exchange exposure, deliverability, security headers, and bulk SSL — start here.",
-        "slugs": ["exchange", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
+        "blurb": "Exchange exposure, Autodiscover, deliverability, security headers, and bulk SSL — start here.",
+        "slugs": ["exchange", "autodiscover", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
     },
     {
         "id": "domain-security",
@@ -504,7 +504,8 @@ HOMEPAGE_GROUPS = [
         "featured": False,
         "title": "Microsoft Exchange",
         "blurb": "External-only Exchange health, Autodiscover, endpoints, TLS, and hybrid signals.",
-        "slugs": ["autodiscover"],
+        # exchange + autodiscover are featured
+        "slugs": [],
     },
     {
         "id": "dns",
