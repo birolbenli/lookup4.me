@@ -51,6 +51,7 @@ from tools.dmarc import lookup_dmarc
 from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
 from tools.email_analyze import analyze_email
 from tools.exchange_check import check_exchange
+from tools.autodiscover_check import check_autodiscover
 from tools.feedback import (
     delete_feedback,
     feedback_unread_count,
@@ -281,6 +282,15 @@ TOOLS = [
         "input": "text",
     },
     {
+        "slug": "autodiscover",
+        "name": "Exchange Autodiscover",
+        "desc": "Check Autodiscover DNS (A/CNAME + SRV) and HTTPS endpoints — including accepted domains that SRV to a primary org.",
+        "field": "domain",
+        "placeholder": "btcturkhisse.com / btcturk.com",
+        "example": "btcturkhisse.com/btcturk.com",
+        "input": "text",
+    },
+    {
         "slug": "ip",
         "name": "IP Lookup",
         "desc": "See your public IP (curl-friendly) or inspect another IP.",
@@ -493,9 +503,8 @@ HOMEPAGE_GROUPS = [
         "id": "exchange",
         "featured": False,
         "title": "Microsoft Exchange",
-        "blurb": "External-only Exchange health, endpoints, TLS, and hybrid signals.",
-        # exchange is featured — keep section only when more Exchange tools ship
-        "slugs": [],
+        "blurb": "External-only Exchange health, Autodiscover, endpoints, TLS, and hybrid signals.",
+        "slugs": ["autodiscover"],
     },
     {
         "id": "dns",
@@ -803,6 +812,8 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = test_smtp(query)
     elif slug == "exchange":
         result = check_exchange(query)
+    elif slug == "autodiscover":
+        result = check_autodiscover(query)
     elif slug == "ip":
         result = lookup_ip_info(query, request=request)
     elif slug == "mtasts":

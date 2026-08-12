@@ -2026,3 +2026,52 @@ msgstr "değişmedi"
 msgid "Server is busy with other external checks. Please try again in a moment."
 msgstr "Sunucu başka dış kontrollerle meşgul. Lütfen biraz sonra tekrar deneyin."
 
+msgid "External-only Exchange health, Autodiscover, endpoints, TLS, and hybrid signals."
+msgstr "Yalnızca dışarıdan Exchange sağlığı, Autodiscover, uç noktalar, TLS ve hybrid sinyaller."
+
+msgid "A / AAAA / CNAME for the autodiscover hostname"
+msgstr "autodiscover ana bilgisayar adı için A / AAAA / CNAME"
+
+msgid "SRV _autodiscover._tcp (common for accepted / alias domains)"
+msgstr "SRV _autodiscover._tcp (kabul edilen / alias alanlarda yaygındır)"
+
+msgid "HTTPS Autodiscover.xml probes (401 without credentials is normal)"
+msgstr "HTTPS Autodiscover.xml sondaları (kimlik bilgisi olmadan 401 normaldir)"
+
+msgid "Optional primary domain: alias / primary — e.g. btcturkhisse.com / btcturk.com"
+msgstr "İsteğe bağlı ana alan: alias / primary — örn. btcturkhisse.com / btcturk.com"
+
+msgid "Legacy HTTP→HTTPS redirect method when DNS/HTTPS paths are incomplete"
+msgstr "DNS/HTTPS yolları eksikse eski HTTP→HTTPS yönlendirme yöntemi"
+
+msgid "DNS records"
+msgstr "DNS kayıtları"
+
+msgid "Primary domain"
+msgstr "Ana alan adı"
+
+msgid "Discovery method"
+msgstr "Keşif yöntemi"
+
+msgid "Summary"
+msgstr "Özet"
+
+msgid "HTTPS probes"
+msgstr "HTTPS sondaları"
+
+msgid "Signals"
+msgstr "Sinyaller"
+
+msgid "Exchange Autodiscover"
+msgstr "Exchange Autodiscover"
+
+msgid ""
+"Check Autodiscover DNS (A/CNAME + SRV) and HTTPS endpoints — including accepted domains that SRV "
+"to a primary org."
+msgstr ""
+"Autodiscover DNS (A/CNAME + SRV) ve HTTPS uç noktalarını kontrol edin — SRV ile ana org’a "
+"yönlenen kabul edilen alanlar dahil."
+
+msgid "btcturkhisse.com / btcturk.com"
+msgstr "btcturkhisse.com / btcturk.com"
+

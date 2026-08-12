@@ -21,6 +21,17 @@
     <li>{{ _('External-only — Hybrid Agent / Dedicated Hybrid App are not confirmed from outside') }}</li>
   </ul>
 </aside>
+{% elif slug == 'autodiscover' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('A / AAAA / CNAME for the autodiscover hostname') }}</li>
+    <li>{{ _('SRV _autodiscover._tcp (common for accepted / alias domains)') }}</li>
+    <li>{{ _('HTTPS Autodiscover.xml probes (401 without credentials is normal)') }}</li>
+    <li>{{ _('Optional primary domain: alias / primary — e.g. btcturkhisse.com / btcturk.com') }}</li>
+    <li>{{ _('Legacy HTTP→HTTPS redirect method when DNS/HTTPS paths are incomplete') }}</li>
+  </ul>
+</aside>
 {% elif slug == 'headers' %}
 <aside class="checks-bar" aria-label="{{ _('What this checks') }}">
   <div class="checks-bar-title">{{ _('What this checks') }}</div>

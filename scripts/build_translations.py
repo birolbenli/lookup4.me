@@ -93,6 +93,11 @@ TOOL_MSGIDS = {
         "desc": "External-only Exchange security assessment: TLS, auth, VDirs, SMTP, mail domain, hybrid signals.",
         "placeholder": "mail.example.com",
     },
+    "autodiscover": {
+        "name": "Exchange Autodiscover",
+        "desc": "Check Autodiscover DNS (A/CNAME + SRV) and HTTPS endpoints — including accepted domains that SRV to a primary org.",
+        "placeholder": "btcturkhisse.com / btcturk.com",
+    },
     "ip": {
         "name": "IP Lookup",
         "desc": "See your public IP (curl-friendly) or inspect another IP.",

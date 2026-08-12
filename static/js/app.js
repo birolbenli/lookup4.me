@@ -1445,6 +1445,9 @@ function renderScanReport(data, root) {
     .join("");
   const kv = [];
   if (data.domain) kv.push([t("Domain"), data.domain]);
+  if (data.primary_hint) kv.push([t("Primary domain"), data.primary_hint]);
+  if (data.method) kv.push([t("Discovery method"), data.method]);
+  if (data.summary) kv.push([t("Summary"), data.summary]);
   if (data.dns_name) kv.push(["DNS", data.dns_name]);
   if (data.url) kv.push(["URL", data.url]);
   if (data.final_url) kv.push([t("Final URL"), data.final_url]);
@@ -1467,6 +1470,16 @@ function renderScanReport(data, root) {
   }
   if (data.record && data.record.logo_url) kv.push(["Logo", data.record.logo_url]);
   if ((data.sitemaps || []).length) kv.push(["Sitemap", data.sitemaps.join(", ")]);
+  const probeRows = (data.probes || [])
+    .map(
+      (p) => `<tr>
+        <td class="mono tiny">${escapeHtml(p.url || "")}</td>
+        <td>${escapeHtml(String(p.status_code ?? "—"))}</td>
+        <td>${sevBadge(p.exchange_like ? "pass" : p.reachable ? "info" : "fail")}</td>
+        <td class="tiny muted">${escapeHtml((p.signals || []).join(", ") || p.error || "—")}</td>
+      </tr>`
+    )
+    .join("");
   const kvHtml = kv.length
     ? `<div class="table-wrap"><table><tbody>${kv
         .map(
@@ -1558,6 +1571,8 @@ function renderScanReport(data, root) {
         ? t("Created from scratch")
         : "";
 
+  const recordsTitle = data.generator ? t("Proposed result") : t("DNS records");
+
   root.appendChild(
     el(`<div class="scan-report">
       <div class="summary">
@@ -1586,12 +1601,23 @@ function renderScanReport(data, root) {
       ${
         genRows
           ? `<div class="block"><h4 class="scan-subtitle">${escapeHtml(
-              t("Proposed result")
+              recordsTitle
             )}</h4><div class="table-wrap"><table><thead><tr><th>${escapeHtml(
               t("Type")
             )}</th><th>${escapeHtml(t("Name"))}</th><th>${escapeHtml(
               t("Value")
             )}</th></tr></thead><tbody>${genRows}</tbody></table></div></div>`
+          : ""
+      }
+      ${
+        probeRows
+          ? `<div class="block"><h4 class="scan-subtitle">${escapeHtml(
+              t("HTTPS probes")
+            )}</h4><div class="table-wrap"><table><thead><tr><th>URL</th><th>${escapeHtml(
+              t("Status")
+            )}</th><th>${escapeHtml(t("Result"))}</th><th>${escapeHtml(
+              t("Signals")
+            )}</th></tr></thead><tbody>${probeRows}</tbody></table></div></div>`
           : ""
       }
       ${changesHtml}
@@ -1643,6 +1669,7 @@ const RENDERERS = {
   robots: renderScanReport,
   redirect: renderScanReport,
   secheaders: renderScanReport,
+  autodiscover: renderScanReport,
   spfgen: renderScanReport,
   dmarcgen: renderScanReport,
   mtastsgen: renderScanReport,
