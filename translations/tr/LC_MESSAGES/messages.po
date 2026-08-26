@@ -2102,3 +2102,36 @@ msgstr ""
 msgid "alias.example.com"
 msgstr "alias.example.com"
 
+msgid "CVE-2026-62911 safe check: HTTP.sys MRSProxy Negotiate exposure + build hint"
+msgstr "CVE-2026-62911 güvenli kontrol: HTTP.sys MRSProxy Negotiate yüzeyi + derleme ipucu"
+
+msgid "CVE check"
+msgstr "CVE kontrolü"
+
+msgid "Safe external check only — no relay, no WCF calls, no exploit."
+msgstr "Yalnızca güvenli dış kontrol — relay, WCF çağrısı veya exploit yok."
+
+msgid "Verdict"
+msgstr "Sonuç"
+
+msgid "HTTP.sys MRSProxy"
+msgstr "HTTP.sys MRSProxy"
+
+msgid "Exposed signal"
+msgstr "Maruziyet sinyali"
+
+msgid "Not seen"
+msgstr "Görülmedi"
+
+msgid "Build hint"
+msgstr "Derleme ipucu"
+
+msgid "Patch status"
+msgstr "Yama durumu"
+
+msgid "Remediation"
+msgstr "Düzeltme"
+
+msgid "Microsoft advisory"
+msgstr "Microsoft bildirimi"
+

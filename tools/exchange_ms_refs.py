@@ -68,6 +68,16 @@ MS_REFS: dict[str, dict] = {
         "title": "Exchange Server HealthChecker (CSS-Exchange) — internal/authenticated reference only",
         "url": "https://github.com/microsoft/CSS-Exchange/tree/main/Diagnostics/HealthChecker",
     },
+    "CVE-2026-62911": {
+        "id": "CVE-2026-62911",
+        "title": "CVE-2026-62911 — Exchange Server elevation of privilege (Aug 2026)",
+        "url": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-62911",
+    },
+    "M2b": {
+        "id": "M2b",
+        "title": "Released: August 2026 Exchange Server Security Updates",
+        "url": "https://techcommunity.microsoft.com/blog/exchange/released-august-2026-exchange-server-security-updates/4543951",
+    },
 }
 
 # Convenience aliases used by finding code
@@ -108,11 +118,11 @@ MS_REFS.update(
 )
 
 EXCHANGE_SU_BASELINE = {
-    "as_of": "2026-08-10",
+    "as_of": "2026-08-11",
     "product": "Exchange Server SE",
-    "label": "RTM Jul26SU",
+    "label": "RTM Aug26SU (CVE-2026-62911)",
     "build": "15.2.2562.45",
-    "refs": [MS_REFS["M1"], MS_REFS["M2"]],
+    "refs": [MS_REFS["M1"], MS_REFS["M2b"], MS_REFS["CVE-2026-62911"]],
 }
 
 

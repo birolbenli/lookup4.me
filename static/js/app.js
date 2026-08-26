@@ -940,6 +940,58 @@ function exchangeVdCell(e) {
   </div>`;
 }
 
+function renderCve202662911(cve) {
+  if (!cve || !cve.cve) return "";
+  const risk = String(cve.risk || "info").toLowerCase();
+  const riskClass =
+    risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : risk === "low" ? "warn" : "ok";
+  const hits = (cve.httpsys_hits || [])
+    .map(
+      (h) =>
+        `<li><span class="mono">${escapeHtml(h.url || "")}</span>
+        <span class="tiny muted"> · ${escapeHtml(String(h.status_code ?? "—"))}
+        · Server=${escapeHtml(h.server || "—")}</span></li>`
+    )
+    .join("");
+  const rem = (cve.remediation || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+  const build = cve.build || {};
+  return `<div class="block">
+      <h3>${escapeHtml(t("CVE check"))}: ${escapeHtml(cve.cve || "CVE-2026-62911")}</h3>
+      <p class="tiny muted">${escapeHtml(
+        t("Safe external check only — no relay, no WCF calls, no exploit.")
+      )}</p>
+      <div class="geo-grid">
+        <div><span class="muted">${escapeHtml(t("Verdict"))}</span>
+          <strong class="status ${riskClass}">${escapeHtml(cve.verdict || "—")}</strong></div>
+        <div><span class="muted">${escapeHtml(t("Risk"))}</span>
+          <strong class="status ${riskClass}">${escapeHtml(risk)}</strong></div>
+        <div><span class="muted">${escapeHtml(t("HTTP.sys MRSProxy"))}</span>
+          <strong class="status ${cve.httpsys_exposed ? "err" : "ok"}">${escapeHtml(
+            cve.httpsys_exposed ? t("Exposed signal") : t("Not seen")
+          )}</strong></div>
+        <div><span class="muted">${escapeHtml(t("Build hint"))}</span>
+          <strong class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</strong></div>
+        <div><span class="muted">${escapeHtml(t("Patch status"))}</span>
+          <strong>${escapeHtml(build.status || "unknown")}</strong>
+          <div class="tiny muted">${escapeHtml(build.branch || "")}</div></div>
+      </div>
+      <p>${escapeHtml(cve.summary || "")}</p>
+      ${hits ? `<ul class="guide-list">${hits}</ul>` : ""}
+      ${
+        rem
+          ? `<h4 class="subhead">${escapeHtml(t("Remediation"))}</h4><ul class="guide-list">${rem}</ul>`
+          : ""
+      }
+      ${
+        cve.advisory
+          ? `<p class="tiny"><a href="${escapeHtml(cve.advisory)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
+              t("Microsoft advisory")
+            )}</a></p>`
+          : ""
+      }
+    </div>`;
+}
+
 function renderExchange(data, root) {
   if (!data.ok) return renderError(data, root);
   const summary = data.summary || {};
@@ -1164,6 +1216,8 @@ function renderExchange(data, root) {
         ${escapeHtml(t("Mail domain"))} ${coverage.mail_domain ? "✓" : "—"} ·
         ${escapeHtml(String(coverage.endpoints || 0))} ${escapeHtml(t("endpoints"))}
       </p>
+
+      ${renderCve202662911(data.cve_2026_62911)}
 
       <div class="block">
         <h3>${escapeHtml(t("Attack surface"))} / ${escapeHtml(t("Related hosts"))}</h3>

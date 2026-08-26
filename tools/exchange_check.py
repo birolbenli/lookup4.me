@@ -26,6 +26,7 @@ from .exchange_mail_domain import assess_mail_domain
 from .exchange_ms_refs import EXCHANGE_SU_BASELINE, MS_REFS
 from .exchange_smtp_assess import assess_smtp
 from .exchange_tls import assess_tls
+from .exchange_cve_2026_62911 import assess_cve_2026_62911, findings_for_cve_2026_62911
 
 
 def _headers_report(endpoints: list[dict]) -> dict:
@@ -940,6 +941,14 @@ def check_exchange(host: str) -> dict:
     fingerprint = _passive_fingerprint(endpoints)
     hybrid = _hybrid_signals(endpoints, host_rows, auth_audit, fingerprint)
 
+    cve_hosts = [h["host"] for h in host_rows if h.get("resolves")]
+    if host not in cve_hosts:
+        cve_hosts.insert(0, host)
+    cve_2026_62911 = assess_cve_2026_62911(
+        cve_hosts,
+        build_hint=fingerprint.get("build_hint"),
+    )
+
     findings = _build_findings(
         host=host,
         endpoints=endpoints,
@@ -953,6 +962,10 @@ def check_exchange(host: str) -> dict:
         fingerprint=fingerprint,
         hosts=host_rows,
     )
+    findings.extend(findings_for_cve_2026_62911(cve_2026_62911))
+    # Re-sort after CVE findings
+    order = {"critical": 0, "warning": 1, "info": 2, "ok": 3}
+    findings.sort(key=lambda f: order.get(ui_severity(f), 9))
 
     summary = weighted_score(findings)
 
@@ -972,6 +985,7 @@ def check_exchange(host: str) -> dict:
         "smtp": bool((smtp.get("summary") or {}).get("reachable")),
         "mail_domain": bool(mail.get("ok")),
         "auth_probed": (auth_audit.get("endpoints_probed") or 0),
+        "cve_2026_62911": True,
     }
 
     # Legacy ssl key for older UI bits
@@ -1011,6 +1025,7 @@ def check_exchange(host: str) -> dict:
         "smtp_assess": smtp,
         "mail_domain": mail,
         "fingerprint": fingerprint,
+        "cve_2026_62911": cve_2026_62911,
         "posture": {"hybrid": hybrid, "teams": {
             "relevant": True,
             "summary": "Teams often needs Exchange (EWS/Autodiscover). Public EWS is topology-dependent.",
@@ -1032,7 +1047,27 @@ def check_exchange(host: str) -> dict:
         "findings": findings,
         "summary": summary,
         "coverage": coverage,
-        "microsoft_refs": [MS_REFS[k] for k in ("M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M10", "M11", "M12", "M13")],
+        "microsoft_refs": [
+            MS_REFS[k]
+            for k in (
+                "CVE-2026-62911",
+                "M2b",
+                "M1",
+                "M2",
+                "M3",
+                "M4",
+                "M5",
+                "M6",
+                "M7",
+                "M8",
+                "M9",
+                "M10",
+                "M11",
+                "M12",
+                "M13",
+            )
+            if k in MS_REFS
+        ],
         "counts": {
             "reachable": sum(1 for e in endpoints if e.get("reachable")),
             "ntlm": sum(1 for e in endpoints if e.get("auth", {}).get("ntlm")),

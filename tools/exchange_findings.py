@@ -133,6 +133,7 @@ def category_for_finding(f: dict) -> str:
         "disclosure": "disclosure",
         "headers": "disclosure",
         "fingerprint": "disclosure",
+        "cve": "exchange_web",
     }
     return mapping.get(cat, "exchange_web")
 
