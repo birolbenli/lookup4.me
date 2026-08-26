@@ -12,6 +12,7 @@ _SEM = threading.BoundedSemaphore(_LIMIT)
 HEAVY_SLUGS = frozenset(
     {
         "exchange",
+        "exchangecve",
         "autodiscover",
         "ssl",
         "smtp",

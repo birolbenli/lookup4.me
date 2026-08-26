@@ -112,6 +112,7 @@ Featured targets (when available): Domain Security Audit, Exchange External Heal
 | 39 | Exchange Endpoint Checker | **COVERED** | inside `exchange` |
 | 40 | Hybrid External Analyzer | **COVERED** | partial / NOT_OBSERVABLE where needed |
 | 41 | Autodiscover Checker | **SHIPPED** | `autodiscover` (DNS A/CNAME + SRV + HTTPS) |
+| 41b | Exchange CVE Checker | **SHIPPED** | `exchangecve` (library; CVE-2026-62911 first) |
 | 42 | EWS External Checker | **COVERED** | inside `exchange` |
 | 43 | MRSProxy External Checker | **COVERED** | inside `exchange` |
 | 44 | Exchange SMTP Health | **COVERED** / **NEXT** | deepen cert/rDNS |

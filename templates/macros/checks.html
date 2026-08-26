@@ -33,6 +33,16 @@
     <li>{{ _('Legacy HTTP→HTTPS redirect method when DNS/HTTPS paths are incomplete') }}</li>
   </ul>
 </aside>
+{% elif slug == 'exchangecve' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('Growing Exchange CVE library (external-only, safe probes)') }}</li>
+    <li>{{ _('CVE-2026-62911: HTTP.sys MRSProxy Negotiate exposure + build hint') }}</li>
+    <li>{{ _('Related hostnames (mail / Autodiscover) when they resolve publicly') }}</li>
+    <li>{{ _('No relay, no WCF abuse, no exploit payloads') }}</li>
+  </ul>
+</aside>
 {% elif slug == 'headers' %}
 <aside class="checks-bar" aria-label="{{ _('What this checks') }}">
   <div class="checks-bar-title">{{ _('What this checks') }}</div>

@@ -52,6 +52,7 @@ from tools.dns_lookup import SUPPORTED_TYPES, lookup_caa, lookup_dns, lookup_ns
 from tools.email_analyze import analyze_email
 from tools.exchange_check import check_exchange
 from tools.autodiscover_check import check_autodiscover
+from tools.exchange_cve_check import check_exchange_cves
 from tools.feedback import (
     delete_feedback,
     feedback_unread_count,
@@ -291,6 +292,15 @@ TOOLS = [
         "input": "text",
     },
     {
+        "slug": "exchangecve",
+        "name": "Exchange CVE Checker",
+        "desc": "External Exchange CVE library — starts with CVE-2026-62911 (HTTP.sys MRSProxy). Safe probes only; expands over time.",
+        "field": "host",
+        "placeholder": "mail.example.com",
+        "example": "mail.example.com",
+        "input": "text",
+    },
+    {
         "slug": "ip",
         "name": "IP Lookup",
         "desc": "See your public IP (curl-friendly) or inspect another IP.",
@@ -474,8 +484,8 @@ HOMEPAGE_GROUPS = [
         "id": "featured",
         "featured": True,
         "title": "Featured tools",
-        "blurb": "Exchange exposure, Autodiscover, deliverability, security headers, and bulk SSL — start here.",
-        "slugs": ["exchange", "autodiscover", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
+        "blurb": "Exchange exposure, Autodiscover, CVE checks, deliverability, security headers, and bulk SSL — start here.",
+        "slugs": ["exchange", "exchangecve", "autodiscover", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
     },
     {
         "id": "domain-security",
@@ -815,6 +825,8 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = check_exchange(query)
     elif slug == "autodiscover":
         result = check_autodiscover(query)
+    elif slug == "exchangecve":
+        result = check_exchange_cves(query)
     elif slug == "ip":
         result = lookup_ip_info(query, request=request)
     elif slug == "mtasts":

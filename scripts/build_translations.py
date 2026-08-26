@@ -98,6 +98,11 @@ TOOL_MSGIDS = {
         "desc": "Check one domain’s Autodiscover DNS (A/CNAME + SRV) and HTTPS. Optional: add / primary to verify SRV points at the org Autodiscover.",
         "placeholder": "alias.example.com",
     },
+    "exchangecve": {
+        "name": "Exchange CVE Checker",
+        "desc": "External Exchange CVE library — starts with CVE-2026-62911 (HTTP.sys MRSProxy). Safe probes only; expands over time.",
+        "placeholder": "mail.example.com",
+    },
     "ip": {
         "name": "IP Lookup",
         "desc": "See your public IP (curl-friendly) or inspect another IP.",

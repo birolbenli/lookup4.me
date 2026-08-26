@@ -1694,6 +1694,123 @@ function renderScanReport(data, root) {
   );
 }
 
+function renderExchangeCveChecker(data, root) {
+  if (!data.ok && data.error && !(data.findings || []).length) {
+    return renderError(data, root);
+  }
+  const summary = data.summary || {};
+  const checks = data.checks || [];
+  const lib = data.library || [];
+  const findings = data.findings || [];
+  const issues = findings.filter((f) => ["FAIL", "WARN"].includes(String(f.status || "").toUpperCase()));
+  const notes = findings.filter((f) => String(f.status || "").toUpperCase() === "INFO");
+  const oks = findings.filter((f) => String(f.status || "").toUpperCase() === "PASS");
+
+  const libRows = lib
+    .map(
+      (c) => `<tr>
+        <td class="mono">${escapeHtml(c.id || "")}</td>
+        <td>${escapeHtml(c.name || "")}</td>
+        <td>${escapeHtml(c.enabled ? t("Enabled") : t("Disabled"))}</td>
+      </tr>`
+    )
+    .join("");
+
+  const checkRows = checks
+    .map((c) => {
+      const risk = String(c.risk || (c.skipped ? "info" : "info")).toLowerCase();
+      const riskClass =
+        risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : "ok";
+      return `<tr>
+        <td class="mono">${escapeHtml(c.id || "")}</td>
+        <td>${escapeHtml(c.name || "")}</td>
+        <td><strong class="status ${riskClass}">${escapeHtml(
+          c.skipped ? t("Skipped") : c.verdict || risk
+        )}</strong></td>
+        <td class="tiny">${escapeHtml((c.summary || "").slice(0, 220))}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const guide = (data.guidance || []).map((g) => `<li>${escapeHtml(g)}</li>`).join("");
+
+  root.appendChild(
+    el(`<div class="stack exchange-report">
+      <div class="summary">
+        <span class="pill">${escapeHtml(t("External check"))}</span>
+        ${
+          data.score != null
+            ? `<span class="pill score-pill">${escapeHtml(t("Score"))}: ${escapeHtml(
+                String(data.score)
+              )}/100</span>`
+            : ""
+        }
+        <span class="pill">${escapeHtml(t("CVE library"))}: ${escapeHtml(
+          String(checks.filter((c) => !c.skipped).length)
+        )}</span>
+        ${
+          data.worst_risk
+            ? `<span class="pill">${escapeHtml(t("Worst risk"))}: ${escapeHtml(data.worst_risk)}</span>`
+            : ""
+        }
+      </div>
+      <h3 class="scan-title">${escapeHtml(data.title || t("Exchange CVE Checker"))}</h3>
+      ${data.note ? `<p class="muted">${escapeHtml(data.note)}</p>` : ""}
+      <p class="tiny muted"><span class="mono">${escapeHtml(data.host || "")}</span>
+        ${data.build_hint ? ` · ${escapeHtml(t("Build hint"))}: <span class="mono">${escapeHtml(data.build_hint)}</span>` : ""}
+      </p>
+
+      <div class="block">
+        <h3>${escapeHtml(t("CVE library"))}</h3>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>CVE</th><th>${escapeHtml(t("Name"))}</th><th>${escapeHtml(t("Status"))}</th>
+          </tr></thead>
+          <tbody>${libRows}</tbody>
+        </table></div>
+      </div>
+
+      <div class="block">
+        <h3>${escapeHtml(t("This run"))}</h3>
+        <div class="table-wrap"><table>
+          <thead><tr>
+            <th>CVE</th><th>${escapeHtml(t("Name"))}</th>
+            <th>${escapeHtml(t("Verdict"))}</th><th>${escapeHtml(t("Summary"))}</th>
+          </tr></thead>
+          <tbody>${checkRows}</tbody>
+        </table></div>
+      </div>
+
+      ${renderCve202662911(data.cve_2026_62911)}
+
+      <div class="block">
+        <h3>${escapeHtml(t("Findings"))}</h3>
+        <div class="findings">
+          ${
+            issues.map((f) => renderExchangeFinding(f, { compact: false })).join("") ||
+            `<p class="status ok">${escapeHtml(t("No critical issues"))}</p>`
+          }
+        </div>
+        ${
+          notes.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))} (${notes.length})</summary><div class="findings">${notes
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
+            : ""
+        }
+        ${
+          oks.length
+            ? `<details class="ex-more"><summary>${escapeHtml(t("Passed checks"))} (${oks.length})</summary><div class="findings">${oks
+                .map((f) => renderExchangeFinding(f, { compact: true }))
+                .join("")}</div></details>`
+            : ""
+        }
+      </div>
+      ${guide ? `<ul class="guide-list">${guide}</ul>` : ""}
+    </div>`)
+  );
+}
+
 const RENDERERS = {
   mx: renderMx,
   spf: renderSpf,
@@ -1711,6 +1828,7 @@ const RENDERERS = {
   blacklist: renderBlacklist,
   smtp: renderSmtp,
   exchange: renderExchange,
+  exchangecve: renderExchangeCveChecker,
   ip: renderIp,
   mtasts: renderScanReport,
   tlsrpt: renderScanReport,

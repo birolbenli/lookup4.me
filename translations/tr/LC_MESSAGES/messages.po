@@ -2135,3 +2135,47 @@ msgstr "Düzeltme"
 msgid "Microsoft advisory"
 msgstr "Microsoft bildirimi"
 
+msgid ""
+"Exchange exposure, Autodiscover, CVE checks, deliverability, security headers, and bulk SSL — "
+"start here."
+msgstr ""
+"Exchange yüzeyi, Autodiscover, CVE kontrolleri, teslimat, güvenlik başlıkları ve toplu SSL — "
+"buradan başlayın."
+
+msgid "Growing Exchange CVE library (external-only, safe probes)"
+msgstr "Büyüyen Exchange CVE kütüphanesi (yalnızca dış, güvenli sondalar)"
+
+msgid "CVE-2026-62911: HTTP.sys MRSProxy Negotiate exposure + build hint"
+msgstr "CVE-2026-62911: HTTP.sys MRSProxy Negotiate yüzeyi + derleme ipucu"
+
+msgid "No relay, no WCF abuse, no exploit payloads"
+msgstr "Relay, WCF istismarı veya exploit yükü yok"
+
+msgid "CVE library"
+msgstr "CVE kütüphanesi"
+
+msgid "This run"
+msgstr "Bu çalıştırma"
+
+msgid "Worst risk"
+msgstr "En yüksek risk"
+
+msgid "Enabled"
+msgstr "Açık"
+
+msgid "Disabled"
+msgstr "Kapalı"
+
+msgid "Skipped"
+msgstr "Atlandı"
+
+msgid "Exchange CVE Checker"
+msgstr "Exchange CVE Checker"
+
+msgid ""
+"External Exchange CVE library — starts with CVE-2026-62911 (HTTP.sys MRSProxy). Safe probes only;"
+" expands over time."
+msgstr ""
+"Dışarıdan Exchange CVE kütüphanesi — ilk kontrol CVE-2026-62911 (HTTP.sys MRSProxy). Yalnızca "
+"güvenli sondalar; zamanla genişler."
+
