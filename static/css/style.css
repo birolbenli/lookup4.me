@@ -968,6 +968,84 @@ textarea:focus {
   font-weight: 700;
 }
 
+/* CVE detail: long labels must wrap — avoid pill overflow on geo-grid */
+.cve-detail .cve-kv {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cve-detail .cve-kv th,
+.cve-detail .cve-kv td {
+  vertical-align: top;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.cve-detail .cve-kv th {
+  width: 11rem;
+  max-width: 34%;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.cve-detail .cve-kv td {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.cve-detail .cve-flag.status,
+.exchange-report .cve-flag.status {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.35;
+  border-radius: 0.55rem;
+  padding: 0.28rem 0.6rem;
+  font-weight: 650;
+}
+
+.cve-detail .cve-vector {
+  margin-top: 0.35rem;
+  word-break: break-all;
+}
+
+.cve-detail .cve-note {
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+.cve-detail .cve-summary {
+  margin: 0.85rem 0 0.35rem;
+  line-height: 1.45;
+}
+
+.exchange-report td.nowrap,
+.nowrap {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cve-detail .cve-kv,
+  .cve-detail .cve-kv tbody,
+  .cve-detail .cve-kv tr,
+  .cve-detail .cve-kv th,
+  .cve-detail .cve-kv td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+  .cve-detail .cve-kv th {
+    border-bottom: none;
+    padding-bottom: 0.15rem;
+  }
+  .cve-detail .cve-kv td {
+    padding-top: 0.2rem;
+  }
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);

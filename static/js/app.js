@@ -968,46 +968,52 @@ function renderCve202662911(cve) {
   const verdictText = tDesc(cve.verdict_label || cve.verdict || "—");
   const riskText = tDesc(cve.risk_label || risk);
   const summaryText = tDesc(cve.summary || "");
-  return `<div class="block">
+  const cvssScore = cvss.base_score != null ? String(cvss.base_score) : "8.0";
+  const rows = [
+    [
+      `CVSS ${escapeHtml(String(cvss.version || "3.1"))}`,
+      `<strong class="status warn">${escapeHtml(cvssScore)}</strong>
+       <span class="tiny muted"> ${escapeHtml(tDesc(cvss.severity || "High"))} · ${escapeHtml(t("Microsoft MSRC"))}</span>
+       ${cvss.vector ? `<div class="cve-vector mono tiny muted">${escapeHtml(cvss.vector)}</div>` : ""}`,
+    ],
+    [
+      escapeHtml(t("Result")),
+      `<span class="cve-flag status ${riskClass}">${escapeHtml(verdictText)}</span>`,
+    ],
+    [
+      escapeHtml(t("Scan risk")),
+      `<span class="status ${riskClass}">${escapeHtml(riskText)}</span>`,
+    ],
+    [
+      escapeHtml(t("HTTP.sys MRSProxy")),
+      `<span class="status ${cve.httpsys_exposed ? "err" : "ok"}">${escapeHtml(
+        cve.httpsys_exposed ? t("Exposed signal") : t("Not seen")
+      )}</span>`,
+    ],
+    [
+      escapeHtml(t("Build hint")),
+      `<span class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</span>`,
+    ],
+    [
+      escapeHtml(t("Patch status")),
+      `<span class="cve-flag status ${patchClass}">${escapeHtml(tDesc(patchStatus))}</span>
+       ${build.detail ? `<div class="tiny muted cve-note">${escapeHtml(tDesc(build.detail))}</div>` : ""}
+       ${build.tech ? `<div class="tiny mono muted">${escapeHtml(build.tech)}</div>` : ""}
+       ${!build.tech && build.branch ? `<div class="tiny muted">${escapeHtml(build.branch)}</div>` : ""}`,
+    ],
+  ]
+    .map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`)
+    .join("");
+
+  return `<div class="block cve-detail">
       <h3>${escapeHtml(t("CVE check"))}: ${escapeHtml(cve.cve || "CVE-2026-62911")}</h3>
       <p class="tiny muted">${escapeHtml(
         t("Safe external check only — no relay, no WCF calls, no exploit.")
       )}</p>
-      <div class="geo-grid">
-        <div><span class="muted">CVSS ${escapeHtml(String(cvss.version || "3.1"))}</span>
-          <strong class="status warn">${escapeHtml(
-            cvss.base_score != null ? String(cvss.base_score) : "8.0"
-          )}</strong>
-          <div class="tiny muted">${escapeHtml(tDesc(cvss.severity || "High"))}
-            · ${escapeHtml(t("Microsoft MSRC"))}</div>
-          ${
-            cvss.vector
-              ? `<div class="tiny mono muted">${escapeHtml(cvss.vector)}</div>`
-              : ""
-          }
-        </div>
-        <div><span class="muted">${escapeHtml(t("Result"))}</span>
-          <strong class="status ${riskClass}">${escapeHtml(verdictText)}</strong></div>
-        <div><span class="muted">${escapeHtml(t("Scan risk"))}</span>
-          <strong class="status ${riskClass}">${escapeHtml(riskText)}</strong></div>
-        <div><span class="muted">${escapeHtml(t("HTTP.sys MRSProxy"))}</span>
-          <strong class="status ${cve.httpsys_exposed ? "err" : "ok"}">${escapeHtml(
-            cve.httpsys_exposed ? t("Exposed signal") : t("Not seen")
-          )}</strong></div>
-        <div><span class="muted">${escapeHtml(t("Build hint"))}</span>
-          <strong class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</strong></div>
-        <div><span class="muted">${escapeHtml(t("Patch status"))}</span>
-          <strong class="status ${patchClass}">${escapeHtml(tDesc(patchStatus))}</strong>
-          <div class="tiny muted">${escapeHtml(tDesc(build.detail || ""))}</div>
-          ${
-            build.tech
-              ? `<div class="tiny mono muted">${escapeHtml(build.tech)}</div>`
-              : build.branch
-                ? `<div class="tiny muted">${escapeHtml(build.branch)}</div>`
-                : ""
-          }</div>
-      </div>
-      <p>${escapeHtml(summaryText)}</p>
+      <div class="table-wrap"><table class="cve-kv">
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p class="cve-summary">${escapeHtml(summaryText)}</p>
       ${hits ? `<ul class="guide-list">${hits}</ul>` : ""}
       ${
         rem
@@ -1755,13 +1761,13 @@ function renderExchangeCveChecker(data, root) {
         risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : "ok";
       const cvssScore = c.cvss?.base_score != null ? String(c.cvss.base_score) : "—";
       return `<tr>
-        <td class="mono">${escapeHtml(c.id || "")}</td>
+        <td class="mono nowrap">${escapeHtml(c.id || "")}</td>
         <td>${escapeHtml(tDesc(c.name || ""))}</td>
         <td class="mono">${escapeHtml(cvssScore)}</td>
-        <td><strong class="status ${riskClass}">${escapeHtml(
+        <td><span class="cve-flag status ${riskClass}">${escapeHtml(
           c.skipped ? t("Skipped") : tDesc(c.verdict_label || c.verdict || risk)
-        )}</strong></td>
-        <td class="tiny">${escapeHtml(tDesc((c.summary || "").slice(0, 280)))}</td>
+        )}</span></td>
+        <td class="tiny">${escapeHtml(tDesc(c.summary || ""))}</td>
       </tr>`;
     })
     .join("");
