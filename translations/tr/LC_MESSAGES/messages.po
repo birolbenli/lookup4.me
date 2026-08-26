@@ -2179,3 +2179,141 @@ msgstr ""
 "Dışarıdan Exchange CVE kütüphanesi — ilk kontrol CVE-2026-62911 (HTTP.sys MRSProxy). Yalnızca "
 "güvenli sondalar; zamanla genişler."
 
+msgid "Microsoft MSRC"
+msgstr "Microsoft MSRC"
+
+msgid "Scan risk"
+msgstr "Tarama riski"
+
+msgid "Posture score"
+msgstr "Duruş skoru"
+
+msgid "Not visible externally"
+msgstr "Dışarıdan görünmüyor"
+
+msgid "Likely affected"
+msgstr "Muhtemelen etkileniyor"
+
+msgid "Exposure signal present — build hint looks patched"
+msgstr "Maruziyet sinyali var — derleme ipucu yamalı görünüyor"
+
+msgid "Exposure signal present — patch level not visible"
+msgstr "Maruziyet sinyali var — yama seviyesi görünmüyor"
+
+msgid "No public exposure fingerprint"
+msgstr "Herkese açık maruziyet parmak izi yok"
+
+msgid "Exposure signal not seen"
+msgstr "Maruziyet sinyali görülmedi"
+
+msgid "Looks patched (header hint)"
+msgstr "Yamalı görünüyor (başlık ipucu)"
+
+msgid "Looks unpatched (header hint)"
+msgstr "Yamasız görünüyor (başlık ipucu)"
+
+msgid "Confirm internally"
+msgstr "İçeriden doğrulayın"
+
+msgid "Medium"
+msgstr "Orta"
+
+msgid "Low"
+msgstr "Düşük"
+
+msgid "Informational"
+msgstr "Bilgi"
+
+msgid ""
+"Public HTTP.sys MRSProxy fingerprint seen (Microsoft-HTTPAPI + Negotiate), and the passive build "
+"hint looks below the August 2026 security update."
+msgstr ""
+"Herkese açık HTTP.sys MRSProxy parmak izi görüldü (Microsoft-HTTPAPI + Negotiate) ve pasif "
+"derleme ipucu Ağustos 2026 güvenlik güncellemesinin altında görünüyor."
+
+msgid ""
+"HTTP.sys MRSProxy still answers with Negotiate, but the passive build hint looks at or above the "
+"August 2026 update. Confirm Extended Protection and SU with Exchange HealthChecker — this probe "
+"cannot prove EPA."
+msgstr ""
+"HTTP.sys MRSProxy hâlâ Negotiate ile yanıt veriyor; ancak pasif derleme ipucu Ağustos 2026 "
+"güncellemesi seviyesinde veya üzerinde. Extended Protection ve SU’yu HealthChecker ile doğrulayın"
+" — bu sonda EPA’yı kanıtlayamaz."
+
+msgid ""
+"HTTP.sys MRSProxy returned Microsoft-HTTPAPI with Negotiate (the public check-only fingerprint "
+"for this CVE). No build header was seen, so apply or verify the August 2026 security update "
+"immediately."
+msgstr ""
+"HTTP.sys MRSProxy Microsoft-HTTPAPI + Negotiate döndürdü (bu CVE için herkese açık kontrol parmak"
+" izi). Derleme başlığı görülmedi; Ağustos 2026 güvenlik güncellemesini hemen uygulayın veya "
+"doğrulayın."
+
+msgid ""
+"The MRSProxy HTTP.sys URL answered, but the Microsoft-HTTPAPI + Negotiate fingerprint was not "
+"seen. That usually means a proxy/WAF, another service, or that this vulnerable binding is not "
+"exposed on the public path."
+msgstr ""
+"MRSProxy HTTP.sys URL’si yanıt verdi ancak Microsoft-HTTPAPI + Negotiate parmak izi görülmedi. Bu"
+" genelde proxy/WAF, başka bir servis veya zafiyetli bağlamanın herkese açık yolda olmadığını "
+"gösterir."
+
+msgid "No public HTTP.sys MRSProxy exposure signal was found on the probed hosts."
+msgstr "Sorgulanan sunucularda herkese açık HTTP.sys MRSProxy maruziyet sinyali bulunamadı."
+
+msgid "No x-owa-version header was returned, so patch level cannot be judged from outside."
+msgstr "x-owa-version başlığı dönmedi; yama seviyesi dışarıdan değerlendirilemez."
+
+msgid "Passive x-owa-version hint is at or above the August 2026 SU floor for this CU."
+msgstr "Pasif x-owa-version ipucu, bu CU için Ağustos 2026 SU eşiğinde veya üzerinde."
+
+msgid "Passive x-owa-version hint is below the August 2026 SU floor for this CU."
+msgstr "Pasif x-owa-version ipucu, bu CU için Ağustos 2026 SU eşiğinin altında."
+
+msgid "Build is outside the known CU tables for this check — confirm SU with HealthChecker."
+msgstr "Derleme bu kontrolün bilinen CU tablolarının dışında — SU’yu HealthChecker ile doğrulayın."
+
+msgid "Apply the August 2026 Exchange security updates for CVE-2026-62911 (see MSRC)."
+msgstr "CVE-2026-62911 için Ağustos 2026 Exchange güvenlik güncellemesini uygulayın (MSRC’ye bakın)."
+
+msgid "Confirm build is at or above your CU’s fixed revision (2016 CU23 / 2019 CU14–CU15 / SE)."
+msgstr ""
+"Derlemenin CU’nuzun düzeltilmiş sürümünde veya üzerinde olduğunu doğrulayın (2016 CU23 / 2019 "
+"CU14–CU15 / SE)."
+
+msgid "Restrict MRSProxy publishing if it is not required for hybrid or migration."
+msgstr "Hybrid veya migration için gerekmiyorsa MRSProxy yayınını kısıtlayın."
+
+msgid "Enable Exchange Extended Protection where supported."
+msgstr "Desteklenen yerlerde Exchange Extended Protection’ı açın."
+
+msgid "MRSProxy HTTP.sys / capture-replay"
+msgstr "MRSProxy HTTP.sys / capture-replay"
+
+msgid "CVE-2026-62911: patch level not visible externally"
+msgstr "CVE-2026-62911: yama seviyesi dışarıdan görünmüyor"
+
+msgid "Without x-owa-version, this tool cannot claim patched or unpatched."
+msgstr "x-owa-version olmadan bu araç yamalı/yamasız iddiasında bulunamaz."
+
+msgid "Check build inventory internally; do not guess from missing headers."
+msgstr "Derleme envanterini içeriden kontrol edin; eksik başlıktan tahmin etmeyin."
+
+msgid ""
+"CVE library starts with CVE-2026-62911. Safe external probes only — no relay, WCF abuse, or "
+"exploit payloads."
+msgstr ""
+"CVE kütüphanesi CVE-2026-62911 ile başlar. Yalnızca güvenli dış sondalar — relay, WCF istismarı "
+"veya exploit yok."
+
+msgid "Start with CVE-2026-62911 (HTTP.sys MRSProxy). More CVEs will be added to this library over time."
+msgstr "İlk kontrol CVE-2026-62911 (HTTP.sys MRSProxy). Zamanla daha fazla CVE eklenecek."
+
+msgid "Confirm builds with Exchange HealthChecker / Get-ExchangeServer — x-owa-version is only a hint."
+msgstr ""
+"Derlemeyi Exchange HealthChecker / Get-ExchangeServer ile doğrulayın — x-owa-version yalnızca "
+"ipucudur."
+
+msgid "Exchange Online is not in scope for these on-prem MRSProxy checks."
+msgstr "Exchange Online bu on-prem MRSProxy kontrollerinin kapsamında değildir."
+

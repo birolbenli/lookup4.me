@@ -45,8 +45,11 @@ def _run_cve_2026_62911(hosts: list[str], build_hint: str | None) -> dict[str, A
         "assessment": assessment,
         "findings": findings,
         "risk": assessment.get("risk") or "info",
+        "risk_label": assessment.get("risk_label") or assessment.get("risk") or "info",
         "verdict": assessment.get("verdict") or "",
+        "verdict_label": assessment.get("verdict_label") or assessment.get("verdict") or "",
         "summary": assessment.get("summary") or "",
+        "cvss": assessment.get("cvss"),
         "advisory": assessment.get("advisory"),
     }
 
@@ -138,9 +141,9 @@ def check_exchange_cves(host: str) -> dict[str, Any]:
             worst = r
 
     active = [c for c in checks if not c.get("skipped")]
-    title = f"Exchange CVE Checker — {len(active)} check(s)"
+    title = "Exchange CVE Checker"
     note = (
-        f"Library: {', '.join(c['id'] for c in active)}. "
+        "CVE library starts with CVE-2026-62911. "
         "Safe external probes only — no relay, WCF abuse, or exploit payloads."
     )
 

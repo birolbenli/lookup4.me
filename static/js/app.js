@@ -953,18 +953,43 @@ function renderCve202662911(cve) {
         · Server=${escapeHtml(h.server || "—")}</span></li>`
     )
     .join("");
-  const rem = (cve.remediation || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+  const rem = (cve.remediation || []).map((r) => `<li>${escapeHtml(tDesc(r))}</li>`).join("");
   const build = cve.build || {};
+  const patchStatus = build.label || build.status || "";
+  const patchClass =
+    build.status === "vulnerable"
+      ? "err"
+      : build.status === "patched"
+        ? "ok"
+        : build.status === "not_visible" || build.status === "needs_confirm"
+          ? "warn"
+          : "";
+  const cvss = cve.cvss || {};
+  const verdictText = tDesc(cve.verdict_label || cve.verdict || "—");
+  const riskText = tDesc(cve.risk_label || risk);
+  const summaryText = tDesc(cve.summary || "");
   return `<div class="block">
       <h3>${escapeHtml(t("CVE check"))}: ${escapeHtml(cve.cve || "CVE-2026-62911")}</h3>
       <p class="tiny muted">${escapeHtml(
         t("Safe external check only — no relay, no WCF calls, no exploit.")
       )}</p>
       <div class="geo-grid">
-        <div><span class="muted">${escapeHtml(t("Verdict"))}</span>
-          <strong class="status ${riskClass}">${escapeHtml(cve.verdict || "—")}</strong></div>
-        <div><span class="muted">${escapeHtml(t("Risk"))}</span>
-          <strong class="status ${riskClass}">${escapeHtml(risk)}</strong></div>
+        <div><span class="muted">CVSS ${escapeHtml(String(cvss.version || "3.1"))}</span>
+          <strong class="status warn">${escapeHtml(
+            cvss.base_score != null ? String(cvss.base_score) : "8.0"
+          )}</strong>
+          <div class="tiny muted">${escapeHtml(tDesc(cvss.severity || "High"))}
+            · ${escapeHtml(t("Microsoft MSRC"))}</div>
+          ${
+            cvss.vector
+              ? `<div class="tiny mono muted">${escapeHtml(cvss.vector)}</div>`
+              : ""
+          }
+        </div>
+        <div><span class="muted">${escapeHtml(t("Result"))}</span>
+          <strong class="status ${riskClass}">${escapeHtml(verdictText)}</strong></div>
+        <div><span class="muted">${escapeHtml(t("Scan risk"))}</span>
+          <strong class="status ${riskClass}">${escapeHtml(riskText)}</strong></div>
         <div><span class="muted">${escapeHtml(t("HTTP.sys MRSProxy"))}</span>
           <strong class="status ${cve.httpsys_exposed ? "err" : "ok"}">${escapeHtml(
             cve.httpsys_exposed ? t("Exposed signal") : t("Not seen")
@@ -972,10 +997,17 @@ function renderCve202662911(cve) {
         <div><span class="muted">${escapeHtml(t("Build hint"))}</span>
           <strong class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</strong></div>
         <div><span class="muted">${escapeHtml(t("Patch status"))}</span>
-          <strong>${escapeHtml(build.status || "unknown")}</strong>
-          <div class="tiny muted">${escapeHtml(build.branch || "")}</div></div>
+          <strong class="status ${patchClass}">${escapeHtml(tDesc(patchStatus))}</strong>
+          <div class="tiny muted">${escapeHtml(tDesc(build.detail || ""))}</div>
+          ${
+            build.tech
+              ? `<div class="tiny mono muted">${escapeHtml(build.tech)}</div>`
+              : build.branch
+                ? `<div class="tiny muted">${escapeHtml(build.branch)}</div>`
+                : ""
+          }</div>
       </div>
-      <p>${escapeHtml(cve.summary || "")}</p>
+      <p>${escapeHtml(summaryText)}</p>
       ${hits ? `<ul class="guide-list">${hits}</ul>` : ""}
       ${
         rem
@@ -1721,26 +1753,36 @@ function renderExchangeCveChecker(data, root) {
       const risk = String(c.risk || (c.skipped ? "info" : "info")).toLowerCase();
       const riskClass =
         risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : "ok";
+      const cvssScore = c.cvss?.base_score != null ? String(c.cvss.base_score) : "—";
       return `<tr>
         <td class="mono">${escapeHtml(c.id || "")}</td>
-        <td>${escapeHtml(c.name || "")}</td>
+        <td>${escapeHtml(tDesc(c.name || ""))}</td>
+        <td class="mono">${escapeHtml(cvssScore)}</td>
         <td><strong class="status ${riskClass}">${escapeHtml(
-          c.skipped ? t("Skipped") : c.verdict || risk
+          c.skipped ? t("Skipped") : tDesc(c.verdict_label || c.verdict || risk)
         )}</strong></td>
-        <td class="tiny">${escapeHtml((c.summary || "").slice(0, 220))}</td>
+        <td class="tiny">${escapeHtml(tDesc((c.summary || "").slice(0, 280)))}</td>
       </tr>`;
     })
     .join("");
 
-  const guide = (data.guidance || []).map((g) => `<li>${escapeHtml(g)}</li>`).join("");
+  const guide = (data.guidance || []).map((g) => `<li>${escapeHtml(tDesc(g))}</li>`).join("");
+  const firstCvss = (checks.find((c) => c.cvss?.base_score != null) || {}).cvss;
 
   root.appendChild(
     el(`<div class="stack exchange-report">
       <div class="summary">
         <span class="pill">${escapeHtml(t("External check"))}</span>
         ${
+          firstCvss
+            ? `<span class="pill score-pill">CVSS ${escapeHtml(String(firstCvss.base_score))} (${escapeHtml(
+                tDesc(firstCvss.severity || "High")
+              )})</span>`
+            : ""
+        }
+        ${
           data.score != null
-            ? `<span class="pill score-pill">${escapeHtml(t("Score"))}: ${escapeHtml(
+            ? `<span class="pill">${escapeHtml(t("Posture score"))}: ${escapeHtml(
                 String(data.score)
               )}/100</span>`
             : ""
@@ -1748,16 +1790,15 @@ function renderExchangeCveChecker(data, root) {
         <span class="pill">${escapeHtml(t("CVE library"))}: ${escapeHtml(
           String(checks.filter((c) => !c.skipped).length)
         )}</span>
-        ${
-          data.worst_risk
-            ? `<span class="pill">${escapeHtml(t("Worst risk"))}: ${escapeHtml(data.worst_risk)}</span>`
-            : ""
-        }
       </div>
       <h3 class="scan-title">${escapeHtml(data.title || t("Exchange CVE Checker"))}</h3>
-      ${data.note ? `<p class="muted">${escapeHtml(data.note)}</p>` : ""}
+      ${data.note ? `<p class="muted">${escapeHtml(tDesc(data.note))}</p>` : ""}
       <p class="tiny muted"><span class="mono">${escapeHtml(data.host || "")}</span>
-        ${data.build_hint ? ` · ${escapeHtml(t("Build hint"))}: <span class="mono">${escapeHtml(data.build_hint)}</span>` : ""}
+        ${
+          data.build_hint
+            ? ` · ${escapeHtml(t("Build hint"))}: <span class="mono">${escapeHtml(data.build_hint)}</span>`
+            : ` · ${escapeHtml(t("Build hint"))}: ${escapeHtml(t("Not visible externally"))}`
+        }
       </p>
 
       <div class="block">
@@ -1774,8 +1815,8 @@ function renderExchangeCveChecker(data, root) {
         <h3>${escapeHtml(t("This run"))}</h3>
         <div class="table-wrap"><table>
           <thead><tr>
-            <th>CVE</th><th>${escapeHtml(t("Name"))}</th>
-            <th>${escapeHtml(t("Verdict"))}</th><th>${escapeHtml(t("Summary"))}</th>
+            <th>CVE</th><th>${escapeHtml(t("Name"))}</th><th>CVSS</th>
+            <th>${escapeHtml(t("Result"))}</th><th>${escapeHtml(t("Summary"))}</th>
           </tr></thead>
           <tbody>${checkRows}</tbody>
         </table></div>

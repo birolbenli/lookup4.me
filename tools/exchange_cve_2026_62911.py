@@ -35,6 +35,75 @@ KB_REFS = (
     "https://support.microsoft.com/help/5121573",  # SE RTM
 )
 
+# Microsoft MSRC CVSS 3.1 for CVE-2026-62911
+CVSS = {
+    "version": "3.1",
+    "base_score": 8.0,
+    "severity": "High",
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:H",
+    "source": "Microsoft MSRC",
+}
+
+# Human labels (English msgids — translated in the UI via gettext)
+VERDICT_COPY: dict[str, dict[str, str]] = {
+    "likely_affected": {
+        "label": "Likely affected",
+        "summary": (
+            "Public HTTP.sys MRSProxy fingerprint seen (Microsoft-HTTPAPI + Negotiate), "
+            "and the passive build hint looks below the August 2026 security update."
+        ),
+    },
+    "surface_present_build_looks_patched": {
+        "label": "Exposure signal present — build hint looks patched",
+        "summary": (
+            "HTTP.sys MRSProxy still answers with Negotiate, but the passive build hint "
+            "looks at or above the August 2026 update. Confirm Extended Protection and SU "
+            "with Exchange HealthChecker — this probe cannot prove EPA."
+        ),
+    },
+    "surface_present_build_unknown": {
+        "label": "Exposure signal present — patch level not visible",
+        "summary": (
+            "HTTP.sys MRSProxy returned Microsoft-HTTPAPI with Negotiate (the public "
+            "check-only fingerprint for this CVE). No build header was seen, so apply or "
+            "verify the August 2026 security update immediately."
+        ),
+    },
+    "path_reachable_no_httpsys_negotiate": {
+        "label": "No public exposure fingerprint",
+        "summary": (
+            "The MRSProxy HTTP.sys URL answered, but the Microsoft-HTTPAPI + Negotiate "
+            "fingerprint was not seen. That usually means a proxy/WAF, another service, "
+            "or that this vulnerable binding is not exposed on the public path."
+        ),
+    },
+    "httpsys_mrs_not_exposed": {
+        "label": "Exposure signal not seen",
+        "summary": (
+            "No public HTTP.sys MRSProxy exposure signal was found on the probed hosts."
+        ),
+    },
+}
+
+PATCH_COPY: dict[str, dict[str, str]] = {
+    "patched": {
+        "label": "Looks patched (header hint)",
+        "detail": "Passive x-owa-version hint is at or above the August 2026 SU floor for this CU.",
+    },
+    "vulnerable": {
+        "label": "Looks unpatched (header hint)",
+        "detail": "Passive x-owa-version hint is below the August 2026 SU floor for this CU.",
+    },
+    "not_visible": {
+        "label": "Not visible externally",
+        "detail": "No x-owa-version header was returned, so patch level cannot be judged from outside.",
+    },
+    "needs_confirm": {
+        "label": "Confirm internally",
+        "detail": "Build is outside the known CU tables for this check — confirm SU with HealthChecker.",
+    },
+}
+
 
 def parse_build(raw: str | None) -> tuple[int, int, int, int] | None:
     if not raw:
@@ -61,11 +130,14 @@ def parse_build(raw: str | None) -> tuple[int, int, int, int] | None:
 
 def classify_build(build: tuple[int, int, int, int] | None) -> dict[str, Any]:
     if not build:
+        copy = PATCH_COPY["not_visible"]
         return {
-            "status": "unknown",
+            "status": "not_visible",
+            "label": copy["label"],
             "branch": None,
             "patched": None,
-            "detail": "No reliable Exchange build from external headers.",
+            "detail": copy["detail"],
+            "tech": None,
         }
     major, minor, cu_build, rev = build
     label = f"{major}.{minor}.{cu_build}.{rev}"
@@ -73,20 +145,27 @@ def classify_build(build: tuple[int, int, int, int] | None) -> dict[str, Any]:
     if (major, minor) == (15, 1):
         floor = PATCHED_AT_OR_ABOVE["2016_cu23"]
         patched = build >= floor
+        status = "patched" if patched else "vulnerable"
+        copy = PATCH_COPY[status]
         return {
-            "status": "patched" if patched else "vulnerable",
+            "status": status,
+            "label": copy["label"],
             "branch": "Exchange 2016 (CU23 lineage)",
             "patched": patched,
-            "detail": f"Build {label}; Aug 2026 SU floor {'.'.join(map(str, floor))}.",
+            "detail": copy["detail"],
+            "tech": f"Build {label}; floor {'.'.join(map(str, floor))}",
             "floor": floor,
         }
 
     if (major, minor) != (15, 2):
+        copy = PATCH_COPY["needs_confirm"]
         return {
-            "status": "unknown",
+            "status": "needs_confirm",
+            "label": copy["label"],
             "branch": f"Unrecognized {major}.{minor}",
             "patched": None,
-            "detail": f"Build {label} is outside known 15.1/15.2 Exchange ranges for this check.",
+            "detail": copy["detail"],
+            "tech": f"Seen build {label}",
         }
 
     if cu_build == 2562:
@@ -99,34 +178,37 @@ def classify_build(build: tuple[int, int, int, int] | None) -> dict[str, Any]:
         floor = PATCHED_AT_OR_ABOVE["2019_cu14"]
         branch = "Exchange 2019 CU14"
     elif cu_build < 1544:
+        copy = PATCH_COPY["vulnerable"]
         return {
             "status": "vulnerable",
+            "label": copy["label"],
             "branch": f"Exchange 2019 older CU (build {cu_build})",
             "patched": False,
-            "detail": (
-                f"Build {label} is below CU14 patch lineage — upgrade to a supported CU "
-                "and apply the Aug 2026 security update."
-            ),
+            "detail": copy["detail"],
+            "tech": f"Build {label} is below CU14 lineage",
             "floor": PATCHED_AT_OR_ABOVE["2019_cu14"],
         }
     else:
-        # Newer / unknown 15.2 builds (post-CU15 / future): treat as unknown, not auto-vulnerable
+        copy = PATCH_COPY["needs_confirm"]
         return {
-            "status": "unknown",
+            "status": "needs_confirm",
+            "label": copy["label"],
             "branch": f"Exchange 15.2 build {cu_build}",
             "patched": None,
-            "detail": (
-                f"Build {label} is not in the Aug 2026 CU14/CU15/SE tables — "
-                "confirm SU level with HealthChecker / Get-ExchangeServer."
-            ),
+            "detail": copy["detail"],
+            "tech": f"Seen build {label}",
         }
 
     patched = build >= floor
+    status = "patched" if patched else "vulnerable"
+    copy = PATCH_COPY[status]
     return {
-        "status": "patched" if patched else "vulnerable",
+        "status": status,
+        "label": copy["label"],
         "branch": branch,
         "patched": patched,
-        "detail": f"Build {label}; Aug 2026 SU floor {'.'.join(map(str, floor))}.",
+        "detail": copy["detail"],
+        "tech": f"Build {label}; floor {'.'.join(map(str, floor))}",
         "floor": floor,
     }
 
@@ -212,46 +294,51 @@ def assess_cve_2026_62911(
     if httpsys_hits and build_info.get("patched") is False:
         risk = "critical"
         verdict = "likely_affected"
-        summary = (
-            "HTTP.sys MRSProxy advertises Negotiate and the passive build hint looks "
-            f"below the Aug 2026 SU ({build_info.get('detail')})."
-        )
     elif httpsys_hits and build_info.get("patched") is True:
         risk = "medium"
         verdict = "surface_present_build_looks_patched"
-        summary = (
-            "HTTP.sys MRSProxy is still reachable with Negotiate, but the passive build "
-            f"hint looks at/above the Aug 2026 SU ({build_info.get('detail')}). "
-            "Confirm EPA / SU with HealthChecker — anonymous probes cannot prove EPA."
-        )
     elif httpsys_hits:
         risk = "high"
         verdict = "surface_present_build_unknown"
-        summary = (
-            "HTTP.sys MRSProxy (/Microsoft.Exchange.MailboxReplicationService.ProxyService) "
-            "returns Microsoft-HTTPAPI with Negotiate — the public exposure signal for "
-            f"{CVE_ID}. Build not confirmed externally; verify Aug 2026 SU immediately."
-        )
     elif httpsys_any:
         risk = "low"
         verdict = "path_reachable_no_httpsys_negotiate"
-        summary = (
-            "MRSProxy HTTP.sys path responded, but the HTTPAPI+Negotiate check-only "
-            "fingerprint was not observed (may be filtered, patched differently, or not Exchange)."
-        )
     else:
         risk = "info"
         verdict = "httpsys_mrs_not_exposed"
-        summary = (
-            f"No public HTTP.sys MRSProxy exposure signal for {CVE_ID} on probed hosts."
-        )
+
+    vcopy = VERDICT_COPY.get(verdict) or VERDICT_COPY["httpsys_mrs_not_exposed"]
+    summary = vcopy["summary"]
+    if build_info.get("detail") and verdict in {
+        "likely_affected",
+        "surface_present_build_looks_patched",
+        "surface_present_build_unknown",
+    }:
+        # Keep summary as stable msgid; put build detail separately for UI
+        pass
+
+    remediation = [
+        "Apply the August 2026 Exchange security updates for CVE-2026-62911 (see MSRC).",
+        "Confirm build is at or above your CU’s fixed revision (2016 CU23 / 2019 CU14–CU15 / SE).",
+        "Restrict MRSProxy publishing if it is not required for hybrid or migration.",
+        "Enable Exchange Extended Protection where supported.",
+    ]
 
     return {
         "cve": CVE_ID,
         "title": "Exchange MRSProxy HTTP.sys / capture-replay (CVE-2026-62911)",
         "verdict": verdict,
+        "verdict_label": vcopy["label"],
         "risk": risk,
+        "risk_label": {
+            "critical": "Critical",
+            "high": "High",
+            "medium": "Medium",
+            "low": "Low",
+            "info": "Informational",
+        }.get(risk, risk),
         "summary": summary,
+        "cvss": dict(CVSS),
         "mode": "external_safe_check_only",
         "build_hint": build_hint,
         "build_parsed": ".".join(map(str, build)) if build else None,
@@ -265,15 +352,10 @@ def assess_cve_2026_62911(
         "kb_refs": list(KB_REFS),
         "limitations": [
             "Does not authenticate, relay NTLM, or invoke MRSProxy WCF methods.",
-            "Cannot prove Extended Protection is enabled after a patch — only exposure + build hints.",
+            "Cannot prove Extended Protection is enabled after a patch — only exposure and build hints.",
             "x-owa-version is a weak fingerprint; confirm with Exchange HealthChecker / Get-ExchangeServer.",
         ],
-        "remediation": [
-            f"Apply the August 2026 Exchange security updates for {CVE_ID} (see MSRC).",
-            "Confirm build is at/above your CU’s fixed revision (2016 CU23 / 2019 CU14–CU15 / SE).",
-            "Restrict MRSProxy publishing if not required for hybrid/migration.",
-            "Enable Exchange Extended Protection where supported.",
-        ],
+        "remediation": remediation,
     }
 
 
@@ -419,6 +501,23 @@ def findings_for_cve_2026_62911(assessment: dict[str, Any]) -> list[dict]:
                 why="Header fingerprint only — still verify Extended Protection.",
                 remediation="Run CSS-Exchange HealthChecker and confirm SU inventory.",
                 ref_keys=("CVE-2026-62911", "M1", "M13"),
+                category="cve",
+            )
+        )
+    elif build.get("status") == "not_visible":
+        out.append(
+            finding(
+                id="CVE-2026-62911-BUILD-HIDDEN",
+                title=f"{CVE_ID}: patch level not visible externally",
+                status="INFO",
+                severity="info",
+                confidence="medium",
+                target="",
+                observed=build.get("detail") or PATCH_COPY["not_visible"]["detail"],
+                expected="Confirm SU with Exchange HealthChecker / Get-ExchangeServer.",
+                why="Without x-owa-version, this tool cannot claim patched or unpatched.",
+                remediation="Check build inventory internally; do not guess from missing headers.",
+                ref_keys=("CVE-2026-62911", "M13", "M1"),
                 category="cve",
             )
         )
