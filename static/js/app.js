@@ -940,11 +940,17 @@ function exchangeVdCell(e) {
   </div>`;
 }
 
-function renderCve202662911(cve) {
+function cveExposureClass(cve) {
+  const exp = String(cve?.exposure || (cve?.httpsys_exposed ? "yes" : "no")).toLowerCase();
+  if (exp === "yes") return "err";
+  return "ok";
+}
+
+function renderCve202662911(cve, opts = {}) {
   if (!cve || !cve.cve) return "";
-  const risk = String(cve.risk || "info").toLowerCase();
-  const riskClass =
-    risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : risk === "low" ? "warn" : "ok";
+  const compact = !!opts.compact;
+  const exposed = String(cve.exposure || (cve.httpsys_exposed ? "yes" : "no")).toLowerCase() === "yes";
+  const expClass = cveExposureClass(cve);
   const hits = (cve.httpsys_hits || [])
     .map(
       (h) =>
@@ -956,46 +962,57 @@ function renderCve202662911(cve) {
   const rem = (cve.remediation || []).map((r) => `<li>${escapeHtml(tDesc(r))}</li>`).join("");
   const build = cve.build || {};
   const patchStatus = build.label || build.status || "";
+  // Missing version header is good (less fingerprinting) → green, not orange.
   const patchClass =
     build.status === "vulnerable"
       ? "err"
-      : build.status === "patched"
+      : build.status === "patched" || build.status === "not_visible"
         ? "ok"
-        : build.status === "not_visible" || build.status === "needs_confirm"
+        : build.status === "needs_confirm"
           ? "warn"
           : "";
   const cvss = cve.cvss || {};
+  const headline = tDesc(cve.headline || (exposed ? "Exposure found" : "No exposure found"));
   const verdictText = tDesc(cve.verdict_label || cve.verdict || "—");
-  const riskText = tDesc(cve.risk_label || risk);
   const summaryText = tDesc(cve.summary || "");
   const cvssScore = cvss.base_score != null ? String(cvss.base_score) : "8.0";
+  const patchCheck = cve.internal_patch_check || {};
   const rows = [
     [
-      `CVSS ${escapeHtml(String(cvss.version || "3.1"))}`,
-      `<strong class="status warn">${escapeHtml(cvssScore)}</strong>
-       <span class="tiny muted"> ${escapeHtml(tDesc(cvss.severity || "High"))} · ${escapeHtml(t("Microsoft MSRC"))}</span>
-       ${cvss.vector ? `<div class="cve-vector mono tiny muted">${escapeHtml(cvss.vector)}</div>` : ""}`,
+      escapeHtml(t("Exposure")),
+      `<span class="cve-flag status ${expClass}">${escapeHtml(
+        exposed ? t("Yes — public fingerprint seen") : t("No — fingerprint not seen")
+      )}</span>
+       <div class="tiny muted cve-note">${escapeHtml(verdictText)}</div>`,
     ],
     [
-      escapeHtml(t("Result")),
-      `<span class="cve-flag status ${riskClass}">${escapeHtml(verdictText)}</span>`,
-    ],
-    [
-      escapeHtml(t("Scan risk")),
-      `<span class="status ${riskClass}">${escapeHtml(riskText)}</span>`,
+      escapeHtml(t("What this means")),
+      `<span class="cve-summary-inline">${escapeHtml(summaryText)}</span>`,
     ],
     [
       escapeHtml(t("HTTP.sys MRSProxy")),
       `<span class="status ${cve.httpsys_exposed ? "err" : "ok"}">${escapeHtml(
-        cve.httpsys_exposed ? t("Exposed signal") : t("Not seen")
+        cve.httpsys_exposed ? t("Exposure fingerprint present") : t("Exposure fingerprint absent")
       )}</span>`,
     ],
     [
-      escapeHtml(t("Build hint")),
-      `<span class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</span>`,
+      `CVSS ${escapeHtml(String(cvss.version || "3.1"))}`,
+      `<strong class="status warn">${escapeHtml(cvssScore)}</strong>
+       <span class="tiny muted"> ${escapeHtml(tDesc(cvss.severity || "High"))} · ${escapeHtml(t("Microsoft MSRC"))}</span>
+       <div class="tiny muted cve-note">${escapeHtml(
+         t("CVSS is the CVE’s published severity — not a score for this host.")
+       )}</div>
+       ${cvss.vector ? `<div class="cve-vector mono tiny muted">${escapeHtml(cvss.vector)}</div>` : ""}`,
     ],
     [
-      escapeHtml(t("Patch status")),
+      escapeHtml(t("External build hint")),
+      `<span class="mono">${escapeHtml(cve.build_parsed || cve.build_hint || "—")}</span>
+       <div class="tiny muted cve-note">${escapeHtml(
+         t("Optional x-owa-version header only. Absence is normal and preferred.")
+       )}</div>`,
+    ],
+    [
+      escapeHtml(t("Patch status (external)")),
       `<span class="cve-flag status ${patchClass}">${escapeHtml(tDesc(patchStatus))}</span>
        ${build.detail ? `<div class="tiny muted cve-note">${escapeHtml(tDesc(build.detail))}</div>` : ""}
        ${build.tech ? `<div class="tiny mono muted">${escapeHtml(build.tech)}</div>` : ""}
@@ -1005,20 +1022,42 @@ function renderCve202662911(cve) {
     .map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`)
     .join("");
 
+  const banner = compact
+    ? ""
+    : `<div class="cve-verdict-banner ${exposed ? "is-exposed" : "is-clean"}" role="status">
+        <div class="cve-verdict-kicker">${escapeHtml(t("External result"))}</div>
+        <div class="cve-verdict-title">${escapeHtml(headline)}</div>
+        <p class="cve-verdict-text">${escapeHtml(summaryText)}</p>
+      </div>`;
+
+  const patchBox =
+    patchCheck.command
+      ? `<div class="cve-patch-box">
+          <h4 class="subhead">${escapeHtml(tDesc(patchCheck.title || "Check patch level on the server"))}</h4>
+          <p class="tiny muted">${escapeHtml(tDesc(patchCheck.why || ""))}</p>
+          <pre class="cve-cmd mono">${escapeHtml(patchCheck.command)}</pre>
+        </div>`
+      : "";
+
   return `<div class="block cve-detail">
-      <h3>${escapeHtml(t("CVE check"))}: ${escapeHtml(cve.cve || "CVE-2026-62911")}</h3>
+      ${banner}
+      ${compact ? `<h3>${escapeHtml(t("CVE check"))}: ${escapeHtml(cve.cve || "CVE-2026-62911")}</h3>` : ""}
       <p class="tiny muted">${escapeHtml(
         t("Safe external check only — no relay, no WCF calls, no exploit.")
       )}</p>
       <div class="table-wrap"><table class="cve-kv">
         <tbody>${rows}</tbody>
       </table></div>
-      <p class="cve-summary">${escapeHtml(summaryText)}</p>
       ${hits ? `<ul class="guide-list">${hits}</ul>` : ""}
+      ${patchBox}
       ${
         rem
-          ? `<h4 class="subhead">${escapeHtml(t("Remediation"))}</h4><ul class="guide-list">${rem}</ul>`
-          : ""
+          ? `<h4 class="subhead">${escapeHtml(t("What to do next"))}</h4><ul class="guide-list">${rem}</ul>`
+          : exposed
+            ? ""
+            : `<p class="status ok cve-next-ok">${escapeHtml(
+                t("No remediation from this external check — the exposure fingerprint was not found.")
+              )}</p>`
       }
       ${
         cve.advisory
@@ -1255,7 +1294,7 @@ function renderExchange(data, root) {
         ${escapeHtml(String(coverage.endpoints || 0))} ${escapeHtml(t("endpoints"))}
       </p>
 
-      ${renderCve202662911(data.cve_2026_62911)}
+      ${renderCve202662911(data.cve_2026_62911, { compact: true })}
 
       <div class="block">
         <h3>${escapeHtml(t("Attack surface"))} / ${escapeHtml(t("Related hosts"))}</h3>
@@ -1736,124 +1775,33 @@ function renderExchangeCveChecker(data, root) {
   if (!data.ok && data.error && !(data.findings || []).length) {
     return renderError(data, root);
   }
-  const summary = data.summary || {};
-  const checks = data.checks || [];
-  const lib = data.library || [];
-  const findings = data.findings || [];
-  const issues = findings.filter((f) => ["FAIL", "WARN"].includes(String(f.status || "").toUpperCase()));
-  const notes = findings.filter((f) => String(f.status || "").toUpperCase() === "INFO");
-  const oks = findings.filter((f) => String(f.status || "").toUpperCase() === "PASS");
-
-  const libRows = lib
-    .map(
-      (c) => `<tr>
-        <td class="mono">${escapeHtml(c.id || "")}</td>
-        <td>${escapeHtml(c.name || "")}</td>
-        <td>${escapeHtml(c.enabled ? t("Enabled") : t("Disabled"))}</td>
-      </tr>`
-    )
-    .join("");
-
-  const checkRows = checks
-    .map((c) => {
-      const risk = String(c.risk || (c.skipped ? "info" : "info")).toLowerCase();
-      const riskClass =
-        risk === "critical" ? "err" : risk === "high" || risk === "medium" ? "warn" : "ok";
-      const cvssScore = c.cvss?.base_score != null ? String(c.cvss.base_score) : "—";
-      return `<tr>
-        <td class="mono nowrap">${escapeHtml(c.id || "")}</td>
-        <td>${escapeHtml(tDesc(c.name || ""))}</td>
-        <td class="mono">${escapeHtml(cvssScore)}</td>
-        <td><span class="cve-flag status ${riskClass}">${escapeHtml(
-          c.skipped ? t("Skipped") : tDesc(c.verdict_label || c.verdict || risk)
-        )}</span></td>
-        <td class="tiny">${escapeHtml(tDesc(c.summary || ""))}</td>
-      </tr>`;
-    })
-    .join("");
-
+  const cve = data.cve_2026_62911 || {};
   const guide = (data.guidance || []).map((g) => `<li>${escapeHtml(tDesc(g))}</li>`).join("");
-  const firstCvss = (checks.find((c) => c.cvss?.base_score != null) || {}).cvss;
+  const cvss = cve.cvss || {};
 
   root.appendChild(
-    el(`<div class="stack exchange-report">
-      <div class="summary">
-        <span class="pill">${escapeHtml(t("External check"))}</span>
-        ${
-          firstCvss
-            ? `<span class="pill score-pill">CVSS ${escapeHtml(String(firstCvss.base_score))} (${escapeHtml(
-                tDesc(firstCvss.severity || "High")
-              )})</span>`
-            : ""
-        }
-        ${
-          data.score != null
-            ? `<span class="pill">${escapeHtml(t("Posture score"))}: ${escapeHtml(
-                String(data.score)
-              )}/100</span>`
-            : ""
-        }
-        <span class="pill">${escapeHtml(t("CVE library"))}: ${escapeHtml(
-          String(checks.filter((c) => !c.skipped).length)
-        )}</span>
-      </div>
+    el(`<div class="stack exchange-report cve-report">
       <h3 class="scan-title">${escapeHtml(data.title || t("Exchange CVE Checker"))}</h3>
-      ${data.note ? `<p class="muted">${escapeHtml(tDesc(data.note))}</p>` : ""}
+      <p class="muted">${escapeHtml(
+        tDesc(
+          data.note ||
+            "Safe external check for CVE-2026-62911. No credentials, no relay, no exploit — only public HTTP signals."
+        )
+      )}</p>
       <p class="tiny muted"><span class="mono">${escapeHtml(data.host || "")}</span>
+        · ${escapeHtml(t("CVE"))}: <span class="mono">${escapeHtml(cve.cve || "CVE-2026-62911")}</span>
         ${
-          data.build_hint
-            ? ` · ${escapeHtml(t("Build hint"))}: <span class="mono">${escapeHtml(data.build_hint)}</span>`
-            : ` · ${escapeHtml(t("Build hint"))}: ${escapeHtml(t("Not visible externally"))}`
+          cvss.base_score != null
+            ? ` · CVSS ${escapeHtml(String(cvss.base_score))} (${escapeHtml(tDesc(cvss.severity || "High"))})`
+            : ""
         }
       </p>
-
-      <div class="block">
-        <h3>${escapeHtml(t("CVE library"))}</h3>
-        <div class="table-wrap"><table>
-          <thead><tr>
-            <th>CVE</th><th>${escapeHtml(t("Name"))}</th><th>${escapeHtml(t("Status"))}</th>
-          </tr></thead>
-          <tbody>${libRows}</tbody>
-        </table></div>
-      </div>
-
-      <div class="block">
-        <h3>${escapeHtml(t("This run"))}</h3>
-        <div class="table-wrap"><table>
-          <thead><tr>
-            <th>CVE</th><th>${escapeHtml(t("Name"))}</th><th>CVSS</th>
-            <th>${escapeHtml(t("Result"))}</th><th>${escapeHtml(t("Summary"))}</th>
-          </tr></thead>
-          <tbody>${checkRows}</tbody>
-        </table></div>
-      </div>
-
-      ${renderCve202662911(data.cve_2026_62911)}
-
-      <div class="block">
-        <h3>${escapeHtml(t("Findings"))}</h3>
-        <div class="findings">
-          ${
-            issues.map((f) => renderExchangeFinding(f, { compact: false })).join("") ||
-            `<p class="status ok">${escapeHtml(t("No critical issues"))}</p>`
-          }
-        </div>
-        ${
-          notes.length
-            ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))} (${notes.length})</summary><div class="findings">${notes
-                .map((f) => renderExchangeFinding(f, { compact: true }))
-                .join("")}</div></details>`
-            : ""
-        }
-        ${
-          oks.length
-            ? `<details class="ex-more"><summary>${escapeHtml(t("Passed checks"))} (${oks.length})</summary><div class="findings">${oks
-                .map((f) => renderExchangeFinding(f, { compact: true }))
-                .join("")}</div></details>`
-            : ""
-        }
-      </div>
-      ${guide ? `<ul class="guide-list">${guide}</ul>` : ""}
+      ${renderCve202662911(cve)}
+      ${
+        guide
+          ? `<details class="ex-more"><summary>${escapeHtml(t("Notes"))}</summary><ul class="guide-list">${guide}</ul></details>`
+          : ""
+      }
     </div>`)
   );
 }

@@ -37,10 +37,10 @@
 <aside class="checks-bar" aria-label="{{ _('What this checks') }}">
   <div class="checks-bar-title">{{ _('What this checks') }}</div>
   <ul class="checks-bar-list">
-    <li>{{ _('Growing Exchange CVE library (external-only, safe probes)') }}</li>
-    <li>{{ _('CVE-2026-62911: HTTP.sys MRSProxy Negotiate exposure + build hint') }}</li>
-    <li>{{ _('Related hostnames (mail / Autodiscover) when they resolve publicly') }}</li>
-    <li>{{ _('No relay, no WCF abuse, no exploit payloads') }}</li>
+    <li>{{ _('One clear answer: is the CVE-2026-62911 public exposure fingerprint visible?') }}</li>
+    <li>{{ _('HTTP.sys MRSProxy path: Microsoft-HTTPAPI + Negotiate (safe check only)') }}</li>
+    <li>{{ _('Missing x-owa-version is good — confirm build on the server with PowerShell') }}</li>
+    <li>{{ _('Remediation shown only when exposure is found') }}</li>
   </ul>
 </aside>
 {% elif slug == 'headers' %}

@@ -143,8 +143,8 @@ def check_exchange_cves(host: str) -> dict[str, Any]:
     active = [c for c in checks if not c.get("skipped")]
     title = "Exchange CVE Checker"
     note = (
-        "CVE library starts with CVE-2026-62911. "
-        "Safe external probes only — no relay, WCF abuse, or exploit payloads."
+        "Safe external check for CVE-2026-62911. "
+        "No credentials, no relay, no exploit — only public HTTP signals."
     )
 
     return {
@@ -164,9 +164,9 @@ def check_exchange_cves(host: str) -> dict[str, Any]:
         "checks": checks,
         "findings": all_findings,
         "guidance": [
-            "Start with CVE-2026-62911 (HTTP.sys MRSProxy). More CVEs will be added to this library over time.",
-            "Confirm builds with Exchange HealthChecker / Get-ExchangeServer — x-owa-version is only a hint.",
-            "Exchange Online is not in scope for these on-prem MRSProxy checks.",
+            "This page answers one question: is the CVE-2026-62911 public exposure fingerprint visible from the internet?",
+            "Missing x-owa-version is good (less fingerprinting). Confirm the build on the server with the PowerShell command below.",
+            "Exchange Online is out of scope for this on-prem MRSProxy check.",
         ],
         # First CVE surfaced at top-level for the dedicated UI block
         "cve_2026_62911": next(

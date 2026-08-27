@@ -968,6 +968,73 @@ textarea:focus {
   font-weight: 700;
 }
 
+/* CVE verdict banner — exposure yes/no must be unmistakable */
+.cve-verdict-banner {
+  border-radius: 0.75rem;
+  padding: 1rem 1.15rem;
+  margin: 0 0 1rem;
+  border: 1px solid transparent;
+}
+.cve-verdict-banner.is-clean {
+  background: color-mix(in srgb, var(--ok, #1f7a4d) 12%, #fff);
+  border-color: color-mix(in srgb, var(--ok, #1f7a4d) 35%, transparent);
+  color: color-mix(in srgb, var(--ok, #1f7a4d) 85%, #000);
+}
+.cve-verdict-banner.is-exposed {
+  background: color-mix(in srgb, var(--err, #b42318) 12%, #fff);
+  border-color: color-mix(in srgb, var(--err, #b42318) 40%, transparent);
+  color: color-mix(in srgb, var(--err, #b42318) 90%, #000);
+}
+.cve-verdict-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-bottom: 0.2rem;
+}
+.cve-verdict-title {
+  font-size: 1.35rem;
+  font-weight: 750;
+  line-height: 1.25;
+  margin: 0 0 0.35rem;
+}
+.cve-verdict-text {
+  margin: 0;
+  line-height: 1.45;
+  font-size: 0.95rem;
+  opacity: 0.92;
+}
+.cve-patch-box {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  background: var(--surface-2, #f4f6f8);
+  border: 1px solid var(--line);
+}
+.cve-patch-box .subhead {
+  margin: 0 0 0.35rem;
+}
+.cve-cmd {
+  margin: 0.55rem 0 0;
+  padding: 0.7rem 0.85rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.cve-next-ok {
+  display: inline-block;
+  margin-top: 0.85rem;
+}
+.cve-summary-inline {
+  line-height: 1.45;
+}
+
 /* CVE detail: long labels must wrap — avoid pill overflow on geo-grid */
 .cve-detail .cve-kv {
   width: 100%;

@@ -2317,3 +2317,162 @@ msgstr ""
 msgid "Exchange Online is not in scope for these on-prem MRSProxy checks."
 msgstr "Exchange Online bu on-prem MRSProxy kontrollerinin kapsamında değildir."
 
+msgid "External result"
+msgstr "Dışarıdan sonuç"
+
+msgid "Exposure"
+msgstr "Maruziyet"
+
+msgid "What this means"
+msgstr "Ne anlama geliyor"
+
+msgid "What to do next"
+msgstr "Ne yapmalısınız"
+
+msgid "Yes — public fingerprint seen"
+msgstr "Evet — herkese açık parmak izi görüldü"
+
+msgid "No — fingerprint not seen"
+msgstr "Hayır — parmak izi görülmedi"
+
+msgid "Exposure fingerprint present"
+msgstr "Maruziyet parmak izi var"
+
+msgid "Exposure fingerprint absent"
+msgstr "Maruziyet parmak izi yok"
+
+msgid "Exposure found"
+msgstr "Maruziyet var"
+
+msgid "No exposure found"
+msgstr "Maruziyet yok"
+
+msgid "Exposure found — likely unpatched"
+msgstr "Maruziyet var — muhtemelen yamasız"
+
+msgid "Exposure found — build hint looks patched"
+msgstr "Maruziyet var — derleme ipucu yamalı görünüyor"
+
+msgid "Exposure found — patch level not visible"
+msgstr "Maruziyet var — yama seviyesi görünmüyor"
+
+msgid "CVSS is the CVE’s published severity — not a score for this host."
+msgstr "CVSS, CVE’nin yayınlanmış ciddiyetidir — bu sunucunun skoru değildir."
+
+msgid "External build hint"
+msgstr "Dışarıdan derleme ipucu"
+
+msgid "Optional x-owa-version header only. Absence is normal and preferred."
+msgstr "Yalnızca isteğe bağlı x-owa-version başlığı. Olmaması normaldir ve tercih edilir."
+
+msgid "Patch status (external)"
+msgstr "Yama durumu (dışarıdan)"
+
+msgid "Not disclosed externally"
+msgstr "Dışarıdan açıklanmıyor"
+
+msgid "Confirm on the server"
+msgstr "Sunucu içinde doğrulayın"
+
+msgid "Check patch level on the server"
+msgstr "Yama seviyesini sunucu içinde kontrol edin"
+
+msgid ""
+"On the Exchange server, run this in Exchange Management Shell to read the build, then compare it "
+"to the August 2026 SU for your CU."
+msgstr ""
+"Exchange sunucusunda Exchange Management Shell içinde bu komutu çalıştırıp derlemeyi okuyun; "
+"ardından CU’nuz için Ağustos 2026 SU ile karşılaştırın."
+
+msgid "No remediation from this external check — the exposure fingerprint was not found."
+msgstr "Bu dış kontrolden düzeltme önerisi yok — maruziyet parmak izi bulunamadı."
+
+msgid ""
+"The public HTTP.sys MRSProxy fingerprint was found, and the passive build hint looks below the "
+"August 2026 security update. Treat this host as at risk until patched."
+msgstr ""
+"Herkese açık HTTP.sys MRSProxy parmak izi bulundu ve pasif derleme ipucu Ağustos 2026 güvenlik "
+"güncellemesinin altında görünüyor. Yamalanana kadar riskli kabul edin."
+
+msgid ""
+"The public HTTP.sys MRSProxy fingerprint was found. The passive build hint looks patched, but "
+"confirm Extended Protection and SU on the server — this tool cannot prove EPA."
+msgstr ""
+"Herkese açık HTTP.sys MRSProxy parmak izi bulundu. Pasif derleme ipucu yamalı görünüyor; Extended"
+" Protection ve SU’yu sunucu içinde doğrulayın — bu araç EPA’yı kanıtlayamaz."
+
+msgid ""
+"The public HTTP.sys MRSProxy fingerprint was found (Microsoft-HTTPAPI + Negotiate). Patch level "
+"was not visible from outside. Verify the August 2026 SU on the server."
+msgstr ""
+"Herkese açık HTTP.sys MRSProxy parmak izi bulundu (Microsoft-HTTPAPI + Negotiate). Yama seviyesi "
+"dışarıdan görünmüyor. Ağustos 2026 SU’yu sunucu içinde doğrulayın."
+
+msgid ""
+"The MRSProxy HTTP.sys URL answered, but the vulnerable fingerprint (Microsoft-HTTPAPI + "
+"Negotiate) was not seen. From the internet, this host does not show the CVE-2026-62911 exposure "
+"signal."
+msgstr ""
+"MRSProxy HTTP.sys URL’si yanıt verdi ancak zafiyet parmak izi (Microsoft-HTTPAPI + Negotiate) "
+"görülmedi. İnternetten bakınca bu sunucu CVE-2026-62911 maruziyet sinyali göstermiyor."
+
+msgid ""
+"No public HTTP.sys MRSProxy exposure signal was found. From the internet, this host does not show"
+" the CVE-2026-62911 exposure fingerprint."
+msgstr ""
+"Herkese açık HTTP.sys MRSProxy maruziyet sinyali bulunamadı. İnternetten bakınca bu sunucu "
+"CVE-2026-62911 maruziyet parmak izi göstermiyor."
+
+msgid ""
+"No x-owa-version header was returned. Hiding version headers is good for security — it is not a "
+"failed check. Confirm the build inside the server with PowerShell."
+msgstr ""
+"x-owa-version başlığı dönmedi. Sürüm başlıklarını gizlemek güvenlik açısından iyidir — başarısız "
+"bir kontrol değildir. Derlemeyi sunucu içinde PowerShell ile doğrulayın."
+
+msgid ""
+"No public exposure fingerprint was seen, but the passive build hint looks below the August 2026 "
+"SU — still patch on-prem Exchange if you run it."
+msgstr ""
+"Herkese açık maruziyet parmak izi görülmedi; ancak pasif derleme ipucu Ağustos 2026 SU’nun "
+"altında — on-prem Exchange çalıştırıyorsanız yine de yamalayın."
+
+msgid ""
+"Safe external check for CVE-2026-62911. No credentials, no relay, no exploit — only public HTTP "
+"signals."
+msgstr ""
+"CVE-2026-62911 için güvenli dış kontrol. Kimlik bilgisi, relay veya exploit yok — yalnızca "
+"herkese açık HTTP sinyalleri."
+
+msgid ""
+"This page answers one question: is the CVE-2026-62911 public exposure fingerprint visible from "
+"the internet?"
+msgstr ""
+"Bu sayfa tek soruyu yanıtlar: CVE-2026-62911 herkese açık maruziyet parmak izi internetten "
+"görünüyor mu?"
+
+msgid ""
+"Missing x-owa-version is good (less fingerprinting). Confirm the build on the server with the "
+"PowerShell command below."
+msgstr ""
+"x-owa-version’ın olmaması iyidir (daha az parmak izi). Derlemeyi aşağıdaki PowerShell komutuyla "
+"sunucu içinde doğrulayın."
+
+msgid "Exchange Online is out of scope for this on-prem MRSProxy check."
+msgstr "Exchange Online bu on-prem MRSProxy kontrolünün kapsamı dışındadır."
+
+msgid "CVE"
+msgstr "CVE"
+
+msgid "One clear answer: is the CVE-2026-62911 public exposure fingerprint visible?"
+msgstr "Tek net cevap: CVE-2026-62911 herkese açık maruziyet parmak izi görünüyor mu?"
+
+msgid "HTTP.sys MRSProxy path: Microsoft-HTTPAPI + Negotiate (safe check only)"
+msgstr "HTTP.sys MRSProxy yolu: Microsoft-HTTPAPI + Negotiate (yalnızca güvenli kontrol)"
+
+msgid "Missing x-owa-version is good — confirm build on the server with PowerShell"
+msgstr "x-owa-version’ın olmaması iyidir — derlemeyi sunucuda PowerShell ile doğrulayın"
+
+msgid "Remediation shown only when exposure is found"
+msgstr "Düzeltme önerileri yalnızca maruziyet bulunduğunda gösterilir"
+
