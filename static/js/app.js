@@ -735,6 +735,21 @@ function renderEmailReport(data, root) {
   const meta = data.meta || {};
   const counts = data.counts || {};
   const scoreLabel = trReportText(data.score_label || "");
+  const channel = meta.recipient_channel || {};
+  const channelRole = String(channel.role || "").toLowerCase();
+  const channelTone =
+    channelRole === "to" ? "pass" : channelRole === "cc" ? "info" : channelRole === "bcc" ? "warn" : "info";
+  const channelBadge = channel.label
+    ? `<div class="mt-recipient-channel">
+        <span class="mt-badge mt-badge-${escapeHtml(channelTone)}">${escapeHtml(trReportText(channel.label))}</span>
+        ${
+          channel.mailbox
+            ? `<span class="tiny muted mono">${escapeHtml(channel.mailbox)}</span>`
+            : ""
+        }
+        <span class="tiny muted">${escapeHtml(t("How you received this copy"))}</span>
+      </div>`
+    : "";
 
   root.appendChild(
     el(`<div class="email-report">
@@ -747,6 +762,7 @@ function renderEmailReport(data, root) {
           <p class="muted">${escapeHtml(meta.subject || t("No subject"))} · ${escapeHtml(
             meta.from || ""
           )}</p>
+          ${channelBadge}
           <div class="mt-count-row">
             <span class="mt-count mt-count-pass">${escapeHtml(t("Pass"))} ${counts.pass || 0}</span>
             <span class="mt-count mt-count-warn">${escapeHtml(t("Warn"))} ${counts.warn || 0}</span>

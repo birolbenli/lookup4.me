@@ -2081,6 +2081,14 @@ code.inline,
   margin-top: 0.55rem;
 }
 
+.mt-recipient-channel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin: 0.45rem 0 0.15rem;
+}
+
 .mt-count {
   display: inline-flex;
   align-items: center;

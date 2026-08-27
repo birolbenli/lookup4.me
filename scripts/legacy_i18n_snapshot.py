@@ -590,6 +590,7 @@ JS_TR: dict[str, str] = {
     "No urgent improvements detected from this source.": "Bu kaynaktan acil iyileştirme çıkmadı.",
     "Raw Received headers": "Ham Received header’ları",
     "No subject": "Konu yok",
+    "How you received this copy": "Bu kopyayı nasıl aldığınız",
     "How we checked": "Nasıl kontrol ettik",
     "HTTP headers": "HTTP header’lar",
     "Sensitive headers": "Hassas header’lar",

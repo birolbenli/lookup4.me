@@ -158,6 +158,7 @@ _BASE_JS_MESSAGES: tuple[str, ...] = (
     "No urgent improvements detected from this source.",
     "Raw Received headers",
     "No subject",
+    "How you received this copy",
     "How we checked",
     "HTTP headers",
     "Sensitive headers",

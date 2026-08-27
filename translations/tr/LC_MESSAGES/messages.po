@@ -2476,3 +2476,97 @@ msgstr "x-owa-version’ın olmaması iyidir — derlemeyi sunucuda PowerShell i
 msgid "Remediation shown only when exposure is found"
 msgstr "Düzeltme önerileri yalnızca maruziyet bulunduğunda gösterilir"
 
+msgid "Recipient channel (To / Cc / Bcc)"
+msgstr "Alıcı kanalı (To / Cc / Bcc)"
+
+msgid "Received via To"
+msgstr "To ile alındı"
+
+msgid "Received via Cc"
+msgstr "Cc ile alındı"
+
+msgid "Received via Bcc"
+msgstr "Bcc ile alındı"
+
+msgid "Likely received via Bcc"
+msgstr "Muhtemelen Bcc ile alındı"
+
+msgid "Recipient channel unknown"
+msgstr "Alıcı kanalı bilinmiyor"
+
+msgid "Could not determine whether this mailbox was in To, Cc, or Bcc."
+msgstr "Bu posta kutusunun To, Cc veya Bcc’de olup olmadığı belirlenemedi."
+
+msgid "This copy was addressed in To."
+msgstr "Bu kopya To alanında adreslenmiş."
+
+msgid "This copy was addressed in Cc."
+msgstr "Bu kopya Cc alanında adreslenmiş."
+
+msgid "This copy was addressed in Bcc."
+msgstr "Bu kopya Bcc alanında adreslenmiş."
+
+msgid ""
+"Delivered mailbox is not listed in To or Cc — Bcc (or a rewritten envelope recipient) is the "
+"usual explanation."
+msgstr "Teslim edilen kutu To veya Cc’de yok — genelde Bcc (veya zarf yeniden yazımı) açıklamasıdır."
+
+msgid ""
+"No Delivered-To / X-Original-To / Received for= address was found. Paste headers from the "
+"receiving mailbox (not only the sent copy)."
+msgstr ""
+"Delivered-To / X-Original-To / Received for= adresi bulunamadı. Gönderilen kopyayı değil, alan "
+"posta kutusundan başlıkları yapıştırın."
+
+msgid ""
+"To and Cc are visible to all recipients. Bcc hides other addresses and is usually stripped from "
+"headers — if the delivered mailbox is not in To or Cc, this copy was likely received via Bcc (or "
+"an envelope rewrite)."
+msgstr ""
+"To ve Cc tüm alıcılara görünür. Bcc diğer adresleri gizler ve genelde başlıklardan silinir — "
+"teslim edilen kutu To/Cc’de yoksa bu kopya muhtemelen Bcc (veya zarf yeniden yazımı) ile "
+"alınmıştır."
+
+msgid "How you received this copy"
+msgstr "Bu kopyayı nasıl aldığınız"
+
+msgid "Internal / corporate mail path"
+msgstr "Kurum içi / kurumsal posta yolu"
+
+msgid ""
+"Headers look like internal corporate delivery (often Exchange). Internet auth checks such as DKIM"
+" may be absent by design."
+msgstr ""
+"Başlıklar kurum içi teslimata benziyor (genelde Exchange). DKIM gibi internet kimlik "
+"doğrulamaları kasıtlı olarak olmayabilir."
+
+msgid ""
+"Internal Exchange (or similar) submission often skips public DKIM/SPF because the message never "
+"leaves the organization. Treat missing internet auth as context, not as a deliverability failure."
+msgstr ""
+"Kurum içi Exchange (veya benzeri) gönderiminde mesaj organizasyondan çıkmadığı için genel "
+"DKIM/SPF çoğu zaman atlanır. Eksik internet kimlik doğrulamasını teslimat hatası değil, bağlam "
+"olarak değerlendirin."
+
+msgid "No DKIM-Signature header — normal for many internal / corporate messages."
+msgstr "DKIM-Signature başlığı yok — birçok kurum içi / kurumsal iletide normaldir."
+
+msgid ""
+"Internal Exchange submission usually does not add DKIM. This is informational, not a public "
+"deliverability failure. DKIM still matters for internet-bound mail."
+msgstr ""
+"Kurum içi Exchange gönderimi genelde DKIM eklemez. Bu bilgilendirme niteliğindedir; genel "
+"teslimat hatası değildir. İnternete giden postada DKIM hâlâ önemlidir."
+
+msgid "DKIM reported as none — expected on many internal paths."
+msgstr "DKIM none olarak raporlandı — birçok kurum içi yolda beklenen durum."
+
+msgid "DKIM soft result “none” — common on internal paths."
+msgstr "DKIM soft sonucu “none” — kurum içi yollarda yaygındır."
+
+msgid "SPF reported as none — expected on many internal paths."
+msgstr "SPF none olarak raporlandı — birçok kurum içi yolda beklenen durum."
+
+msgid "DMARC reported as none — expected on many internal paths."
+msgstr "DMARC none olarak raporlandı — birçok kurum içi yolda beklenen durum."
+

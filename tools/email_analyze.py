@@ -7,7 +7,7 @@ import email.policy
 import hashlib
 import re
 from email.message import Message
-from email.utils import parseaddr, parsedate_to_datetime
+from email.utils import getaddresses, parseaddr, parsedate_to_datetime
 from typing import Any
 
 from .blacklist import check_blacklist
@@ -64,6 +64,248 @@ def _domain_of(addr: str) -> str:
     if "@" not in email_addr:
         return ""
     return normalize_domain(email_addr.split("@", 1)[1])
+
+
+def _normalize_mailbox(addr: str) -> str:
+    """Lowercase mailbox address without display name / angle brackets."""
+    raw = (addr or "").strip()
+    if not raw:
+        return ""
+    _, email_addr = parseaddr(raw)
+    email_addr = (email_addr or raw).strip().strip("<>").strip().lower()
+    return email_addr if "@" in email_addr else ""
+
+
+def _addrs_from_headers(msg: Message, *names: str) -> set[str]:
+    out: set[str] = set()
+    for name in names:
+        for value in msg.get_all(name, []) or []:
+            for _, addr in getaddresses([str(value)]):
+                norm = _normalize_mailbox(addr)
+                if norm:
+                    out.add(norm)
+    return out
+
+
+def _detect_recipient_channel(
+    msg: Message,
+    received_headers: list[str],
+) -> dict[str, Any]:
+    """
+    Infer whether the mailbox that received this copy was addressed via To, Cc, or Bcc.
+
+    Uses Delivered-To / X-Original-To / Received "for=" (envelope RCPT) when present.
+    Bcc is normally stripped from headers, so delivery to an address absent from To/Cc
+    is reported as likely Bcc.
+    """
+    to_addrs = _addrs_from_headers(msg, "To")
+    cc_addrs = _addrs_from_headers(msg, "Cc")
+    bcc_addrs = _addrs_from_headers(msg, "Bcc")  # rare on received mail
+
+    delivered = ""
+    evidence = ""
+    for hdr in (
+        "Delivered-To",
+        "X-Original-To",
+        "X-Envelope-To",
+        "Envelope-To",
+        "X-RCPT-To",
+        "Apparently-To",
+    ):
+        val = _get(msg, hdr)
+        if not val:
+            continue
+        # Prefer the first address-looking token
+        cand = _normalize_mailbox(val.split("\n", 1)[0])
+        if not cand:
+            for _, addr in getaddresses([val]):
+                cand = _normalize_mailbox(addr)
+                if cand:
+                    break
+        if cand:
+            delivered = cand
+            evidence = hdr
+            break
+
+    if not delivered:
+        for raw in received_headers:
+            hop = _parse_received_hop(str(raw))
+            cand = _normalize_mailbox(hop.get("for") or "")
+            if cand:
+                delivered = cand
+                evidence = "Received for="
+                break
+
+    if not delivered:
+        return {
+            "role": "unknown",
+            "label": "Recipient channel unknown",
+            "summary": "Could not determine whether this mailbox was in To, Cc, or Bcc.",
+            "detail": (
+                "No Delivered-To / X-Original-To / Received for= address was found. "
+                "Paste headers from the receiving mailbox (not only the sent copy)."
+            ),
+            "mailbox": "",
+            "evidence": "",
+            "in_to": False,
+            "in_cc": False,
+            "in_bcc_header": False,
+        }
+
+    in_to = delivered in to_addrs
+    in_cc = delivered in cc_addrs
+    in_bcc_header = delivered in bcc_addrs
+
+    if in_to:
+        role = "to"
+        label = "Received via To"
+        summary = "This copy was addressed in To."
+    elif in_cc:
+        role = "cc"
+        label = "Received via Cc"
+        summary = "This copy was addressed in Cc."
+    elif in_bcc_header:
+        role = "bcc"
+        label = "Received via Bcc"
+        summary = "This copy was addressed in Bcc."
+    else:
+        role = "bcc"
+        label = "Likely received via Bcc"
+        summary = (
+            "Delivered mailbox is not listed in To or Cc — "
+            "Bcc (or a rewritten envelope recipient) is the usual explanation."
+        )
+
+    detail_bits = [
+        f"Mailbox: {delivered}",
+        f"Evidence: {evidence}",
+        f"In To: {'yes' if in_to else 'no'}",
+        f"In Cc: {'yes' if in_cc else 'no'}",
+    ]
+    if bcc_addrs:
+        detail_bits.append(f"In Bcc header: {'yes' if in_bcc_header else 'no'}")
+
+    return {
+        "role": role,
+        "label": label,
+        "summary": summary,
+        "detail": " · ".join(detail_bits),
+        "mailbox": delivered,
+        "evidence": evidence,
+        "in_to": in_to,
+        "in_cc": in_cc,
+        "in_bcc_header": in_bcc_header,
+    }
+
+
+def _is_private_ip(ip: str) -> bool:
+    ip = (ip or "").strip().strip("[]")
+    if not is_ip(ip):
+        return False
+    if ip.startswith("10.") or ip.startswith("192.168.") or ip.startswith("127."):
+        return True
+    if ip.startswith("172."):
+        try:
+            second = int(ip.split(".", 2)[1])
+        except (ValueError, IndexError):
+            return False
+        return 16 <= second <= 31
+    if ip.lower().startswith("fc") or ip.lower().startswith("fd") or ip.lower() == "::1":
+        return True
+    return False
+
+
+def _org_domain(addr_or_domain: str) -> str:
+    """Registrable-ish org label: last two labels for normal domains."""
+    domain = _domain_of(addr_or_domain) if "@" in (addr_or_domain or "") else normalize_domain(addr_or_domain or "")
+    if not domain:
+        return ""
+    parts = domain.split(".")
+    if len(parts) >= 2:
+        return ".".join(parts[-2:])
+    return domain
+
+
+def _detect_internal_mail(
+    msg: Message,
+    *,
+    from_domain: str,
+    received_headers: list[str],
+) -> dict[str, Any]:
+    """
+    Detect on-prem / corporate internal delivery (typical Exchange headers).
+
+    Internal mail often has no DKIM — that is normal and should not be scored as a failure.
+    """
+    signals: list[str] = []
+    header_map = {k.lower(): str(v) for k, v in msg.items()}
+
+    auth_as = header_map.get("x-ms-exchange-organization-authas", "")
+    if re.search(r"\binternal\b", auth_as, re.I):
+        signals.append(f"X-MS-Exchange-Organization-AuthAs: {auth_as.strip()[:80]}")
+
+    auth_mech = header_map.get("x-ms-exchange-organization-authmechanism", "")
+    # Common Exchange internal submission mechanisms (03/04/06 etc.) when paired with AuthAs
+    if auth_mech.strip() and re.search(r"\binternal\b", auth_as, re.I):
+        signals.append(f"X-MS-Exchange-Organization-AuthMechanism: {auth_mech.strip()[:40]}")
+
+    direction = header_map.get("x-ms-exchange-organization-messagedirectionality", "")
+    if direction.strip().lower() == "originating" and re.search(r"\binternal\b", auth_as, re.I):
+        signals.append("MessageDirectionality: Originating")
+
+    ms_org_headers = [
+        k
+        for k in header_map
+        if k.startswith("x-ms-exchange-organization-") or k.startswith("x-ms-exchange-crosstenant-")
+    ]
+
+    to_orgs = {_org_domain(a) for a in _addrs_from_headers(msg, "To", "Cc") if _org_domain(a)}
+    from_org = _org_domain(from_domain)
+    same_org = bool(from_org and to_orgs and all(o == from_org for o in to_orgs))
+
+    public_ips: list[str] = []
+    private_ips: list[str] = []
+    for raw in received_headers:
+        for match in IPV4_RE.findall(str(raw)):
+            if _is_private_ip(match):
+                if match not in private_ips:
+                    private_ips.append(match)
+            elif is_ip(match) and match not in public_ips:
+                public_ips.append(match)
+
+    # Soft path: same org + Exchange org headers + no public Received IPs
+    if same_org and ms_org_headers and not public_ips:
+        signals.append(
+            f"Same-org From/To ({from_org}) with Exchange organization headers "
+            f"and no public Received IPs"
+        )
+
+    # Soft path: Thread-Index + Exchange headers + same org (Outlook internal)
+    if same_org and header_map.get("thread-index") and len(ms_org_headers) >= 2 and not public_ips:
+        signals.append("Outlook Thread-Index with Exchange organization headers (same org)")
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for s in signals:
+        if s not in seen:
+            seen.add(s)
+            uniq.append(s)
+
+    is_internal = bool(uniq)
+    return {
+        "is_internal": is_internal,
+        "signals": uniq[:6],
+        "label": "Internal / corporate mail path" if is_internal else "",
+        "summary": (
+            "Headers look like internal corporate delivery (often Exchange). "
+            "Internet auth checks such as DKIM may be absent by design."
+            if is_internal
+            else ""
+        ),
+        "same_org": same_org,
+        "from_org": from_org,
+    }
 
 
 def _parse_auth_results(text: str) -> dict[str, str]:
@@ -355,6 +597,8 @@ def analyze_email(
 
     from_header = _get(msg, "From")
     to_header = _get(msg, "To")
+    cc_header = _get(msg, "Cc")
+    bcc_header = _get(msg, "Bcc")
     subject = _get(msg, "Subject")
     date_hdr = _get(msg, "Date")
     message_id = _get(msg, "Message-ID")
@@ -371,8 +615,14 @@ def analyze_email(
     reply_domain = _domain_of(reply_to) if reply_to else ""
 
     auth = _parse_auth_results(auth_results)
-    received_ips = _extract_ips_from_received([str(r) for r in received])
+    received_list = [str(r) for r in received]
+    received_ips = _extract_ips_from_received(received_list)
     sending_ip = peer_ip or (received_ips[0] if received_ips else "")
+    recipient_channel = _detect_recipient_channel(msg, received_list)
+    internal_mail = _detect_internal_mail(
+        msg, from_domain=from_domain, received_headers=received_list
+    )
+    is_internal = bool(internal_mail.get("is_internal"))
 
     body = _body_stats(msg)
     dkim_verify = _verify_dkim(raw_bytes) if (dkim_sig or mode == "mailtest") else {
@@ -384,16 +634,54 @@ def analyze_email(
     findings: list[dict[str, Any]] = []
 
     # Identity overview
+    identity_bits = [f"To: {to_header or '—'}"]
+    if cc_header:
+        identity_bits.append(f"Cc: {cc_header}")
+    if bcc_header:
+        identity_bits.append(f"Bcc: {bcc_header}")
+    identity_bits.append(f"Date: {date_hdr or '—'}")
+    identity_bits.append(f"Message-ID: {message_id or '—'}")
     findings.append(
         _finding(
             "identity",
             "Message identity",
             "info",
             f"From {parseaddr(from_header)[1] or 'unknown'} · Subject: {subject or '(none)'}",
-            detail=f"To: {to_header or '—'} · Date: {date_hdr or '—'} · Message-ID: {message_id or '—'}",
+            detail=" · ".join(identity_bits),
             edu="These fields are what recipients and filters see first. A clear From name and stable Message-ID help trust and threading.",
         )
     )
+
+    findings.append(
+        _finding(
+            "recipient-channel",
+            "Recipient channel (To / Cc / Bcc)",
+            "info",
+            recipient_channel["summary"],
+            detail=recipient_channel.get("detail") or "",
+            edu=(
+                "To and Cc are visible to all recipients. Bcc hides other addresses and is usually "
+                "stripped from headers — if the delivered mailbox is not in To or Cc, this copy was "
+                "likely received via Bcc (or an envelope rewrite)."
+            ),
+        )
+    )
+
+    if is_internal:
+        findings.append(
+            _finding(
+                "internal-mail",
+                "Internal / corporate mail path",
+                "info",
+                internal_mail["summary"],
+                detail=" · ".join(internal_mail.get("signals") or []),
+                edu=(
+                    "Internal Exchange (or similar) submission often skips public DKIM/SPF because "
+                    "the message never leaves the organization. Treat missing internet auth as context, "
+                    "not as a deliverability failure."
+                ),
+            )
+        )
 
     # Return-Path / alignment
     if return_domain and from_domain:
@@ -450,12 +738,23 @@ def analyze_email(
             status = "pass" if result in {"pass", "bestguesspass"} else ("warn" if result in {"neutral", "none", "policy"} else "fail")
             if result == "none" and proto == "dmarc":
                 status = "warn"
+            # Internal mail: missing/soft internet auth is expected — keep as info
+            if is_internal and result in {"none", "neutral", "temperror"}:
+                status = "info"
             findings.append(
                 _finding(
                     f"auth-{proto}",
                     f"Authentication-Results · {proto.upper()}",
                     status,
-                    f"{proto.upper()} reported as “{result}” by the receiving server.",
+                    (
+                        f"{proto.upper()} reported as none — expected on many internal paths."
+                        if is_internal and status == "info" and result == "none"
+                        else (
+                            f"{proto.upper()} soft result “{result}” — common on internal paths."
+                            if is_internal and status == "info"
+                            else f"{proto.upper()} reported as “{result}” by the receiving server."
+                        )
+                    ),
                     detail=auth_results[:1200],
                     edu={
                         "spf": "SPF lists which servers may send mail for a domain.",
@@ -464,7 +763,7 @@ def analyze_email(
                     }[proto],
                     recommendation=(
                         ""
-                        if status == "pass"
+                        if status in {"pass", "info"}
                         else f"Investigate why {proto.upper()} is “{result}”. Fix DNS records or signing configuration for the sending domain."
                     ),
                 )
@@ -499,6 +798,21 @@ def analyze_email(
                 recommendation=""
                 if status == "pass"
                 else "Check selector DNS record, private key config, and that middleboxes are not rewriting signed headers/body.",
+            )
+        )
+    elif is_internal:
+        findings.append(
+            _finding(
+                "dkim-sig",
+                "DKIM signature",
+                "info",
+                "No DKIM-Signature header — normal for many internal / corporate messages.",
+                detail="; ".join(internal_mail.get("signals") or [])[:500],
+                edu=(
+                    "Internal Exchange submission usually does not add DKIM. This is informational, "
+                    "not a public deliverability failure. DKIM still matters for internet-bound mail."
+                ),
+                recommendation="",
             )
         )
     else:
@@ -758,7 +1072,6 @@ def analyze_email(
         )
 
     # Received chain + visual delivery flow (origin → destination)
-    received_list = [str(r) for r in received]
     chain = []
     for idx, item in enumerate(received_list[:16]):
         chain.append({"hop": idx + 1, "value": item})
@@ -810,6 +1123,8 @@ def analyze_email(
         "meta": {
             "from": from_header,
             "to": to_header,
+            "cc": cc_header,
+            "bcc": bcc_header,
             "subject": subject,
             "date": date_hdr,
             "message_id": message_id,
@@ -819,6 +1134,8 @@ def analyze_email(
             "auth_results": auth,
             "dkim_verify": dkim_verify,
             "x_mailer": x_mailer,
+            "recipient_channel": recipient_channel,
+            "internal_mail": internal_mail,
         },
         "received_chain": chain,
         "delivery_flow": delivery_flow,
