@@ -84,6 +84,7 @@ from tools.hsts_check import check_hsts
 from tools.robots_check import check_robots
 from tools.redirect_check import check_redirects
 from tools.sec_headers import check_sec_headers
+from tools.aahc import check_aahc
 from tools.generators import (
     generate_caa,
     generate_dmarc,
@@ -411,6 +412,16 @@ TOOLS = [
         "input": "text",
     },
     {
+        "slug": "aahc",
+        "name": "AAHC — Adam Akıllı Header Checker",
+        "desc": "Find disclosure headers on a site; if a front-page form exists, fill it with random data and re-check the next page.",
+        "field": "url",
+        "placeholder": "https://example.com",
+        "example": "https://example.com",
+        "input": "text",
+        "badge": "AAHC",
+    },
+    {
         "slug": "spfgen",
         "name": "Create SPF record",
         "desc": "Build a starter SPF TXT to publish — not a live lookup.",
@@ -485,7 +496,7 @@ HOMEPAGE_GROUPS = [
         "featured": True,
         "title": "Featured tools",
         "blurb": "Exchange exposure, Autodiscover, CVE checks, deliverability, security headers, and bulk SSL — start here.",
-        "slugs": ["exchange", "exchangecve", "autodiscover", "mailtest", "secheaders", "ssl", "headers", "mtasts"],
+        "slugs": ["exchange", "exchangecve", "autodiscover", "mailtest", "aahc", "secheaders", "ssl", "headers", "mtasts"],
     },
     {
         "id": "domain-security",
@@ -851,6 +862,8 @@ def run_tool(slug: str, query: str = "", extra: dict | None = None) -> dict:
         result = check_redirects(query)
     elif slug == "secheaders":
         result = check_sec_headers(query)
+    elif slug == "aahc":
+        result = check_aahc(query)
     elif slug == "spfgen":
         result = generate_spf(query)
     elif slug == "dmarcgen":

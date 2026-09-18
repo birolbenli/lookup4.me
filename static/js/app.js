@@ -1636,7 +1636,47 @@ function renderScanReport(data, root) {
         .join("")}</tbody></table></div>`
     : "";
   const guidance = (data.guidance || [])
-    .map((g) => `<li>${escapeHtml(g)}</li>`)
+    .map((g) => `<li>${escapeHtml(tDesc(g))}</li>`)
+    .join("");
+  const stepBlocks = (data.steps || [])
+    .map((s) => {
+      const form = s.form || {};
+      return `<div class="block aahc-step">
+        <h4 class="scan-subtitle">${escapeHtml(tDesc(s.label || `Step ${s.step}`))}
+          ${s.status_code != null ? `<span class="status info">${escapeHtml(String(s.status_code))}</span>` : ""}
+        </h4>
+        <p class="mono tiny">${escapeHtml(s.url || "")}</p>
+        ${
+          s.note
+            ? `<p class="tiny muted">${escapeHtml(tDesc(s.note))}</p>`
+            : ""
+        }
+        ${
+          s.error
+            ? `<p class="tiny status err">${escapeHtml(s.error)}</p>`
+            : ""
+        }
+        ${
+          form.method
+            ? `<p class="tiny muted">${escapeHtml(t("Form"))}: <span class="mono">${escapeHtml(
+                form.method
+              )}</span> · ${escapeHtml(String(form.field_count ?? "—"))} ${escapeHtml(t("fields"))}
+              ${
+                (form.fields || []).length
+                  ? ` · <span class="mono">${escapeHtml((form.fields || []).slice(0, 8).join(", "))}</span>`
+                  : ""
+              }</p>`
+            : ""
+        }
+        ${
+          s.disclosure_count != null
+            ? `<p class="tiny">${escapeHtml(t("Disclosure headers"))}: ${escapeHtml(
+                String(s.disclosure_count)
+              )} · ${escapeHtml(t("Findings"))}: ${escapeHtml(String(s.finding_count ?? 0))}</p>`
+            : ""
+        }
+      </div>`;
+    })
     .join("");
   const raw =
     data.policy?.raw || data.raw
@@ -1736,7 +1776,10 @@ function renderScanReport(data, root) {
       </div>
       ${data.title ? `<h3 class="scan-title">${escapeHtml(data.title)}</h3>` : ""}
       ${data.note ? `<p class="muted">${escapeHtml(data.note)}</p>` : ""}
+      ${data.summary ? `<p class="muted">${escapeHtml(tDesc(data.summary))}</p>` : ""}
+      ${data.form_note && !data.summary ? `<p class="muted">${escapeHtml(tDesc(data.form_note))}</p>` : ""}
       ${kvHtml}
+      ${stepBlocks}
       ${existingHtml}
       ${
         findings
@@ -1852,6 +1895,7 @@ const RENDERERS = {
   robots: renderScanReport,
   redirect: renderScanReport,
   secheaders: renderScanReport,
+  aahc: renderScanReport,
   autodiscover: renderScanReport,
   spfgen: renderScanReport,
   dmarcgen: renderScanReport,

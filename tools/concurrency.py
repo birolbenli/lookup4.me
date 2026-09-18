@@ -19,6 +19,7 @@ HEAVY_SLUGS = frozenset(
         "blacklist",
         "whois",
         "secheaders",
+        "aahc",
         "redirect",
         "hsts",
         "mtasts",

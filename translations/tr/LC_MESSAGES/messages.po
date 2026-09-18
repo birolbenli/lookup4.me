@@ -2570,3 +2570,73 @@ msgstr "SPF none olarak raporlandı — birçok kurum içi yolda beklenen durum.
 msgid "DMARC reported as none — expected on many internal paths."
 msgstr "DMARC none olarak raporlandı — birçok kurum içi yolda beklenen durum."
 
+msgid "AAHC — Adam Akıllı Header Checker"
+msgstr "AAHC — Adam Akıllı Header Checker"
+
+msgid ""
+"Find disclosure headers on a site; if a front-page form exists, fill it with random data and re-"
+"check the next page."
+msgstr ""
+"Sitede ifşa header’larını bulun; ön sayfada form varsa rastgele doldurup sonraki sayfayı da "
+"kontrol edin."
+
+msgid "https://example.com"
+msgstr "https://example.com"
+
+msgid "Form"
+msgstr "Form"
+
+msgid "fields"
+msgstr "alan"
+
+msgid "Disclosure headers"
+msgstr "İfşa header’ları"
+
+msgid "Front page"
+msgstr "Ön sayfa"
+
+msgid "After form submit"
+msgstr "Form gönderiminden sonra"
+
+msgid "Form step skipped"
+msgstr "Form adımı atlandı"
+
+msgid "After form submit (off-site — skipped)"
+msgstr "Form gönderimi (site dışı — atlandı)"
+
+msgid "No suitable same-site form found on the front page."
+msgstr "Ön sayfada uygun aynı-site form bulunamadı."
+
+msgid "Remove or generalize Server / X-Powered-By / framework version headers at the reverse proxy."
+msgstr ""
+"Server / X-Powered-By / framework sürüm header’larını reverse proxy’de kaldırın veya "
+"genelleştirin."
+
+msgid "Do not expose private RFC1918 addresses in Location, body, or custom headers."
+msgstr "Location, gövde veya özel header’larda özel RFC1918 adresleri ifşa etmeyin."
+
+msgid "Set HttpOnly, Secure, and SameSite on session cookies."
+msgstr "Oturum çerezlerinde HttpOnly, Secure ve SameSite ayarlayın."
+
+msgid ""
+"AAHC only submits one same-site form with random disposable values — only test sites you own or "
+"have permission to assess."
+msgstr ""
+"AAHC yalnızca bir aynı-site formu rastgele tek kullanımlık değerlerle gönderir — yalnızca sahip "
+"olduğunuz veya test izniniz olan siteleri tarayın."
+
+msgid "Disclosure headers (Server, X-Powered-By, framework versions, debug tokens)"
+msgstr "İfşa header’ları (Server, X-Powered-By, framework sürümleri, debug token’ları)"
+
+msgid "Private IP leaks and weak Set-Cookie flags"
+msgstr "Özel IP sızıntıları ve zayıf Set-Cookie bayrakları"
+
+msgid "Missing baseline security headers (HSTS, CSP, XCTO, XFO, Referrer-Policy)"
+msgstr "Eksik temel güvenlik header’ları (HSTS, CSP, XCTO, XFO, Referrer-Policy)"
+
+msgid "If a same-site front-page form exists: fill with random data and re-check the next page"
+msgstr "Aynı-site ön sayfa formu varsa: rastgele doldurup sonraki sayfayı yeniden kontrol eder"
+
+msgid "Public targets only — no private/local hosts; one form step max"
+msgstr "Yalnızca herkese açık hedefler — özel/yerel host yok; en fazla bir form adımı"
+

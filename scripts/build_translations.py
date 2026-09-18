@@ -152,6 +152,11 @@ TOOL_MSGIDS = {
         "name": "HTTP Security Headers",
         "desc": "Score HSTS, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP.",
     },
+    "aahc": {
+        "name": "AAHC — Adam Akıllı Header Checker",
+        "desc": "Find disclosure headers on a site; if a front-page form exists, fill it with random data and re-check the next page.",
+        "placeholder": "https://example.com",
+    },
     "spfgen": {
         "name": "Create SPF record",
         "desc": "Build a starter SPF TXT to publish — not a live lookup.",

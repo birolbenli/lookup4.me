@@ -43,6 +43,17 @@
     <li>{{ _('Remediation shown only when exposure is found') }}</li>
   </ul>
 </aside>
+{% elif slug == 'aahc' %}
+<aside class="checks-bar" aria-label="{{ _('What this checks') }}">
+  <div class="checks-bar-title">{{ _('What this checks') }}</div>
+  <ul class="checks-bar-list">
+    <li>{{ _('Disclosure headers (Server, X-Powered-By, framework versions, debug tokens)') }}</li>
+    <li>{{ _('Private IP leaks and weak Set-Cookie flags') }}</li>
+    <li>{{ _('Missing baseline security headers (HSTS, CSP, XCTO, XFO, Referrer-Policy)') }}</li>
+    <li>{{ _('If a same-site front-page form exists: fill with random data and re-check the next page') }}</li>
+    <li>{{ _('Public targets only — no private/local hosts; one form step max') }}</li>
+  </ul>
+</aside>
 {% elif slug == 'headers' %}
 <aside class="checks-bar" aria-label="{{ _('What this checks') }}">
   <div class="checks-bar-title">{{ _('What this checks') }}</div>
