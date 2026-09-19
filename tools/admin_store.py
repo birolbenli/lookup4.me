@@ -23,6 +23,12 @@ LIST_BLACKLIST = "blacklist"
 _MAX_QUERY_LEN = 240
 _RETENTION_DAYS = 45
 
+# Seeded once into host_lists (cloaking / content-theft domains).
+_DEFAULT_BLOCKED_HOSTS = (
+    "kodogretmeni.com",
+    "kodogoretmeni.com",
+)
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
@@ -117,6 +123,31 @@ def init_admin_store() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_visit_ip ON visit_logs(ip)"
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS host_lists (
+                host TEXT NOT NULL,
+                list_type TEXT NOT NULL,
+                note TEXT,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (host, list_type)
+            )
+            """
+        )
+        # Seed known cloaking hosts (idempotent)
+        for host in _DEFAULT_BLOCKED_HOSTS:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO host_lists (host, list_type, note, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    host.lower(),
+                    LIST_BLACKLIST,
+                    "Domain cloaking / content theft",
+                    _iso(),
+                ),
+            )
 
 
 def get_setting(key: str, default: str | None = None) -> str | None:
@@ -221,6 +252,97 @@ def remove_ip(ip: str, list_type: str) -> dict:
             cur = conn.execute(
                 "DELETE FROM ip_lists WHERE ip = ? AND list_type = ?",
                 (ip, list_type),
+            )
+            return {"ok": True, "removed": cur.rowcount > 0}
+
+
+def _normalize_host(host: str) -> str:
+    h = (host or "").strip().lower()
+    h = h.removeprefix("http://").removeprefix("https://")
+    h = h.split("/")[0].split(":")[0].strip().rstrip(".")
+    if h.startswith("www."):
+        h = h[4:]
+    return h
+
+
+def is_host_blacklisted(host: str) -> bool:
+    """True if host or any parent matches a blacklisted hostname."""
+    host = _normalize_host(host)
+    if not host or "." not in host:
+        return False
+    init_admin_store()
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT host FROM host_lists WHERE list_type = ?",
+            (LIST_BLACKLIST,),
+        ).fetchall()
+    for row in rows:
+        blocked = _normalize_host(row["host"] if isinstance(row, sqlite3.Row) else row[0])
+        if not blocked:
+            continue
+        if host == blocked or host.endswith("." + blocked):
+            return True
+    # Also honor env BLOCKED_HOSTS=a.com,b.com
+    for raw in (os.environ.get("BLOCKED_HOSTS") or "").split(","):
+        blocked = _normalize_host(raw)
+        if blocked and (host == blocked or host.endswith("." + blocked)):
+            return True
+    return False
+
+
+def list_hosts(list_type: str | None = None) -> list[dict]:
+    init_admin_store()
+    with _conn() as conn:
+        if list_type:
+            rows = conn.execute(
+                """
+                SELECT host, list_type, note, created_at
+                FROM host_lists WHERE list_type = ?
+                ORDER BY created_at DESC
+                """,
+                (list_type,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT host, list_type, note, created_at
+                FROM host_lists ORDER BY list_type, created_at DESC
+                """
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def add_host(host: str, list_type: str = LIST_BLACKLIST, note: str = "") -> dict:
+    host = _normalize_host(host)
+    list_type = (list_type or LIST_BLACKLIST).strip().lower()
+    if not host or "." not in host:
+        return {"ok": False, "error": "Valid hostname required"}
+    if list_type != LIST_BLACKLIST:
+        return {"ok": False, "error": "Only host blacklist is supported"}
+    init_admin_store()
+    with _LOCK:
+        with _conn() as conn:
+            conn.execute(
+                """
+                INSERT INTO host_lists (host, list_type, note, created_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(host, list_type) DO UPDATE SET
+                    note = excluded.note,
+                    created_at = excluded.created_at
+                """,
+                (host, list_type, (note or "")[:200], _iso()),
+            )
+    return {"ok": True, "host": host, "list_type": list_type}
+
+
+def remove_host(host: str, list_type: str = LIST_BLACKLIST) -> dict:
+    host = _normalize_host(host)
+    list_type = (list_type or LIST_BLACKLIST).strip().lower()
+    with _LOCK:
+        with _conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM host_lists WHERE host = ? AND list_type = ?",
+                (host, list_type),
             )
             return {"ok": True, "removed": cur.rowcount > 0}
 

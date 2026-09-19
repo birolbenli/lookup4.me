@@ -207,6 +207,15 @@
               <ul class="ip-list" id="list-blacklist"></ul>
             </div>
           </div>
+
+          <h2 style="margin-top:2rem">Host blocklist</h2>
+          <p class="muted">Block Referer / Origin / Host from cloaking domains (e.g. content mirrors).</p>
+          <form id="host-list-form" class="inline-form">
+            <input name="host" required placeholder="example.com" class="mono">
+            <input name="note" placeholder="Note (optional)">
+            <button class="btn" type="submit">Block host</button>
+          </form>
+          <ul class="ip-list" id="list-blocked-hosts"></ul>
         </section>
 
         <section class="tab" id="tab-queries">

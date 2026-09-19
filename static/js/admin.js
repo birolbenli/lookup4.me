@@ -738,6 +738,33 @@
     };
     render($("#list-whitelist"), "whitelist");
     render($("#list-blacklist"), "blacklist");
+    await loadHostLists();
+  }
+
+  async function loadHostLists() {
+    const el = $("#list-blocked-hosts");
+    if (!el) return;
+    const data = await api("/host-lists");
+    const items = (data.items || []).filter((x) => x.list_type === "blacklist");
+    el.innerHTML = items.length
+      ? items
+          .map(
+            (x) => `<li>
+          <div><code class="mono">${esc(x.host)}</code><div class="tiny muted">${esc(x.note || "")}</div></div>
+          <button type="button" class="btn btn-sm btn-ghost" data-rm-host="${esc(x.host)}">Remove</button>
+        </li>`
+          )
+          .join("")
+      : `<li class="muted">Empty</li>`;
+    el.querySelectorAll("[data-rm-host]").forEach((b) =>
+      b.addEventListener("click", async () => {
+        await api("/host-lists", {
+          method: "DELETE",
+          body: JSON.stringify({ host: b.dataset.rmHost, list_type: "blacklist" }),
+        });
+        await loadHostLists();
+      })
+    );
   }
 
   $("#list-form")?.addEventListener("submit", async (e) => {
@@ -753,6 +780,21 @@
     });
     e.target.reset();
     await loadLists();
+  });
+
+  $("#host-list-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    await api("/host-lists", {
+      method: "POST",
+      body: JSON.stringify({
+        host: fd.get("host"),
+        list_type: "blacklist",
+        note: fd.get("note"),
+      }),
+    });
+    e.target.reset();
+    await loadHostLists();
   });
 
   async function loadQueries() {

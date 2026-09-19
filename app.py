@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from urllib.parse import parse_qsl, unquote, urlencode
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse
 
 from flask import Flask, Response, g, jsonify, redirect, render_template, request
 
@@ -29,17 +29,21 @@ from tools.admin_auth import (
     validate_session,
 )
 from tools.admin_store import (
+    add_host,
     add_ip,
     cleanup_old_logs,
     country_visit_stats,
     init_admin_store,
     is_blacklisted,
+    is_host_blacklisted,
+    list_hosts,
     list_ips,
     log_query,
     log_visit,
     overview_stats,
     recent_queries,
     recent_visits,
+    remove_host,
     remove_ip,
     tool_stats,
     top_ips,
@@ -646,6 +650,28 @@ def _blacklist_redirect():
     return redirect("https://www.google.com/", code=302)
 
 
+def _request_related_hosts() -> list[str]:
+    """Hostnames from Host / Origin / Referer for blocklist checks."""
+    hosts: list[str] = []
+    h = _request_hostname()
+    if h:
+        hosts.append(h)
+    for hdr in ("Origin", "Referer"):
+        raw = (request.headers.get(hdr) or "").strip()
+        if not raw:
+            continue
+        try:
+            if "://" not in raw:
+                raw = "https://" + raw
+            parsed = urlparse(raw)
+            host = (parsed.hostname or "").lower()
+            if host:
+                hosts.append(host)
+        except Exception:  # noqa: BLE001
+            continue
+    return hosts
+
+
 @app.before_request
 def _ensure_runtime():
     g.set_lang_cookie = (request.args.get("lang") or "").lower() in LANG_SUPPORTED
@@ -671,9 +697,13 @@ def _ensure_runtime():
             target = _canonical_url(path)
             return redirect(target, code=301)
 
-    # Blacklisted IPs never see the site (admin/static included).
+    # Blacklisted IPs / hosts (Referer/Origin/Host) never see the site.
     if not local_health and is_blacklisted(ip):
         return _blacklist_redirect()
+    if not local_health:
+        for host in _request_related_hosts():
+            if is_host_blacklisted(host):
+                return _blacklist_redirect()
 
     # Force HTTPS (behind reverse proxy via X-Forwarded-Proto).
     force_https = os.environ.get("FORCE_HTTPS", "1").strip() not in {"0", "false", "no"}
@@ -1462,6 +1492,38 @@ def admin_lists_del():
         return denied
     data = request.get_json(silent=True) or {}
     return jsonify(remove_ip(data.get("ip") or "", data.get("list_type") or ""))
+
+
+@app.get("/admin/api/host-lists")
+def admin_host_lists_get():
+    denied = _require_admin()
+    if denied:
+        return denied
+    return jsonify({"ok": True, "items": list_hosts()})
+
+
+@app.post("/admin/api/host-lists")
+def admin_host_lists_add():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    result = add_host(
+        data.get("host") or "",
+        data.get("list_type") or "blacklist",
+        data.get("note") or "",
+    )
+    status = 200 if result.get("ok") else 400
+    return jsonify(result), status
+
+
+@app.delete("/admin/api/host-lists")
+def admin_host_lists_del():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    return jsonify(remove_host(data.get("host") or "", data.get("list_type") or "blacklist"))
 
 
 @app.get("/admin/api/queries")
