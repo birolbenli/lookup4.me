@@ -105,7 +105,7 @@ from tools.rate_limit import (
 )
 from tools.stats import bump, get_counts, init_stats, total_count
 from tools.visitors import get_country_counts, init_visitors, track_visitor, visitor_total
-from tools.whois_lookup import lookup_whois, summarize_whois_owner
+from tools.whois_lookup import lookup_whois
 
 logging.basicConfig(level=logging.INFO)
 
@@ -761,7 +761,6 @@ def inject_globals():
         "linkedin_url": app.config["LINKEDIN_URL"],
         "site_name": "tools.birolbenli.com",
         "public_base_url": app.config["PUBLIC_BASE_URL"],
-        "allowed_hosts": sorted(app.config.get("ALLOWED_HOSTS") or {"tools.birolbenli.com"}),
         "canonical_url": _canonical_url(),
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
@@ -970,60 +969,6 @@ def api_visitors_geo():
             "countries": countries,
         }
     )
-
-
-_CLOAK_WHOIS_CACHE: dict[str, tuple[float, dict]] = {}
-_CLOAK_WHOIS_TTL = 600.0
-
-
-@app.get("/api/cloak-shame")
-def api_cloak_shame():
-    """Public WHOIS summary for origin-guard interstitial (noindex)."""
-    import time
-
-    from tools.dns_common import is_valid_domain, normalize_domain
-
-    def _resp(payload: dict, status: int = 200):
-        r = jsonify(payload)
-        r.headers["X-Robots-Tag"] = "noindex, nofollow"
-        r.headers["Cache-Control"] = "private, max-age=60"
-        r.headers["Access-Control-Allow-Origin"] = "*"
-        return r, status
-
-    raw_host = (request.args.get("domain") or request.args.get("host") or "").strip()
-    domain = normalize_domain(raw_host)
-    allowed = app.config.get("ALLOWED_HOSTS") or set()
-    if not domain or not is_valid_domain(domain):
-        return _resp({"ok": False, "error": "Invalid domain"}, 400)
-    if domain in allowed or domain.endswith(".birolbenli.com"):
-        return _resp({"ok": False, "error": "Own domains are not reported"}, 400)
-
-    now = time.time()
-    cached = _CLOAK_WHOIS_CACHE.get(domain)
-    if cached and (now - cached[0]) < _CLOAK_WHOIS_TTL:
-        payload = cached[1]
-    else:
-        who = lookup_whois(domain, timeout=2.5)
-        summary = summarize_whois_owner(who.get("raw") or "") if who.get("ok") else {}
-        payload = {
-            "ok": bool(who.get("ok")),
-            "domain": domain,
-            "owner": summary.get("owner") or "WHOIS privacy / not publicly listed",
-            "organization": summary.get("organization") or "",
-            "name": summary.get("name") or "",
-            "registrar": summary.get("registrar") or "",
-            "country": summary.get("country") or "",
-            "created": summary.get("created") or "",
-            "error": who.get("error"),
-        }
-        if who.get("ok"):
-            _CLOAK_WHOIS_CACHE[domain] = (now, payload)
-            if len(_CLOAK_WHOIS_CACHE) > 200:
-                oldest = sorted(_CLOAK_WHOIS_CACHE.items(), key=lambda kv: kv[1][0])[:50]
-                for key, _ in oldest:
-                    _CLOAK_WHOIS_CACHE.pop(key, None)
-
-    return _resp(payload)
 
 
 @app.get("/about")
