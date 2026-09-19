@@ -1003,7 +1003,7 @@ def api_cloak_shame():
     if cached and (now - cached[0]) < _CLOAK_WHOIS_TTL:
         payload = cached[1]
     else:
-        who = lookup_whois(domain)
+        who = lookup_whois(domain, timeout=2.5)
         summary = summarize_whois_owner(who.get("raw") or "") if who.get("ok") else {}
         payload = {
             "ok": bool(who.get("ok")),

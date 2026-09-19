@@ -60,47 +60,48 @@
       if (typeof hosts === "string") hosts = [hosts];
       hosts = hosts.map(function (h) { return String(h || "").toLowerCase(); }).filter(Boolean);
 
-      var SAFE_REF = [
-        "google.", "bing.", "duckduckgo.", "yahoo.", "yandex.", "baidu.",
-        "facebook.", "fb.", "t.co", "twitter.", "x.com", "linkedin.",
-        "instagram.", "reddit.", "github.", "chatgpt.", "openai.",
-        "birolbenli.com"
-      ];
-      function isSafeReferrer(h) {
+      function isOurHost(h) {
         h = (h || "").toLowerCase();
-        if (!h) return true;
+        if (!h) return false;
         if (hosts.indexOf(h) !== -1) return true;
-        for (var i = 0; i < SAFE_REF.length; i++) {
-          if (h === SAFE_REF[i] || h.endsWith("." + SAFE_REF[i]) || h.indexOf(SAFE_REF[i]) !== -1) return true;
-        }
+        // Always trust our brand domains (blog, tools, www, …)
+        if (h === "birolbenli.com" || h.endsWith(".birolbenli.com")) return true;
         return false;
-      }
-      function refHost() {
-        try {
-          if (!document.referrer) return "";
-          return (new URL(document.referrer)).hostname.toLowerCase();
-        } catch (e) { return ""; }
       }
 
       var host = (location.hostname || "").toLowerCase();
+      // Only real cloaking: foreign hostname serving our HTML, or cross-origin iframe
+      var mirror = !isOurHost(host);
       var framed = false;
       try { framed = window.top !== window.self; } catch (e) { framed = true; }
-      var mirror = hosts.length > 0 && hosts.indexOf(host) === -1;
-      var rh = refHost();
-      var fromCloak = !mirror && !!rh && !isSafeReferrer(rh);
-      var offender = mirror ? host : (fromCloak ? rh : "");
-
-      if (!framed && !mirror && !fromCloak) return;
-
-      var dest = base + (location.pathname || "/") + (location.search || "") + (location.hash || "");
-      if (framed && !mirror) {
-        try { window.top.location.replace(dest); return; } catch (e) {}
+      // Same-site embed is rare; only treat as theft when mirrored or clearly framed
+      if (!mirror && !framed) return;
+      // On our real domain, ignore plain iframes from nowhere — only shame mirrors
+      if (!mirror && framed) {
+        try {
+          // If we can read parent location, it's same-origin — don't shame
+          if (window.top.location.hostname) return;
+        } catch (e) {
+          // cross-origin frame of our site — try breakout, light banner without WHOIS wait
+        }
       }
 
-      // Dedupe referrer interstitial within a tab session
-      try {
-        if (fromCloak && !mirror && sessionStorage.getItem("og_shame_" + offender) === "1") return;
-      } catch (e) {}
+      var offender = mirror ? host : "";
+      var dest = base + (location.pathname || "/") + (location.search || "") + (location.hash || "");
+
+      if (framed) {
+        try { window.top.location.replace(dest); return; } catch (e) {}
+      }
+      if (!mirror) {
+        // Cross-origin iframe of the real site: breakout failed → short notice, no WHOIS
+        var el0 = document.getElementById("origin-guard");
+        if (!el0) return;
+        var link0 = el0.querySelector("[data-origin-link]");
+        if (link0) link0.setAttribute("href", dest);
+        el0.hidden = false;
+        document.documentElement.classList.add("origin-guard-active", "origin-guard-shame", "origin-guard-framed");
+        return;
+      }
 
       var el = document.getElementById("origin-guard");
       if (!el) return;
@@ -124,56 +125,36 @@
           .replace(/\{site\}/g, siteName);
       }
 
-      // noindex while interstitial is shown
       var robots = document.createElement("meta");
       robots.setAttribute("name", "robots");
       robots.setAttribute("content", "noindex, nofollow");
       document.head.appendChild(robots);
 
       el.hidden = false;
-      document.documentElement.classList.add("origin-guard-active", "origin-guard-shame");
-      if (framed || mirror) document.documentElement.classList.add("origin-guard-framed");
+      document.documentElement.classList.add("origin-guard-active", "origin-guard-shame", "origin-guard-framed");
       if (metaEl) metaEl.hidden = false;
-      if (offender) setField("domain", offender);
-      fillText(offender || "—", "…");
+      setField("domain", offender);
+      fillText(offender, "…");
 
+      // Countdown starts immediately — do not wait for WHOIS
       var DURATION = 8;
-      function startTimer(done) {
-        if (!timerEl) { done(); return; }
+      if (timerEl) {
         timerEl.hidden = false;
         var left = DURATION;
         timerEl.textContent = left + "s";
-        var id = setInterval(function () {
+        setInterval(function () {
           left -= 1;
-          if (left <= 0) {
-            clearInterval(id);
-            timerEl.textContent = "";
-            done();
-            return;
-          }
+          if (left <= 0) { timerEl.textContent = ""; return; }
           timerEl.textContent = left + "s";
         }, 1000);
       }
 
-      function afterShame() {
-        try { if (offender) sessionStorage.setItem("og_shame_" + offender, "1"); } catch (e) {}
-        if (mirror || framed) {
-          // Stay on overlay until user opens the real site
-          return;
-        }
-        // Arrived on the real site via cloaker referrer — dismiss and continue
-        el.hidden = true;
-        document.documentElement.classList.remove("origin-guard-active", "origin-guard-shame", "origin-guard-framed");
-        try { robots.remove(); } catch (e) {}
-      }
-
-      if (!offender) {
-        fillText("—", "—");
-        startTimer(afterShame);
-        return;
-      }
-
-      fetch(base + "/api/cloak-shame?domain=" + encodeURIComponent(offender), { credentials: "omit" })
+      var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      var to = setTimeout(function () { try { ctrl && ctrl.abort(); } catch (e) {} }, 2800);
+      fetch(base + "/api/cloak-shame?domain=" + encodeURIComponent(offender), {
+        credentials: "omit",
+        signal: ctrl ? ctrl.signal : undefined
+      })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var owner = (data && data.owner) || "WHOIS privacy / not publicly listed";
@@ -185,7 +166,7 @@
           setField("owner", "WHOIS unavailable");
           fillText(offender, "WHOIS unavailable");
         })
-        .finally(function () { startTimer(afterShame); });
+        .finally(function () { clearTimeout(to); });
     })();
   </script>
 

@@ -39,7 +39,7 @@ def _referral_server(text: str) -> str | None:
     return None
 
 
-def lookup_whois(target: str) -> dict:
+def lookup_whois(target: str, *, timeout: float = 10.0) -> dict:
     target = (target or "").strip()
     if not target:
         return {"ok": False, "error": "Please enter a domain or IP"}
@@ -51,7 +51,7 @@ def lookup_whois(target: str) -> dict:
             return {"ok": False, "error": "Invalid domain or IP", "query": target}
 
     try:
-        bootstrap = _query(IANA_WHOIS, query)
+        bootstrap = _query(IANA_WHOIS, query, timeout=timeout)
         server = _referral_server(bootstrap) or IANA_WHOIS
         if server == IANA_WHOIS and not is_ip(query):
             # fallback common gTLD servers when IANA returns little
@@ -68,7 +68,7 @@ def lookup_whois(target: str) -> dict:
             }
             server = guesses.get(tld, server)
 
-        body = _query(server, query)
+        body = _query(server, query, timeout=timeout)
         if len(body.strip()) < 20 and server != IANA_WHOIS:
             body = bootstrap
 
