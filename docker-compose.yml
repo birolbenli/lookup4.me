@@ -2,6 +2,9 @@ services:
   lookup4me:
     build: .
     container_name: lookup4me
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8080:8080"
       # Bind public IP only — host exim often holds 127.0.0.1:25
@@ -25,6 +28,8 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - SECRET_KEY=${SECRET_KEY:-}
       - FORCE_HTTPS=${FORCE_HTTPS:-1}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://tools.birolbenli.com}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-tools.birolbenli.com}
       - HEAVY_CONCURRENCY=${HEAVY_CONCURRENCY:-2}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-6}
       - GUNICORN_TIMEOUT=${GUNICORN_TIMEOUT:-90}
@@ -32,7 +37,7 @@ services:
     volumes:
       - lookup4me_data:/app/instance
     restart: unless-stopped
-    mem_limit: 300m
+    mem_limit: 512m
     labels:
       - autoheal=true
     healthcheck:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from urllib.parse import unquote
+from urllib.parse import parse_qsl, unquote, urlencode
 
 from flask import Flask, Response, g, jsonify, redirect, render_template, request
 
@@ -120,6 +120,13 @@ app.config["BUYMEACOFFEE_URL"] = os.environ.get(
 app.config["LINKEDIN_URL"] = os.environ.get(
     "LINKEDIN_URL", "https://tr.linkedin.com/in/birolbenli"
 )
+# Canonical public origin — used for SEO + Host allowlisting (anti-clone).
+_PUBLIC_BASE = (os.environ.get("PUBLIC_BASE_URL") or "https://tools.birolbenli.com").rstrip("/")
+app.config["PUBLIC_BASE_URL"] = _PUBLIC_BASE
+_allowed = os.environ.get("ALLOWED_HOSTS", "tools.birolbenli.com").strip()
+app.config["ALLOWED_HOSTS"] = {
+    h.strip().lower() for h in _allowed.split(",") if h.strip()
+}
 app.config["MAILTEST_DOMAIN"] = os.environ.get(
     "MAILTEST_DOMAIN", "tools.birolbenli.com"
 )
@@ -615,6 +622,25 @@ def _is_https_request() -> bool:
     return proto == "https"
 
 
+def _request_hostname() -> str:
+    # Prefer real Host; ignore spoofed X-Forwarded-Host from strangers.
+    host = (request.host or "").split(":")[0].strip().lower()
+    return host
+
+
+def _canonical_url(path: str | None = None) -> str:
+    base = app.config["PUBLIC_BASE_URL"].rstrip("/")
+    p = path if path is not None else (request.path or "/")
+    if not p.startswith("/"):
+        p = "/" + p
+    qs = request.query_string.decode("utf-8", "replace") if request.query_string else ""
+    if qs:
+        # Prefer stable canonical without tracking params
+        keep = [(k, v) for k, v in parse_qsl(qs, keep_blank_values=True) if k in {"lang"}]
+        qs = urlencode(keep)
+    return f"{base}{p}" + (f"?{qs}" if qs else "")
+
+
 def _blacklist_redirect():
     """Send blocked clients away — do not serve any site content."""
     return redirect("https://www.google.com/", code=302)
@@ -637,6 +663,14 @@ def _ensure_runtime():
     # Local healthchecks stay on HTTP (Docker / Apache probes).
     local_health = path == "/health" and remote in {"127.0.0.1", "::1"}
 
+    # Reject foreign Hostnames pointing at this origin (domain cloaking / Host abuse).
+    allowed = app.config.get("ALLOWED_HOSTS") or set()
+    if allowed and not local_health:
+        host = _request_hostname()
+        if host and host not in allowed and host not in {"127.0.0.1", "localhost"}:
+            target = _canonical_url(path)
+            return redirect(target, code=301)
+
     # Blacklisted IPs never see the site (admin/static included).
     if not local_health and is_blacklisted(ip):
         return _blacklist_redirect()
@@ -644,8 +678,7 @@ def _ensure_runtime():
     # Force HTTPS (behind reverse proxy via X-Forwarded-Proto).
     force_https = os.environ.get("FORCE_HTTPS", "1").strip() not in {"0", "false", "no"}
     if force_https and not local_health and not _is_https_request():
-        https_url = request.url.replace("http://", "https://", 1)
-        return redirect(https_url, code=301)
+        return redirect(_canonical_url(path), code=301)
 
     return None
 
@@ -694,10 +727,20 @@ def _after_request(response):
             samesite="Lax",
         )
     ctype = (response.content_type or "").lower()
+    # Anti-framing / baseline headers (does not stop server-side reverse proxies)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "frame-ancestors 'none'",
+    )
     if "text/html" in ctype:
         # Avoid stale homepage/tool lists after deploys
         response.headers["Cache-Control"] = "no-store, max-age=0, must-revalidate"
         response.headers["Pragma"] = "no-cache"
+        # HTTP Link canonical — survives some HTML rewrites
+        response.headers["Link"] = f'<{_canonical_url()}>; rel="canonical"'
     if _should_track_visitor() and "text/html" in ctype and response.status_code < 400:
         ip = client_ip_from_request(request)
         ua = request.headers.get("User-Agent", "")
@@ -717,6 +760,9 @@ def inject_globals():
         "buymeacoffee_url": app.config["BUYMEACOFFEE_URL"],
         "linkedin_url": app.config["LINKEDIN_URL"],
         "site_name": "tools.birolbenli.com",
+        "public_base_url": app.config["PUBLIC_BASE_URL"],
+        "allowed_hosts": sorted(app.config.get("ALLOWED_HOSTS") or {"tools.birolbenli.com"}),
+        "canonical_url": _canonical_url(),
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
         "mailtest_domain": app.config["MAILTEST_DOMAIN"],

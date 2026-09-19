@@ -51,7 +51,7 @@
     {% endif %}
     {% if tool.slug == 'ip' %}
     <span class="muted">· curl:</span>
-    <code>curl {{ request.host_url.rstrip('/') }}/ip</code>
+    <code>curl {{ public_base_url }}/ip</code>
     {% endif %}
     {% if tool.slug == 'dns' %}
     <span class="muted">· type via</span>

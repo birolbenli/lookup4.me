@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <meta name="description" content="{{ _('Free DNS, email authentication, IP and SSL lookup tools.') }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:site_name" content="{{ site_name }}">
+  <meta name="application-name" content="{{ site_name }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -16,7 +20,9 @@
       coffee: {{ buymeacoffee_url | tojson }},
       linkedin: {{ linkedin_url | tojson }},
       email: "birolbenli@gmail.com",
-      site: {{ site_name | tojson }}
+      site: {{ site_name | tojson }},
+      base: {{ public_base_url | tojson }},
+      hosts: {{ allowed_hosts | tojson }}
     };
     // Keep on __i18nT — app.js also defines a global t() and must not recurse.
     window.__i18nT = function (key, vars) {
@@ -31,6 +37,52 @@
   </script>
 </head>
 <body>
+  <div id="origin-guard" class="origin-guard" hidden role="alert">
+    <div class="origin-guard-inner wrap">
+      <div class="origin-guard-copy">
+        <strong class="origin-guard-title">{{ _('Official site warning') }}</strong>
+        <p class="origin-guard-text">
+          {{ _('This content belongs to {site}. You are viewing it through another website or an embedded frame. For the original, safe page, open the link below.', site=site_name) }}
+        </p>
+      </div>
+      <a class="origin-guard-cta" data-origin-link href="{{ public_base_url }}/">{{ _('Open {site}', site=site_name) }}</a>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var site = window.__SITE__ || {};
+      var base = (site.base || "https://tools.birolbenli.com").replace(/\/$/, "");
+      var hosts = site.hosts || [site.site || "tools.birolbenli.com"];
+      if (typeof hosts === "string") hosts = [hosts];
+      hosts = hosts.map(function (h) { return String(h || "").toLowerCase(); }).filter(Boolean);
+      var host = (location.hostname || "").toLowerCase();
+      var framed = false;
+      try {
+        framed = window.top !== window.self;
+      } catch (e) {
+        framed = true;
+      }
+      var mirror = hosts.length > 0 && hosts.indexOf(host) === -1;
+      if (!framed && !mirror) return;
+
+      var dest = base + (location.pathname || "/") + (location.search || "") + (location.hash || "");
+      if (framed) {
+        try {
+          window.top.location.replace(dest);
+          return;
+        } catch (e) { /* cross-origin frame — show banner */ }
+      }
+
+      var el = document.getElementById("origin-guard");
+      if (!el) return;
+      var link = el.querySelector("[data-origin-link]");
+      if (link) link.setAttribute("href", dest);
+      el.hidden = false;
+      document.documentElement.classList.add("origin-guard-active");
+      if (framed) document.documentElement.classList.add("origin-guard-framed");
+    })();
+  </script>
+
   <div class="ip-bar">
     <div class="wrap ip-bar-inner">
       <span class="ip-bar-label">{{ _('Your IP') }}</span>

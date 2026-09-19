@@ -46,6 +46,21 @@ msgstr "Dil"
 msgid "Buy me a coffee"
 msgstr "Bir kahve ısmarla"
 
+msgid "Official site warning"
+msgstr "Resmi site uyarısı"
+
+#, python-brace-format
+msgid ""
+"This content belongs to {site}. You are viewing it through another website or an embedded frame. "
+"For the original, safe page, open the link below."
+msgstr ""
+"Bu içerik {site} sitesine aittir. Başka bir web sitesi veya gömülü çerçeve üzerinden "
+"görüntülüyorsunuz. Orijinal ve güvenli sayfa için aşağıdaki bağlantıyı açın."
+
+#, python-brace-format
+msgid "Open {site}"
+msgstr "{site} adresini aç"
+
 msgid "Your IP"
 msgstr "IP adresiniz"
 
@@ -2639,4 +2654,26 @@ msgstr "Aynı-site ön sayfa formu varsa: rastgele doldurup sonraki sayfayı yen
 
 msgid "Public targets only — no private/local hosts; one form step max"
 msgstr "Yalnızca herkese açık hedefler — özel/yerel host yok; en fazla bir form adımı"
+
+msgid "Form action response"
+msgstr "Form action yanıtı"
+
+msgid "After form redirect"
+msgstr "Form yönlendirmesinden sonra"
+
+msgid ""
+"Captcha was filled randomly — validation may fail, but the form-action response headers are still"
+" checked."
+msgstr ""
+"Captcha rastgele dolduruldu — doğrulama başarısız olabilir; yine de form action yanıt header’ları"
+" kontrol edilir."
+
+msgid "Captcha"
+msgstr "Captcha"
+
+msgid "Solved"
+msgstr "Çözüldü"
+
+msgid "Not solved"
+msgstr "Çözülemedi"
 

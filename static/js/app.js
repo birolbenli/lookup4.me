@@ -1665,7 +1665,22 @@ function renderScanReport(data, root) {
                 (form.fields || []).length
                   ? ` · <span class="mono">${escapeHtml((form.fields || []).slice(0, 8).join(", "))}</span>`
                   : ""
-              }</p>`
+              }</p>
+              ${
+                form.captcha && form.captcha.present
+                  ? `<p class="tiny">${escapeHtml(t("Captcha"))}: ${
+                      form.captcha.solved
+                        ? `<span class="status ok">${escapeHtml(t("Solved"))} = ${escapeHtml(
+                            String(form.captcha.answer ?? "")
+                          )}</span>`
+                        : `<span class="status warn">${escapeHtml(t("Not solved"))}${
+                            form.captcha.error
+                              ? ` — ${escapeHtml(String(form.captcha.error).slice(0, 100))}`
+                              : ""
+                          }</span>`
+                    }</p>`
+                  : ""
+              }`
             : ""
         }
         ${

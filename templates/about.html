@@ -54,9 +54,9 @@
 /tools/dns/example.com?type=TXT</pre>
 
   <h2 class="subhead">{{ _('IP / curl') }}</h2>
-  <pre class="about-pre">curl {{ request.host_url.rstrip('/') }}/ip
-curl {{ request.host_url.rstrip('/') }}/ip.json
-curl {{ request.host_url.rstrip('/') }}/ua</pre>
+  <pre class="about-pre">curl {{ public_base_url }}/ip
+curl {{ public_base_url }}/ip.json
+curl {{ public_base_url }}/ua</pre>
 
   <h2 class="subhead">{{ _('Mail Tester DNS') }}</h2>
   <p class="muted">{{ _('For Mail Tester delivery, point MX for {domain} to this server IP and keep port 25 open.', domain=mailtest_domain) }}</p>
