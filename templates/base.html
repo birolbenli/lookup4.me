@@ -3,6 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# Hide body until hostname is verified — mirrors that strip JS stay blank #}
+  <style>html:not(.site-ok) body{visibility:hidden!important;background:#fff!important}</style>
+  <script>
+    (function () {
+      var base = {{ public_base_url | tojson }};
+      var allowed = {{ allowed_hosts | tojson }};
+      var host = (location.hostname || "").toLowerCase();
+      function ok(h) {
+        if (!h) return false;
+        if (h === "localhost" || h === "127.0.0.1") return true;
+        if (h === "birolbenli.com" || h.endsWith(".birolbenli.com")) return true;
+        if (allowed && allowed.indexOf(h) !== -1) return true;
+        return false;
+      }
+      if (ok(host)) {
+        document.documentElement.classList.add("site-ok");
+        return;
+      }
+      var dest = String(base || "https://tools.birolbenli.com").replace(/\/$/, "") +
+        (location.pathname || "/") + (location.search || "") + (location.hash || "");
+      location.replace(dest);
+    })();
+  </script>
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <meta name="description" content="{{ _('Free DNS, email authentication, IP and SSL lookup tools.') }}">
   <link rel="canonical" href="{{ canonical_url }}">
@@ -21,7 +44,8 @@
       linkedin: {{ linkedin_url | tojson }},
       email: "birolbenli@gmail.com",
       site: {{ site_name | tojson }},
-      base: {{ public_base_url | tojson }}
+      base: {{ public_base_url | tojson }},
+      hosts: {{ allowed_hosts | tojson }}
     };
     // Keep on __i18nT — app.js also defines a global t() and must not recurse.
     window.__i18nT = function (key, vars) {

@@ -791,6 +791,7 @@ def inject_globals():
         "linkedin_url": app.config["LINKEDIN_URL"],
         "site_name": "tools.birolbenli.com",
         "public_base_url": app.config["PUBLIC_BASE_URL"],
+        "allowed_hosts": sorted(app.config.get("ALLOWED_HOSTS") or {"tools.birolbenli.com"}),
         "canonical_url": _canonical_url(),
         "total_queries": total_count(),
         "dns_types": SUPPORTED_TYPES,
