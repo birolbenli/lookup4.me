@@ -689,21 +689,22 @@ def _ensure_runtime():
     # Local healthchecks stay on HTTP (Docker / Apache probes).
     local_health = path == "/health" and remote in {"127.0.0.1", "::1"}
 
-    # Reject foreign Hostnames pointing at this origin (domain cloaking / Host abuse).
-    allowed = app.config.get("ALLOWED_HOSTS") or set()
-    if allowed and not local_health:
+    if not local_health:
         host = _request_hostname()
-        if host and host not in allowed and host not in {"127.0.0.1", "localhost"}:
-            target = _canonical_url(path)
-            return redirect(target, code=301)
+        # Cloaking / blocked hosts must NOT 301 onto our real site (that makes them a doorway).
+        if host and is_host_blacklisted(host):
+            return _blacklist_redirect()
+        for related in _request_related_hosts():
+            if is_host_blacklisted(related):
+                return _blacklist_redirect()
+        # Any other foreign Host on this origin: refuse (do not redirect to us).
+        allowed = app.config.get("ALLOWED_HOSTS") or set()
+        if allowed and host and host not in allowed and host not in {"127.0.0.1", "localhost"}:
+            return _blacklist_redirect()
 
-    # Blacklisted IPs / hosts (Referer/Origin/Host) never see the site.
+    # Blacklisted client IPs never see the site.
     if not local_health and is_blacklisted(ip):
         return _blacklist_redirect()
-    if not local_health:
-        for host in _request_related_hosts():
-            if is_host_blacklisted(host):
-                return _blacklist_redirect()
 
     # Force HTTPS (behind reverse proxy via X-Forwarded-Proto).
     force_https = os.environ.get("FORCE_HTTPS", "1").strip() not in {"0", "false", "no"}

@@ -21,9 +21,8 @@
         document.documentElement.classList.add("site-ok");
         return;
       }
-      var dest = String(base || "https://tools.birolbenli.com").replace(/\/$/, "") +
-        (location.pathname || "/") + (location.search || "") + (location.hash || "");
-      location.replace(dest);
+      // Do not send mirror traffic to our real site (that rewards the cloaker).
+      location.replace("https://www.google.com/");
     })();
   </script>
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
@@ -57,17 +56,11 @@
       }
       return s;
     };
-    // Silent frame-bust (no UI) if embedded cross-origin
+    // Silent frame-bust (no UI) if embedded cross-origin — leave the frame, do not gift traffic via cloaker
     (function () {
       try {
         if (window.top !== window.self) {
-          var base = (window.__SITE__ && window.__SITE__.base) || "https://tools.birolbenli.com";
-          window.top.location.replace(
-            String(base).replace(/\/$/, "") +
-              (location.pathname || "/") +
-              (location.search || "") +
-              (location.hash || "")
-          );
+          window.top.location.replace("https://www.google.com/");
         }
       } catch (e) {}
     })();
