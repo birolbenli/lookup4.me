@@ -750,7 +750,7 @@
       ? items
           .map(
             (x) => `<li>
-          <div><code class="mono">${esc(x.host)}</code><div class="tiny muted">${esc(x.note || "")}</div></div>
+          <div><code class="mono">${esc(x.host)}</code><div class="tiny muted">${esc(x.redirect_to || "https://www.google.com/")} · ${esc(x.note || "")}</div></div>
           <button type="button" class="btn btn-sm btn-ghost" data-rm-host="${esc(x.host)}">Remove</button>
         </li>`
           )
@@ -791,6 +791,7 @@
         host: fd.get("host"),
         list_type: "blacklist",
         note: fd.get("note"),
+        redirect_to: fd.get("redirect_to"),
       }),
     });
     e.target.reset();

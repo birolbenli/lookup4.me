@@ -35,6 +35,7 @@ from tools.admin_store import (
     country_visit_stats,
     init_admin_store,
     is_blacklisted,
+    get_host_blacklist_redirect,
     is_host_blacklisted,
     list_hosts,
     list_ips,
@@ -645,9 +646,10 @@ def _canonical_url(path: str | None = None) -> str:
     return f"{base}{p}" + (f"?{qs}" if qs else "")
 
 
-def _blacklist_redirect():
+def _blacklist_redirect(to: str | None = None):
     """Send blocked clients away — do not serve any site content."""
-    return redirect("https://www.google.com/", code=302)
+    dest = (to or "").strip() or "https://www.google.com/"
+    return redirect(dest, code=302)
 
 
 def _request_related_hosts() -> list[str]:
@@ -692,11 +694,13 @@ def _ensure_runtime():
     if not local_health:
         host = _request_hostname()
         # Cloaking / blocked hosts must NOT 301 onto our real site (that makes them a doorway).
-        if host and is_host_blacklisted(host):
-            return _blacklist_redirect()
+        host_dest = get_host_blacklist_redirect(host) if host else None
+        if host_dest:
+            return _blacklist_redirect(host_dest)
         for related in _request_related_hosts():
-            if is_host_blacklisted(related):
-                return _blacklist_redirect()
+            related_dest = get_host_blacklist_redirect(related)
+            if related_dest:
+                return _blacklist_redirect(related_dest)
         # Any other foreign Host on this origin: refuse (do not redirect to us).
         allowed = app.config.get("ALLOWED_HOSTS") or set()
         if allowed and host and host not in allowed and host not in {"127.0.0.1", "localhost"}:
@@ -1514,6 +1518,7 @@ def admin_host_lists_add():
         data.get("host") or "",
         data.get("list_type") or "blacklist",
         data.get("note") or "",
+        data.get("redirect_to") or "",
     )
     status = 200 if result.get("ok") else 400
     return jsonify(result), status

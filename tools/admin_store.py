@@ -23,10 +23,11 @@ LIST_BLACKLIST = "blacklist"
 _MAX_QUERY_LEN = 240
 _RETENTION_DAYS = 45
 
-# Seeded once into host_lists (cloaking / content-theft domains).
+# Seeded into host_lists: (host, redirect_to). Cloakers go to nolur.com.
+_DEFAULT_HOST_REDIRECT = "https://www.google.com/"
 _DEFAULT_BLOCKED_HOSTS = (
-    "kodogretmeni.com",
-    "kodogoretmeni.com",
+    ("kodogretmeni.com", "https://nolur.com/"),
+    ("kodogoretmeni.com", "https://nolur.com/"),
 )
 
 
@@ -134,19 +135,31 @@ def init_admin_store() -> None:
             )
             """
         )
-        # Seed known cloaking hosts (idempotent)
-        for host in _DEFAULT_BLOCKED_HOSTS:
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(host_lists)")}
+        if "redirect_to" not in cols:
+            conn.execute("ALTER TABLE host_lists ADD COLUMN redirect_to TEXT")
+        # Seed known cloaking hosts (idempotent); refresh redirect_to on redeploy
+        for host, redirect_to in _DEFAULT_BLOCKED_HOSTS:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO host_lists (host, list_type, note, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT OR IGNORE INTO host_lists
+                    (host, list_type, note, created_at, redirect_to)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     host.lower(),
                     LIST_BLACKLIST,
                     "Domain cloaking / content theft",
                     _iso(),
+                    redirect_to,
                 ),
+            )
+            conn.execute(
+                """
+                UPDATE host_lists SET redirect_to = ?
+                WHERE host = ? AND list_type = ?
+                """,
+                (redirect_to, host.lower(), LIST_BLACKLIST),
             )
 
 
@@ -265,15 +278,32 @@ def _normalize_host(host: str) -> str:
     return h
 
 
+def _normalize_redirect_to(url: str | None) -> str:
+    raw = (url or "").strip()
+    if not raw:
+        return _DEFAULT_HOST_REDIRECT
+    if "://" not in raw:
+        raw = "https://" + raw
+    lower = raw.lower()
+    if not (lower.startswith("https://") or lower.startswith("http://")):
+        return _DEFAULT_HOST_REDIRECT
+    return raw.rstrip() or _DEFAULT_HOST_REDIRECT
+
+
 def is_host_blacklisted(host: str) -> bool:
     """True if host or any parent matches a blacklisted hostname."""
+    return get_host_blacklist_redirect(host) is not None
+
+
+def get_host_blacklist_redirect(host: str) -> str | None:
+    """If host is blacklisted, return where to send them; else None."""
     host = _normalize_host(host)
     if not host or "." not in host:
-        return False
+        return None
     init_admin_store()
     with _conn() as conn:
         rows = conn.execute(
-            "SELECT host FROM host_lists WHERE list_type = ?",
+            "SELECT host, redirect_to FROM host_lists WHERE list_type = ?",
             (LIST_BLACKLIST,),
         ).fetchall()
     for row in rows:
@@ -281,13 +311,23 @@ def is_host_blacklisted(host: str) -> bool:
         if not blocked:
             continue
         if host == blocked or host.endswith("." + blocked):
-            return True
-    # Also honor env BLOCKED_HOSTS=a.com,b.com
+            redirect_to = row["redirect_to"] if isinstance(row, sqlite3.Row) else None
+            return _normalize_redirect_to(redirect_to)
+    # Also honor env BLOCKED_HOSTS=a.com,b.com (optional a.com=https://…)
     for raw in (os.environ.get("BLOCKED_HOSTS") or "").split(","):
-        blocked = _normalize_host(raw)
-        if blocked and (host == blocked or host.endswith("." + blocked)):
-            return True
-    return False
+        part = raw.strip()
+        if not part:
+            continue
+        if "=" in part:
+            blocked_raw, dest = part.split("=", 1)
+            blocked = _normalize_host(blocked_raw)
+            if blocked and (host == blocked or host.endswith("." + blocked)):
+                return _normalize_redirect_to(dest)
+        else:
+            blocked = _normalize_host(part)
+            if blocked and (host == blocked or host.endswith("." + blocked)):
+                return _DEFAULT_HOST_REDIRECT
+    return None
 
 
 def list_hosts(list_type: str | None = None) -> list[dict]:
@@ -296,7 +336,7 @@ def list_hosts(list_type: str | None = None) -> list[dict]:
         if list_type:
             rows = conn.execute(
                 """
-                SELECT host, list_type, note, created_at
+                SELECT host, list_type, note, created_at, redirect_to
                 FROM host_lists WHERE list_type = ?
                 ORDER BY created_at DESC
                 """,
@@ -305,34 +345,41 @@ def list_hosts(list_type: str | None = None) -> list[dict]:
         else:
             rows = conn.execute(
                 """
-                SELECT host, list_type, note, created_at
+                SELECT host, list_type, note, created_at, redirect_to
                 FROM host_lists ORDER BY list_type, created_at DESC
                 """
             ).fetchall()
     return [dict(r) for r in rows]
 
 
-def add_host(host: str, list_type: str = LIST_BLACKLIST, note: str = "") -> dict:
+def add_host(
+    host: str,
+    list_type: str = LIST_BLACKLIST,
+    note: str = "",
+    redirect_to: str = "",
+) -> dict:
     host = _normalize_host(host)
     list_type = (list_type or LIST_BLACKLIST).strip().lower()
     if not host or "." not in host:
         return {"ok": False, "error": "Valid hostname required"}
     if list_type != LIST_BLACKLIST:
         return {"ok": False, "error": "Only host blacklist is supported"}
+    dest = _normalize_redirect_to(redirect_to)
     init_admin_store()
     with _LOCK:
         with _conn() as conn:
             conn.execute(
                 """
-                INSERT INTO host_lists (host, list_type, note, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO host_lists (host, list_type, note, created_at, redirect_to)
+                VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(host, list_type) DO UPDATE SET
                     note = excluded.note,
-                    created_at = excluded.created_at
+                    created_at = excluded.created_at,
+                    redirect_to = excluded.redirect_to
                 """,
-                (host, list_type, (note or "")[:200], _iso()),
+                (host, list_type, (note or "")[:200], _iso(), dest),
             )
-    return {"ok": True, "host": host, "list_type": list_type}
+    return {"ok": True, "host": host, "list_type": list_type, "redirect_to": dest}
 
 
 def remove_host(host: str, list_type: str = LIST_BLACKLIST) -> dict:
