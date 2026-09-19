@@ -2677,3 +2677,27 @@ msgstr "Çözüldü"
 msgid "Not solved"
 msgstr "Çözülemedi"
 
+msgid "Content theft / domain cloaking alert"
+msgstr "İçerik hırsızlığı / domain cloaking uyarısı"
+
+#, python-brace-format
+msgid ""
+"Attention: the domain {domain} (registrant/owner: {owner}) redirected or mirrored visitors toward"
+" {site} and attempted domain cloaking / content theft. Please open the original site directly."
+msgstr ""
+"Dikkat: {domain} alan adı (WHOIS kayıt sahibi: {owner}), ziyaretçileri {site} içeriğine "
+"yönlendirerek veya aynalayarak domain cloaking / içerik hırsızlığı girişiminde bulunmuştur. "
+"Lütfen orijinal siteyi doğrudan açın."
+
+msgid "Offending domain"
+msgstr "İhlal eden domain"
+
+msgid "WHOIS owner"
+msgstr "WHOIS sahibi"
+
+msgid "Registrar"
+msgstr "Registrar"
+
+msgid "Looking up WHOIS…"
+msgstr "WHOIS sorgulanıyor…"
+

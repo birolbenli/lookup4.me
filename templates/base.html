@@ -37,14 +37,17 @@
   </script>
 </head>
 <body>
-  <div id="origin-guard" class="origin-guard" hidden role="alert">
+  <div id="origin-guard" class="origin-guard origin-guard--shame" hidden role="alertdialog" aria-modal="true" aria-labelledby="origin-guard-title">
     <div class="origin-guard-inner wrap">
-      <div class="origin-guard-copy">
-        <strong class="origin-guard-title">{{ _('Official site warning') }}</strong>
-        <p class="origin-guard-text">
-          {{ _('This content belongs to {site}. You are viewing it through another website or an embedded frame. For the original, safe page, open the link below.', site=site_name) }}
-        </p>
-      </div>
+      <p class="origin-guard-kicker" id="origin-guard-kicker">{{ _('Content theft / domain cloaking alert') }}</p>
+      <strong class="origin-guard-title" id="origin-guard-title">{{ _('Official site warning') }}</strong>
+      <p class="origin-guard-text" id="origin-guard-text" data-tpl="{{ _('Attention: the domain {domain} (registrant/owner: {owner}) redirected or mirrored visitors toward {site} and attempted domain cloaking / content theft. Please open the original site directly.') | e }}"></p>
+      <dl class="origin-guard-meta" id="origin-guard-meta" hidden>
+        <div><dt>{{ _('Offending domain') }}</dt><dd data-field="domain">—</dd></div>
+        <div><dt>{{ _('WHOIS owner') }}</dt><dd data-field="owner">{{ _('Looking up WHOIS…') }}</dd></div>
+        <div><dt>{{ _('Registrar') }}</dt><dd data-field="registrar">—</dd></div>
+      </dl>
+      <p class="origin-guard-timer" id="origin-guard-timer" hidden></p>
       <a class="origin-guard-cta" data-origin-link href="{{ public_base_url }}/">{{ _('Open {site}', site=site_name) }}</a>
     </div>
   </div>
@@ -52,34 +55,137 @@
     (function () {
       var site = window.__SITE__ || {};
       var base = (site.base || "https://tools.birolbenli.com").replace(/\/$/, "");
-      var hosts = site.hosts || [site.site || "tools.birolbenli.com"];
+      var siteName = site.site || "tools.birolbenli.com";
+      var hosts = site.hosts || [siteName];
       if (typeof hosts === "string") hosts = [hosts];
       hosts = hosts.map(function (h) { return String(h || "").toLowerCase(); }).filter(Boolean);
+
+      var SAFE_REF = [
+        "google.", "bing.", "duckduckgo.", "yahoo.", "yandex.", "baidu.",
+        "facebook.", "fb.", "t.co", "twitter.", "x.com", "linkedin.",
+        "instagram.", "reddit.", "github.", "chatgpt.", "openai.",
+        "birolbenli.com"
+      ];
+      function isSafeReferrer(h) {
+        h = (h || "").toLowerCase();
+        if (!h) return true;
+        if (hosts.indexOf(h) !== -1) return true;
+        for (var i = 0; i < SAFE_REF.length; i++) {
+          if (h === SAFE_REF[i] || h.endsWith("." + SAFE_REF[i]) || h.indexOf(SAFE_REF[i]) !== -1) return true;
+        }
+        return false;
+      }
+      function refHost() {
+        try {
+          if (!document.referrer) return "";
+          return (new URL(document.referrer)).hostname.toLowerCase();
+        } catch (e) { return ""; }
+      }
+
       var host = (location.hostname || "").toLowerCase();
       var framed = false;
-      try {
-        framed = window.top !== window.self;
-      } catch (e) {
-        framed = true;
-      }
+      try { framed = window.top !== window.self; } catch (e) { framed = true; }
       var mirror = hosts.length > 0 && hosts.indexOf(host) === -1;
-      if (!framed && !mirror) return;
+      var rh = refHost();
+      var fromCloak = !mirror && !!rh && !isSafeReferrer(rh);
+      var offender = mirror ? host : (fromCloak ? rh : "");
+
+      if (!framed && !mirror && !fromCloak) return;
 
       var dest = base + (location.pathname || "/") + (location.search || "") + (location.hash || "");
-      if (framed) {
-        try {
-          window.top.location.replace(dest);
-          return;
-        } catch (e) { /* cross-origin frame — show banner */ }
+      if (framed && !mirror) {
+        try { window.top.location.replace(dest); return; } catch (e) {}
       }
+
+      // Dedupe referrer interstitial within a tab session
+      try {
+        if (fromCloak && !mirror && sessionStorage.getItem("og_shame_" + offender) === "1") return;
+      } catch (e) {}
 
       var el = document.getElementById("origin-guard");
       if (!el) return;
       var link = el.querySelector("[data-origin-link]");
       if (link) link.setAttribute("href", dest);
+      var textEl = document.getElementById("origin-guard-text");
+      var metaEl = document.getElementById("origin-guard-meta");
+      var timerEl = document.getElementById("origin-guard-timer");
+      var tpl = (textEl && textEl.getAttribute("data-tpl")) || "";
+
+      function setField(name, val) {
+        if (!metaEl) return;
+        var dd = metaEl.querySelector('[data-field="' + name + '"]');
+        if (dd) dd.textContent = val || "—";
+      }
+      function fillText(domain, owner) {
+        if (!textEl) return;
+        textEl.textContent = tpl
+          .replace(/\{domain\}/g, domain || "—")
+          .replace(/\{owner\}/g, owner || "—")
+          .replace(/\{site\}/g, siteName);
+      }
+
+      // noindex while interstitial is shown
+      var robots = document.createElement("meta");
+      robots.setAttribute("name", "robots");
+      robots.setAttribute("content", "noindex, nofollow");
+      document.head.appendChild(robots);
+
       el.hidden = false;
-      document.documentElement.classList.add("origin-guard-active");
-      if (framed) document.documentElement.classList.add("origin-guard-framed");
+      document.documentElement.classList.add("origin-guard-active", "origin-guard-shame");
+      if (framed || mirror) document.documentElement.classList.add("origin-guard-framed");
+      if (metaEl) metaEl.hidden = false;
+      if (offender) setField("domain", offender);
+      fillText(offender || "—", "…");
+
+      var DURATION = 8;
+      function startTimer(done) {
+        if (!timerEl) { done(); return; }
+        timerEl.hidden = false;
+        var left = DURATION;
+        timerEl.textContent = left + "s";
+        var id = setInterval(function () {
+          left -= 1;
+          if (left <= 0) {
+            clearInterval(id);
+            timerEl.textContent = "";
+            done();
+            return;
+          }
+          timerEl.textContent = left + "s";
+        }, 1000);
+      }
+
+      function afterShame() {
+        try { if (offender) sessionStorage.setItem("og_shame_" + offender, "1"); } catch (e) {}
+        if (mirror || framed) {
+          // Stay on overlay until user opens the real site
+          return;
+        }
+        // Arrived on the real site via cloaker referrer — dismiss and continue
+        el.hidden = true;
+        document.documentElement.classList.remove("origin-guard-active", "origin-guard-shame", "origin-guard-framed");
+        try { robots.remove(); } catch (e) {}
+      }
+
+      if (!offender) {
+        fillText("—", "—");
+        startTimer(afterShame);
+        return;
+      }
+
+      fetch(base + "/api/cloak-shame?domain=" + encodeURIComponent(offender), { credentials: "omit" })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          var owner = (data && data.owner) || "WHOIS privacy / not publicly listed";
+          setField("owner", owner);
+          setField("registrar", (data && data.registrar) || "—");
+          fillText(offender, owner);
+        })
+        .catch(function () {
+          setField("owner", "WHOIS unavailable");
+          fillText(offender, "WHOIS unavailable");
+        })
+        .finally(function () { startTimer(afterShame); });
     })();
   </script>
 
